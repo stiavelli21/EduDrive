@@ -1,132 +1,144 @@
-# 🎓 EduDrive
+# EduDrive
 
-> Open source cloud storage platform for students — built for collaborative studying.
+> Piattaforma di archiviazione cloud open source per studenti, progettata per lo studio collaborativo.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-v0.1_alpha-orange.svg)
 
-## ✨ Features
+## Funzionalità Principali
 
-- **📁 File & Folder Management** — Upload PDFs, images, documents. Organize with nested folders.
-- **🔗 QuickLink** — Save Google Drive, Dropbox, and YouTube links as clickable nodes in your drive (no more creating text files for links!).
-- **👥 Selective Sharing** — Share folders with specific users by email. Choose viewer or editor access.
-- **🌐 Public/Private Toggle** — Make any folder or file public for all, or keep it private.
-- **🔒 JWT Authentication** — Secure login with access + refresh tokens.
-- **🧩 Plugin-Ready Architecture** — Clean, modular code designed for student developers to extend.
+- **Gestione File e Cartelle**: Carica PDF, immagini e documenti. Organizza i tuoi materiali con cartelle annidate.
+- **QuickLink**: Salva link di Google Drive, Dropbox e YouTube come nodi cliccabili all'interno del tuo drive (senza dover più creare file di testo per salvare i link).
+- **Condivisione Selettiva**: Condividi cartelle con utenti specifici tramite email. Scegli se concedere permessi di sola lettura o di modifica.
+- **Visibilità Pubblica o Privata**: Rendi qualsiasi cartella o file accessibile pubblicamente a tutti, oppure mantienilo privato.
+- **Autenticazione Sicura con JWT**: Accesso protetto tramite token di accesso e di ricarica (refresh token).
+- **Architettura Modulare per Plugin**: Codice pulito e modulare, pensato per permettere agli studenti sviluppatori di estendere facilmente le funzionalità.
 
-## 🏗️ Tech Stack
+## Stack Tecnologico
 
-| Layer | Technology |
+| Livello | Tecnologia |
 |---|---|
 | Frontend | React 18 + Vite + Tailwind CSS v4 |
-| Backend | Node.js + Express (REST API) |
+| Backend | Node.js + Express (API REST) |
 | Database | PostgreSQL + Drizzle ORM |
-| Storage | S3-compatible (MinIO / Cloudflare R2 / Backblaze B2) |
-| Auth | JWT (access + refresh tokens) |
+| Storage | Compatibile con S3 (MinIO / Cloudflare R2 / Backblaze B2) |
+| Autenticazione | JWT (access token + refresh token) |
 
-## 🚀 Quick Start
+## Guida Rapida all'Avvio
 
-### Prerequisites
+### Prerequisiti
 
 - [Node.js](https://nodejs.org/) v18+
-- [Docker](https://www.docker.com/) & Docker Compose (for PostgreSQL + MinIO)
+- [Docker](https://www.docker.com/) e Docker Compose (per PostgreSQL e MinIO)
 
-### 1. Clone & Setup
+### 1. Configurazione Iniziale
+
+Clona il repository e copia il file delle variabili d'ambiente:
 
 ```bash
 git clone https://github.com/your-username/edudrive.git
 cd edudrive
 
-# Copy environment variables
+# Copia le variabili d'ambiente per il backend
 cp .env.example backend/.env
 ```
 
-### 2. Start Database & Storage
+### 2. Avvio Rapido (Consigliato per Windows)
 
-```bash
-docker-compose up -d
+Per avviare l'intero ecosistema con un solo comando e aprire l'interfaccia come programma autonomo (senza schede o barre di navigazione del browser), fai doppio clic sul file `avvia.bat` oppure esegui da terminale:
+
+```cmd
+avvia.bat
 ```
 
-This starts:
-- **PostgreSQL** on port `5432` (auto-creates tables from `database/schema.sql`)
-- **MinIO** on port `9000` (S3 API) and `9001` (Web Console)
+Questo script eseguirà automaticamente:
+1. L'avvio dei container Docker (PostgreSQL su porta 5432 e MinIO su porte 9000/9001).
+2. L'avvio simultaneo del Backend (porta 3001) e del Frontend (porta 5173).
+3. L'apertura automatica di EduDrive in modalità applicazione desktop standalone.
 
-### 3. Start Backend
+Per terminare tutti i server, premi `CTRL+C` nel terminale in cui è in esecuzione lo script.
 
+### 3. Avvio Manuale (Alternativo)
+
+Se preferisci avviare i singoli servizi manualmente da terminali separati:
+
+#### Avvio Database e Storage (Docker)
+```bash
+docker compose up -d
+```
+
+#### Avvio Backend
 ```bash
 cd backend
 npm install
 npm run dev
 ```
+Il server backend sarà attivo su `http://localhost:3001`
 
-Backend runs on `http://localhost:3001`
-
-### 4. Start Frontend
-
+#### Avvio Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+Il client frontend sarà attivo su `http://localhost:5173`
 
-Frontend runs on `http://localhost:5173`
-
-## 📁 Project Structure
+## Struttura del Progetto
 
 ```
 edudrive/
 ├── frontend/          # React + Vite + Tailwind
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Login, Register, Dashboard
-│   │   ├── context/       # React Context (Auth)
-│   │   └── services/      # API client (Axios)
+│   │   ├── components/    # Componenti UI riutilizzabili
+│   │   ├── pages/         # Login, Registrazione, Dashboard
+│   │   ├── context/       # React Context (Autenticazione)
+│   │   └── services/      # Client API (Axios)
 │   └── ...
 ├── backend/           # Node.js + Express API
 │   ├── src/
-│   │   ├── controllers/   # Business logic
-│   │   ├── routes/        # HTTP endpoint mapping
-│   │   ├── middleware/     # Auth, error handling
-│   │   ├── models/        # Drizzle ORM schema
-│   │   ├── services/      # S3 storage service
-│   │   └── utils/         # JWT, validation (Zod)
+│   │   ├── controllers/   # Logica di business
+│   │   ├── routes/        # Definizione degli endpoint HTTP
+│   │   ├── middleware/    # Autenticazione e gestione errori
+│   │   ├── models/        # Schema Drizzle ORM
+│   │   ├── services/      # Servizio di archiviazione S3
+│   │   └── utils/         # JWT, validazione dati (Zod)
 │   └── ...
-├── database/          # SQL schema
+├── database/          # Schema SQL
 │   └── schema.sql
-└── docker-compose.yml # Dev infrastructure
+├── scripts/           # Script di utilità e avvio applicazione
+│   └── open-app.js
+├── avvia.bat          # Script di avvio rapido all-in-one per Windows
+└── docker-compose.yml # Infrastruttura di sviluppo Docker
 ```
 
-## 🔗 QuickLink — How It Works
+## QuickLink: Come Funziona
 
-Instead of creating a text file to save a Google Drive link, EduDrive lets you save external URLs as first-class nodes:
+Invece di creare un file di testo per salvare un link di Google Drive o una risorsa esterna, EduDrive ti permette di salvare qualsiasi URL come un vero e proprio nodo nel tuo drive:
 
-1. Click **"Add QuickLink"** in the dashboard
-2. Enter a title and URL (e.g. `https://drive.google.com/file/d/...`)
-3. The link is saved in the database as a node with `type: 'link'`
-4. It appears in your file tree with a 🔗 icon
-5. Clicking it opens the URL in a new browser tab
+1. Clicca su **"Aggiungi QuickLink"** nella dashboard principale.
+2. Inserisci un titolo descrittivo e l'URL (es. `https://drive.google.com/file/d/...`).
+3. Il collegamento viene salvato nel database come nodo con la proprietà `type: 'link'`.
+4. Apparirà nell'albero dei tuoi file identificato appositamente come collegamento esterno.
+5. Cliccando sul nodo, l'URL si aprirà direttamente in una nuova finestra o scheda.
 
-## 🧩 Plugin Development
+## Sviluppo di Plugin
 
-EduDrive is designed to be extended by student developers. Here's how to add a plugin:
+EduDrive è progettato per essere facilmente esteso dagli studenti sviluppatori. Ecco come aggiungere un nuovo plugin al backend:
 
-### Backend Plugin
+### Creazione di un Plugin per il Backend
 
-1. Create `backend/src/routes/your-plugin.routes.js`
-2. Create `backend/src/controllers/your-plugin.controller.js`
-3. Mount in `backend/src/app.js`:
+1. Crea il file per le rotte: `backend/src/routes/your-plugin.routes.js`
+2. Crea il controller con la logica: `backend/src/controllers/your-plugin.controller.js`
+3. Registra il plugin nel file principale `backend/src/app.js`:
    ```js
    import pluginRoutes from './routes/your-plugin.routes.js';
    app.use('/api/your-plugin', pluginRoutes);
    ```
 
-### Ideas for Plugins
+### Idee per Nuovi Plugin
 
-- 📇 **Flashcard System** — Create flashcards from uploaded notes
-- 💬 **Group Chat** — Real-time chat for study groups
-- 🤖 **AI Summarizer** — Auto-summarize uploaded PDFs
-- 📊 **Study Analytics** — Track study time and file access patterns
+Consulta il file dedicato [IDEE.md](./IDEE.md) per scoprire tutte le idee di implementazione proposte e per contribuire con nuove funzionalità!
 
-## 📄 License
+## Licenza
 
-MIT — Free for students, by students.
+MIT — Gratuito per gli studenti, creato dagli studenti.

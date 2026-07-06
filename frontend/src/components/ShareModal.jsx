@@ -1,20 +1,11 @@
 // =============================================================================
 // EduDrive — Share Modal Component
 // =============================================================================
-// Lets node owners manage sharing permissions:
-//   - Add new users by email with viewer/editor role
-//   - Toggle public/private visibility
-//   - View and revoke existing permissions
-// =============================================================================
 
 import { useState, useEffect } from 'react';
 import { X, UserPlus, Globe, Lock, Trash2 } from 'lucide-react';
 import api from '../services/api.js';
 
-/**
- * @param {object} node - The node being shared
- * @param {function} onClose - Close the modal
- */
 export default function ShareModal({ node, onClose }) {
   const [permissions, setPermissions] = useState([]);
   const [isPublic, setIsPublic] = useState(node.isPublic);
@@ -59,7 +50,7 @@ export default function ShareModal({ node, onClose }) {
       const { data: updated } = await api.get(`/permissions/node/${node.id}`);
       setPermissions(updated.permissions);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to share');
+      setError(err.response?.data?.error || 'Condivisione non riuscita');
     } finally {
       setLoading(false);
     }
@@ -76,7 +67,7 @@ export default function ShareModal({ node, onClose }) {
       });
       setIsPublic(newValue);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update visibility');
+      setError(err.response?.data?.error || 'Aggiornamento della visibilità non riuscito');
     }
   }
 
@@ -88,7 +79,7 @@ export default function ShareModal({ node, onClose }) {
       await api.delete(`/permissions/${permId}`);
       setPermissions(permissions.filter((p) => p.id !== permId));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to revoke permission');
+      setError(err.response?.data?.error || 'Revoca del permesso non riuscita');
     }
   }
 
@@ -102,10 +93,10 @@ export default function ShareModal({ node, onClose }) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
-              Share "{node.name}"
+              Condividi "{node.name}"
             </h2>
             <p className="text-xs text-text-muted mt-0.5">
-              Manage who can access this {node.type}
+              Gestisci l'accesso a {node.type === 'folder' ? 'questa cartella' : node.type === 'file' ? 'questo file' : 'questo collegamento'}
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost p-1.5">
@@ -129,10 +120,10 @@ export default function ShareModal({ node, onClose }) {
           )}
           <div className="text-left">
             <p className="text-sm font-medium text-text-primary">
-              {isPublic ? 'Public — anyone can view' : 'Private — only shared users'}
+              {isPublic ? 'Pubblico — chiunque può visualizzare' : 'Privato — solo utenti autorizzati'}
             </p>
             <p className="text-xs text-text-muted">
-              Click to {isPublic ? 'make private' : 'make public'}
+              Clicca per {isPublic ? 'rendere privato' : 'rendere pubblico'}
             </p>
           </div>
         </button>
@@ -143,7 +134,7 @@ export default function ShareModal({ node, onClose }) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter email address..."
+            placeholder="Inserisci indirizzo email..."
             required
             className="input-field flex-1"
           />
@@ -152,12 +143,12 @@ export default function ShareModal({ node, onClose }) {
             onChange={(e) => setLevel(e.target.value)}
             className="input-field w-28"
           >
-            <option value="viewer">Viewer</option>
-            <option value="editor">Editor</option>
+            <option value="viewer">Lettore</option>
+            <option value="editor">Editore</option>
           </select>
           <button type="submit" disabled={loading} className="btn-primary flex items-center gap-1.5 shrink-0">
             <UserPlus className="w-4 h-4" />
-            Share
+            Condividi
           </button>
         </form>
 
@@ -177,7 +168,7 @@ export default function ShareModal({ node, onClose }) {
         {permissions.length > 0 && (
           <div>
             <h3 className="text-sm font-medium text-text-secondary mb-2">
-              Shared with
+              Condiviso con
             </h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {permissions.map((perm) => (
@@ -198,12 +189,12 @@ export default function ShareModal({ node, onClose }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-surface-300 text-text-secondary">
-                      {perm.level}
+                      {perm.level === 'viewer' ? 'Lettore' : perm.level === 'editor' ? 'Editore' : perm.level}
                     </span>
                     <button
                       onClick={() => handleRevoke(perm.id)}
                       className="p-1 rounded hover:bg-error/10 text-text-muted hover:text-error transition-colors"
-                      title="Revoke access"
+                      title="Revoca accesso"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

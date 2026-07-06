@@ -22,12 +22,12 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Le password non corrispondono.');
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError('La password deve contenere almeno 8 caratteri.');
       return;
     }
 
@@ -37,7 +37,7 @@ export default function RegisterPage() {
       await register(email, password, displayName);
     } catch (err) {
       setError(
-        err.response?.data?.error || 'Registration failed. Please try again.'
+        err.response?.data?.error || 'Registrazione non riuscita. Riprova.'
       );
     } finally {
       setLoading(false);
@@ -57,10 +57,10 @@ export default function RegisterPage() {
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-text-primary">
-            Create your account
+            Crea il tuo account
           </h1>
           <p className="text-text-secondary mt-2">
-            Join EduDrive and start collaborating
+            Unisciti a EduDrive e inizia a collaborare
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="register-name" className="block text-sm font-medium text-text-secondary mb-1.5">
-              Display Name
+              Nome Completo
             </label>
             <input
               id="register-name"
@@ -97,7 +97,7 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="student@university.edu"
+              placeholder="studente@universita.it"
               required
               className="input-field"
             />
@@ -113,7 +113,7 @@ export default function RegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
+                placeholder="Min. 8 caratteri"
                 required
                 minLength={8}
                 className="input-field pr-10"
@@ -130,14 +130,14 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="register-confirm" className="block text-sm font-medium text-text-secondary mb-1.5">
-              Confirm Password
+              Conferma Password
             </label>
             <input
               id="register-confirm"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repeat your password"
+              placeholder="Ripeti la password"
               required
               className="input-field"
             />
@@ -153,18 +153,18 @@ export default function RegisterPage() {
             ) : (
               <>
                 <UserPlus className="w-4 h-4" />
-                Create Account
+                Crea Account
               </>
             )}
           </button>
 
           <p className="text-center text-sm text-text-secondary">
-            Already have an account?{' '}
+            Hai già un account?{' '}
             <Link
               to="/login"
               className="text-brand-400 hover:text-brand-300 font-medium transition-colors"
             >
-              Sign in
+              Accedi
             </Link>
           </p>
         </form>

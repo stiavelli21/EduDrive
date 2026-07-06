@@ -1,30 +1,11 @@
 // =============================================================================
 // EduDrive — QuickLink Modal Component ⭐
 // =============================================================================
-// This is the UI for the INNOVATIVE QuickLink feature.
-//
-// Instead of forcing users to create a text file with a link inside,
-// this modal lets them save an external URL (e.g. Google Drive link)
-// directly as a node in their file tree.
-//
-// The link is saved in the database as:
-//   type: 'link'
-//   url: <the external URL>
-//   name: <user-provided title>
-//
-// In the file explorer, it appears with a 🔗 icon.
-// Clicking it opens the URL in a new browser tab.
-// =============================================================================
 
 import { useState } from 'react';
 import { ExternalLink, X, Link as LinkIcon } from 'lucide-react';
 import api from '../services/api.js';
 
-/**
- * @param {string|null} parentId - Current folder ID (null = root)
- * @param {function} onClose - Close the modal
- * @param {function} onCreated - Called after successful creation (to refresh list)
- */
 export default function QuickLinkModal({ parentId, onClose, onCreated }) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -39,7 +20,7 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
     try {
       new URL(url);
     } catch {
-      setError('Please enter a valid URL (e.g. https://drive.google.com/...)');
+      setError('Inserisci un URL valido (es. https://drive.google.com/...)');
       return;
     }
 
@@ -54,7 +35,7 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
       onCreated();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create QuickLink');
+      setError(err.response?.data?.error || 'Creazione del QuickLink non riuscita');
     } finally {
       setLoading(false);
     }
@@ -71,10 +52,10 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">
-                Add QuickLink
+                Aggiungi QuickLink
               </h2>
               <p className="text-xs text-text-muted">
-                Save an external link in your drive
+                Salva un link esterno nel tuo drive
               </p>
             </div>
           </div>
@@ -93,14 +74,14 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
 
           <div>
             <label htmlFor="quicklink-name" className="block text-sm font-medium text-text-secondary mb-1.5">
-              Title
+              Titolo
             </label>
             <input
               id="quicklink-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Physics Notes — Chapter 3"
+              placeholder="es. Appunti di Fisica — Capitolo 3"
               required
               className="input-field"
             />
@@ -120,7 +101,7 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
               className="input-field"
             />
             <p className="text-xs text-text-muted mt-1.5">
-              Google Drive, Dropbox, YouTube, or any external link
+              Google Drive, Dropbox, YouTube o qualsiasi link esterno
             </p>
           </div>
 
@@ -142,7 +123,7 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
-              Cancel
+              Annulla
             </button>
             <button
               type="submit"
@@ -154,7 +135,7 @@ export default function QuickLinkModal({ parentId, onClose, onCreated }) {
               ) : (
                 <>
                   <LinkIcon className="w-4 h-4" />
-                  Save QuickLink
+                  Salva QuickLink
                 </>
               )}
             </button>

@@ -118,7 +118,7 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(nodeId) {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Sei sicuro di voler eliminare questo elemento?')) return;
 
     try {
       await api.delete(`/nodes/${nodeId}`);
@@ -182,9 +182,9 @@ export default function DashboardPage() {
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-semibold text-sm">
               {user?.displayName?.charAt(0)?.toUpperCase() || '?'}
             </div>
-            <button onClick={logout} className="btn-ghost flex items-center gap-1.5" title="Logout">
+            <button onClick={logout} className="btn-ghost flex items-center gap-1.5" title="Esci">
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">Esci</span>
             </button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            My Files
+            I Miei File
           </button>
           <button
             onClick={() => setActiveTab('shared')}
@@ -215,7 +215,7 @@ export default function DashboardPage() {
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            Shared with me
+            Condivisi con me
           </button>
         </div>
 
@@ -235,18 +235,18 @@ export default function DashboardPage() {
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  placeholder="Folder name..."
+                  placeholder="Nome cartella..."
                   autoFocus
                   className="input-field w-48"
                 />
                 <button onClick={handleCreateFolder} className="btn-primary text-sm py-2">
-                  Create
+                  Crea
                 </button>
                 <button
                   onClick={() => { setShowNewFolderInput(false); setNewFolderName(''); }}
                   className="btn-ghost text-sm"
                 >
-                  Cancel
+                  Annulla
                 </button>
               </div>
             ) : (
@@ -255,7 +255,7 @@ export default function DashboardPage() {
                 className="btn-secondary flex items-center gap-2"
               >
                 <FolderPlus className="w-4 h-4" />
-                New Folder
+                Nuova Cartella
               </button>
             )}
 
@@ -268,7 +268,7 @@ export default function DashboardPage() {
               className="btn-primary flex items-center gap-2"
             >
               <LinkIcon className="w-4 h-4" />
-              Add QuickLink
+              Aggiungi QuickLink
             </button>
           </div>
         )}

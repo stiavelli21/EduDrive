@@ -104,12 +104,12 @@ export default function UploadButton({ parentId, onUploadComplete }) {
           <Upload className="w-4 h-4" />
         )}
         {uploading
-          ? 'Uploading...'
+          ? 'Caricamento...'
           : uploadStatus === 'success'
-          ? 'Uploaded!'
+          ? 'Caricato!'
           : uploadStatus === 'error'
-          ? 'Failed'
-          : 'Upload'}
+          ? 'Errore'
+          : 'Carica'}
       </button>
     </div>
   );

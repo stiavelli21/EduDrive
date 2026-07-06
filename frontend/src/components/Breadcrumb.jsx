@@ -20,7 +20,7 @@ export default function Breadcrumb({ crumbs, onNavigate }) {
         className="flex items-center gap-1 px-2 py-1 rounded-md text-text-secondary hover:text-text-primary hover:bg-surface-200 transition-colors shrink-0"
       >
         <Home className="w-4 h-4" />
-        <span>My Drive</span>
+        <span>Il Mio Drive</span>
       </button>
 
       {/* Path segments */}

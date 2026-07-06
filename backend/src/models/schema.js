@@ -40,7 +40,7 @@ export const permissionLevelEnum = pgEnum('permission_level', [
  */
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull().unique('users_email_key'),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
   avatarUrl: text('avatar_url'),

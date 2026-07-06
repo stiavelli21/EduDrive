@@ -26,6 +26,7 @@ import {
   Share2,
   Trash2,
   Globe,
+  Pencil,
 } from 'lucide-react';
 
 /**
@@ -107,7 +108,7 @@ function formatSize(bytes) {
  * @param {function} onDelete - Called when delete is selected
  * @param {function} onShare - Called when share is selected
  */
-export default function NodeCard({ node, onClick, onDelete, onShare }) {
+export default function NodeCard({ node, onClick, onDelete, onShare, onRename }) {
   const [showMenu, setShowMenu] = useState(false);
   const { Icon, bgColor, iconColor, fillClass } = getNodeVisuals(node);
 
@@ -118,7 +119,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare }) {
     >
       {/* Public indicator */}
       {node.isPublic && (
-        <div className="absolute top-2 left-2" title="Public">
+        <div className="absolute top-2 left-2" title="Pubblico">
           <Globe className="w-3.5 h-3.5 text-brand-400" />
         </div>
       )}
@@ -142,17 +143,24 @@ export default function NodeCard({ node, onClick, onDelete, onShare }) {
         >
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
+            onClick={() => { onRename(); setShowMenu(false); }}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Rinomina
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
             onClick={() => { onShare(); setShowMenu(false); }}
           >
             <Share2 className="w-3.5 h-3.5" />
-            Share
+            Condividi
           </button>
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
             onClick={() => { onDelete(); setShowMenu(false); }}
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Delete
+            Elimina
           </button>
         </div>
       )}
@@ -170,7 +178,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare }) {
       {/* Metadata */}
       <p className="text-xs text-text-muted mt-1">
         {node.type === 'link' && '🔗 QuickLink'}
-        {node.type === 'folder' && '📁 Folder'}
+        {node.type === 'folder' && '📁 Cartella'}
         {node.type === 'file' && formatSize(node.sizeBytes)}
       </p>
 

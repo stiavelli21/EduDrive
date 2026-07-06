@@ -24,7 +24,7 @@ export default function LoginPage() {
       await login(email, password);
       // AuthContext handles redirect via ProtectedRoute
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setError(err.response?.data?.error || 'Accesso non riuscito. Riprova.');
     } finally {
       setLoading(false);
     }
@@ -43,10 +43,10 @@ export default function LoginPage() {
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-text-primary">
-            Welcome back
+            Bentornato
           </h1>
           <p className="text-text-secondary mt-2">
-            Sign in to your EduDrive account
+            Accedi al tuo account EduDrive
           </p>
         </div>
 
@@ -67,7 +67,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="student@university.edu"
+              placeholder="studente@universita.it"
               required
               className="input-field"
             />
@@ -107,18 +107,18 @@ export default function LoginPage() {
             ) : (
               <>
                 <LogIn className="w-4 h-4" />
-                Sign In
+                Accedi
               </>
             )}
           </button>
 
           <p className="text-center text-sm text-text-secondary">
-            Don't have an account?{' '}
+            Non hai ancora un account?{' '}
             <Link
               to="/register"
               className="text-brand-400 hover:text-brand-300 font-medium transition-colors"
             >
-              Create one
+              Registrati
             </Link>
           </p>
         </form>

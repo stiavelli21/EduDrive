@@ -21,6 +21,7 @@ export default function FileExplorer({
   onNodeClick,
   onDelete,
   onShare,
+  onRename,
 }) {
   // Loading skeleton
   if (loading) {
@@ -41,10 +42,10 @@ export default function FileExplorer({
           <FolderOpen className="w-10 h-10 text-text-muted" />
         </div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
-          No files yet
+          Nessun file presente
         </h3>
         <p className="text-sm text-text-secondary max-w-sm">
-          Create a folder, upload a file, or add a QuickLink to get started.
+          Crea una cartella, carica un file o aggiungi un QuickLink per iniziare.
         </p>
       </div>
     );
@@ -60,6 +61,7 @@ export default function FileExplorer({
           onClick={() => onNodeClick(node)}
           onDelete={() => onDelete(node.id)}
           onShare={() => onShare(node)}
+          onRename={() => onRename(node)}
         />
       ))}
     </div>
