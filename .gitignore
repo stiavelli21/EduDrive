@@ -1,0 +1,7 @@
+# EduDrive — Gitignore
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+Thumbs.db
