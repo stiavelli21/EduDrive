@@ -1,35 +1,44 @@
-# Idee di Implementazione e Plugin per EduDrive
+# Idee e Plugin per EduDrive
 
-Questo documento raccoglie tutte le idee e le proposte di implementazione per espandere le funzionalità di **EduDrive**. È pensato come guida di riferimento per gli studenti sviluppatori che desiderano contribuire al progetto e arricchire la piattaforma.
-
----
-
-## 1. Plugin per lo Studio e la Didattica
-
-- **Sistema di Flashcard**:
-  - **Obiettivo**: Generare flashcard interattive a partire dagli appunti e dai documenti caricati nel cloud.
-  - **Funzionalità suggerite**: Supporto alla ripetizione spaziata (Spaced Repetition / algoritmo stile Anki), creazione automatica di mazzi di carte da file di testo o PDF, modalità di autovalutazione e condivisione dei mazzi con i compagni di studio.
-
-- **Sintetizzatore AI**:
-  - **Obiettivo**: Riassunto automatico e analisi intelligente per i documenti e i PDF caricati nel drive.
-  - **Funzionalità suggerite**: Integrazione con modelli di Intelligenza Artificiale (API cloud o LLM locali) per estrarre i concetti chiave, generare mappe concettuali o creare domande di ripasso automatiche a partire dal materiale di studio.
-
-- **Valutazione del Materiale**:
-  - **Obiettivo**: Possibilità di valutare e recensire i file presenti in una cartella condivisa.
-  - **Funzionalità suggerite**: Sistema di voto a stelle (da 1 a 5), sezione commenti e feedback per segnalare appunti incompleti o particolarmente utili, e ordinamento dei file in base alla valutazione della community.
+> **Vuoi contribuire a EduDrive?** Scegli un'idea da questa lista (o proponi la tua) e crea il tuo primo plugin didattico per arricchire la piattaforma!
 
 ---
 
-## 2. Collaborazione e Comunicazione in Tempo Reale
+## 1. Studio e Didattica (AI & Gamification)
 
-- **Chat di Gruppo**:
-  - **Obiettivo**: Una chat in tempo reale integrata per i gruppi di studio e le cartelle condivise.
-  - **Funzionalità suggerite**: Stanze di discussione dedicate per ogni cartella o gruppo, notifiche in tempo reale tramite WebSocket/Socket.io e possibilità di inviare riferimenti rapidi o link diretti ai file archiviati nel drive.
+### Sistema di Flashcard Interattive
+- **Obiettivo**: Generare mazzi di flashcard a partire dai documenti salvati nel drive.
+- **Funzionalità chiave**: Supporto alla ripetizione spaziata (stile Anki), autovalutazione rapida e condivisione dei mazzi tra compagni di corso.
+- **Come iniziare**: Crea un modello Drizzle per i mazzi e le carte, e un endpoint REST per generare o salvare le flashcard da file TXT/PDF.
+
+### Sintetizzatore AI & Riassunti
+- **Obiettivo**: Generazione automatica di riassunti, mappe concettuali e quiz di autovalutazione dai documenti caricati.
+- **Funzionalità chiave**: Estrazione concetti chiave dai PDF e generazione automatica di domande di ripasso prima di un esame.
+- **Come iniziare**: Collega API LLM esterne (o modelli locali via Ollama) al backend quando viene caricato un nuovo file.
+
+### Valutazione e Recensione Appunti
+- **Obiettivo**: Valutare la qualità dei materiali condivisi all'interno dei gruppi di studio.
+- **Funzionalità chiave**: Sistema di voto da 1 a 5 stelle, commenti per segnalare parti mancanti o utili, e ordinamento dei file per voto della community.
+- **Come iniziare**: Aggiungi una tabella `reviews` collegata ai `nodes` nel database PostgreSQL.
 
 ---
 
-## 3. Come Proporre o Sviluppare una Nuova Idea
+## 2. Collaborazione in Tempo Reale
 
-Se hai una nuova idea di implementazione:
-1. Aggiungila a questo documento sotto la sezione appropriata (o crea una nuova categoria).
-2. Segui le istruzioni presenti nel file [README.md](file:///c:/Users/stiav/app_projects/Drive/v0.1/README.md) per creare le rotte e i controller necessari all'interno del backend di EduDrive!
+### Chat di Gruppo per Cartella
+- **Obiettivo**: Discutere in tempo reale direttamente all'interno delle cartelle di studio condivise.
+- **Funzionalità chiave**: Stanze di discussione dedicate per ogni cartella, notifiche istantanee e invio rapido di link diretti ai file archiviati.
+- **Come iniziare**: Integra WebSocket o Socket.io in `backend/src/server.js` con stanze basate sul `folderId`.
+
+### Dashboard e Statistiche di Studio
+- **Obiettivo**: Monitorare il tempo dedicato allo studio sui file di un determinato corso o progetto.
+- **Funzionalità chiave**: Timer Pomodoro integrato, statistiche settimanali di lettura documenti e tracciamento dei progressi per esame.
+- **Come iniziare**: Salva sessioni di tempo associate ai nodi e visualizzale con grafici nel frontend.
+
+---
+
+## Come Proporre e Sviluppare una Nuova Idea
+
+1. **Scegli o Proponi**: Aggiungi una nuova idea a questo file o scegline una esistente.
+2. **Crea il Backend**: Segui le istruzioni nel [README.md](./README.md#%EF%B8%8F-sviluppa-il-tuo-primo-plugin) per creare rotta e controller nel backend.
+3. **Collega il Frontend**: Aggiungi il nuovo componente o pulsante nella UI di React per rendere la tua idea realtà!

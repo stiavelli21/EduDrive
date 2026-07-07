@@ -114,7 +114,7 @@ export default function ShareModal({ node, onClose }) {
           }`}
         >
           {isPublic ? (
-            <Globe className="w-5 h-5 text-brand-400" />
+            <Globe className="w-5 h-5 text-brand-600" />
           ) : (
             <Lock className="w-5 h-5 text-text-muted" />
           )}
@@ -177,7 +177,7 @@ export default function ShareModal({ node, onClose }) {
                   className="flex items-center justify-between p-2.5 rounded-lg bg-surface-200/50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-300 text-xs font-semibold">
+                    <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-semibold">
                       {perm.userDisplayName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div>

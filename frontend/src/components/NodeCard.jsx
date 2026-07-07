@@ -120,7 +120,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
       {/* Public indicator */}
       {node.isPublic && (
         <div className="absolute top-2 left-2" title="Pubblico">
-          <Globe className="w-3.5 h-3.5 text-brand-400" />
+          <Globe className="w-3.5 h-3.5 text-brand-600" />
         </div>
       )}
 
@@ -184,7 +184,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
 
       {/* Permission level badge (for shared items) */}
       {node.permissionLevel && (
-        <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-500/15 text-brand-300">
+        <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 border border-brand-200">
           {node.permissionLevel}
         </span>
       )}

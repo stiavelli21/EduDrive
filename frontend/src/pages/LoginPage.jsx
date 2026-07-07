@@ -116,7 +116,7 @@ export default function LoginPage() {
             Non hai ancora un account?{' '}
             <Link
               to="/register"
-              className="text-brand-400 hover:text-brand-300 font-medium transition-colors"
+              className="text-brand-600 hover:text-brand-700 font-medium transition-colors"
             >
               Registrati
             </Link>
