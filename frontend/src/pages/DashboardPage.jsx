@@ -132,15 +132,23 @@ export default function DashboardPage() {
     if (node.type === 'folder') {
       navigate(`/folder/${node.id}`);
     } else if (node.type === 'link') {
-      // ⭐ QuickLink: open URL in new tab
-      window.open(node.url, '_blank', 'noopener,noreferrer');
+      // ⭐ QuickLink: open URL in external browser / new tab
+      if (window.__TAURI_INTERNALS__) {
+        import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(node.url)).catch(console.error);
+      } else {
+        window.open(node.url, '_blank', 'noopener,noreferrer');
+      }
     } else if (node.type === 'file') {
       // For files, fetch download URL and open
       api
         .get(`/nodes/${node.id}`)
         .then(({ data }) => {
           if (data.node.downloadUrl) {
-            window.open(data.node.downloadUrl, '_blank');
+            if (window.__TAURI_INTERNALS__) {
+              import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(data.node.downloadUrl)).catch(console.error);
+            } else {
+              window.open(data.node.downloadUrl, '_blank');
+            }
           }
         })
         .catch(console.error);

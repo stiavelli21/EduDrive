@@ -50,11 +50,27 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-echo [2/2] Avvio simultaneo del Backend (porta 3001) e Frontend (porta 5173)...
-echo Apertura automatica di EduDrive in modalita' Standalone...
-echo.
-echo Premi CTRL+C in questa finestra per arrestare tutti i server quando hai finito.
-echo ===================================================
-echo.
+echo [2/2] Avvio simultaneo di Backend e dell'Applicazione Desktop EduDrive...
+set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+cargo --version >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Avvio nativo con Tauri v2 Desktop App...
+    echo.
+    echo Premi CTRL+C in questa finestra per arrestare tutti i server quando hai finito.
+    echo ===================================================
+    echo.
+    call npm run start:desktop
+) else (
+    echo Avvio in modalita' Standalone con browser predefinito...
+    echo.
+    echo Premi CTRL+C in questa finestra per arrestare tutti i server quando hai finito.
+    echo ===================================================
+    echo.
+    call npm run start:app
+)
 
-npx concurrently --names "BACKEND,FRONTEND,APP" --prefix-colors "blue,green,yellow" "npm run dev --prefix backend" "npm run dev --prefix frontend" "node scripts/open-app.js"
+if %errorlevel% neq 0 (
+    echo.
+    echo [Errore] Si e' verificato un problema durante l'esecuzione dei server.
+    pause
+)

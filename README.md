@@ -24,6 +24,7 @@
 | Componente | Tecnologia |
 |---|---|
 | **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) |
+| **Desktop App** | Tauri v2 (Rust + WebView2 ultraleggera da ~15 MB) |
 | **Backend** | Node.js + Express (REST API modulari) |
 | **Database** | PostgreSQL + Drizzle ORM |
 | **Storage** | Object Storage S3 compatibile (MinIO / Cloudflare R2 / Backblaze) |
@@ -35,6 +36,7 @@
 ### Prerequisiti
 - **Node.js** (v18+)
 - **Docker & Docker Compose** (per database e storage)
+- *(Opzionale per App Nativa)* **Rust & C++ Build Tools** (se installati, `avvia.bat` apre la vera app nativa Tauri v2, altrimenti fa il fallback automatico al browser in modalità standalone).
 
 ### 1. Configurazione
 Clona il progetto e configura le variabili d'ambiente:
@@ -52,17 +54,26 @@ avvia.bat
  **Cosa fa in automatico?**
 1. Avvia Docker (PostgreSQL + MinIO).
 2. Lancia Backend (porta 3001) e Frontend (porta 5173).
-3. Apre EduDrive come **applicazione desktop autonoma** (senza barre del browser).
+3. Apre EduDrive come **applicazione desktop nativa (Tauri v2)** (o in modalità standalone se Rust non è presente).
 
 *(Per terminare, premi `CTRL+C` nel terminale).*
 
 ---
 
-### 3. Avvio Manuale (Per Linux / macOS / Dev)
+### 3. Avvio Manuale / Sviluppo
 Se preferisci gestire i processi separatamente:
 1. **Infrastruttura**: `docker compose up -d`
-2. **Backend**: `cd backend && npm install && npm run dev` *(sulla porta 3001)*
-3. **Frontend**: `cd frontend && npm install && npm run dev` *(sulla porta 5173)*
+2. **Backend + App Desktop Nativa**: `npm run start:desktop`
+3. **Solo Web / Dev Server**: `npm run dev`
+
+---
+
+### 4. Creare l'Installer Desktop (`.exe` / `.msi`)
+Per generare il file di installazione autonomo e leggerissimo (~15 MB) da distribuire agli studenti:
+```bash
+npm run build:desktop
+```
+Il pacchetto di installazione verrà generato nella cartella `frontend/src-tauri/target/release/bundle/`.
 
 ---
 
