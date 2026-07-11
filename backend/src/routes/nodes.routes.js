@@ -21,6 +21,7 @@ import {
 } from '../utils/validation.js';
 import {
   listRootNodes,
+  getNodeContent,
   getNode,
   listChildren,
   createFolder,
@@ -73,11 +74,14 @@ router.use(authenticate);
 // List root nodes (query ?shared=true for shared-with-me)
 router.get('/', listRootNodes);
 
-// Get single node details
-router.get('/:id', getNode);
+// Get file content (e.g. for .md viewer)
+router.get('/:id/content', getNodeContent);
 
 // List children of a folder
 router.get('/:id/children', listChildren);
+
+// Get single node details
+router.get('/:id', getNode);
 
 // Create a new folder
 router.post('/folder', validate(createFolderSchema), createFolder);

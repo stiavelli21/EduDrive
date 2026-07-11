@@ -24,7 +24,7 @@
 | Componente | Tecnologia |
 |---|---|
 | **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) |
-| **Desktop App** | Tauri v2 (Rust + WebView2 ultraleggera da ~15 MB) |
+| **Desktop App** | Tauri v2 (Rust + WebView2) |
 | **Backend** | Node.js + Express (REST API modulari) |
 | **Database** | PostgreSQL + Drizzle ORM |
 | **Storage** | Object Storage S3 compatibile (MinIO / Cloudflare R2 / Backblaze) |

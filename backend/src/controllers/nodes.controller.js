@@ -23,7 +23,7 @@
 import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '../app.js';
 import { nodes, permissions } from '../models/schema.js';
-import { uploadFile, getDownloadUrl, deleteFile } from '../services/storage.service.js';
+import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../services/storage.service.js';
 
 // =============================================================================
 // HELPER: Check if a user has access to a node
@@ -166,6 +166,44 @@ export async function getNode(req, res, next) {
       node: { ...node, downloadUrl },
       accessLevel: access.level,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/nodes/:id/content
+ * Stream / get raw file content for a node (with access check).
+ */
+export async function getNodeContent(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const [node] = await db.select().from(nodes).where(eq(nodes.id, id));
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    // Check access
+    const access = await checkAccess(id, userId);
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (node.type !== 'file' || !node.storageKey) {
+      return res.status(400).json({ error: 'Node is not a file' });
+    }
+
+    const stream = await getFileStream(node.storageKey);
+    if (node.mimeType) {
+      res.setHeader('Content-Type', node.mimeType);
+    }
+    if (node.mimeType === 'text/markdown' || node.name?.toLowerCase().endsWith('.md')) {
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    }
+
+    stream.pipe(res);
   } catch (error) {
     next(error);
   }

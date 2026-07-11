@@ -27,6 +27,7 @@ import {
   Trash2,
   Globe,
   Pencil,
+  BookOpen,
 } from 'lucide-react';
 
 /**
@@ -53,6 +54,14 @@ function getNodeVisuals(node) {
 
   // File — choose icon based on MIME type
   const mime = node.mimeType || '';
+  if (mime.includes('markdown') || node.name?.toLowerCase().endsWith('.md')) {
+    return {
+      Icon: BookOpen,
+      bgColor: 'bg-purple-500/15',
+      iconColor: 'text-purple-400',
+      fillClass: '',
+    };
+  }
   if (mime.startsWith('image/')) {
     return {
       Icon: Image,
@@ -179,7 +188,11 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
       <p className="text-xs text-text-muted mt-1">
         {node.type === 'link' && '🔗 QuickLink'}
         {node.type === 'folder' && '📁 Cartella'}
-        {node.type === 'file' && formatSize(node.sizeBytes)}
+        {node.type === 'file' && (
+          node.name?.toLowerCase().endsWith('.md') || node.mimeType?.includes('markdown')
+            ? `📖 Markdown · ${formatSize(node.sizeBytes)}`
+            : formatSize(node.sizeBytes)
+        )}
       </p>
 
       {/* Permission level badge (for shared items) */}

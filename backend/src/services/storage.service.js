@@ -83,6 +83,22 @@ export async function getDownloadUrl(storageKey, expiresIn = 3600) {
 }
 
 /**
+ * Get a readable stream for a file from S3-compatible storage.
+ *
+ * @param {string} storageKey - The S3 key of the file
+ * @returns {Promise<ReadableStream>} File body stream
+ */
+export async function getFileStream(storageKey) {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET,
+    Key: storageKey,
+  });
+
+  const response = await s3Client.send(command);
+  return response.Body;
+}
+
+/**
  * Delete a file from S3-compatible storage.
  *
  * @param {string} storageKey - The S3 key of the file to delete

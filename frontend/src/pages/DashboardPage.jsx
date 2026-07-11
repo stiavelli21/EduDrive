@@ -17,6 +17,7 @@ import FileExplorer from '../components/FileExplorer.jsx';
 import Breadcrumb from '../components/Breadcrumb.jsx';
 import QuickLinkModal from '../components/QuickLinkModal.jsx';
 import ShareModal from '../components/ShareModal.jsx';
+import MarkdownViewerModal from '../components/MarkdownViewerModal.jsx';
 import UploadButton from '../components/UploadButton.jsx';
 import {
   LogOut,
@@ -43,6 +44,8 @@ export default function DashboardPage() {
   const [showQuickLinkModal, setShowQuickLinkModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargetNode, setShareTargetNode] = useState(null);
+  const [showMarkdownModal, setShowMarkdownModal] = useState(false);
+  const [markdownTargetNode, setMarkdownTargetNode] = useState(null);
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -139,7 +142,14 @@ export default function DashboardPage() {
         window.open(node.url, '_blank', 'noopener,noreferrer');
       }
     } else if (node.type === 'file') {
-      // For files, fetch download URL and open
+      // ⭐ If it is a Markdown file (.md), open the built-in reader!
+      if (node.name?.toLowerCase().endsWith('.md') || node.mimeType?.includes('markdown')) {
+        setMarkdownTargetNode(node);
+        setShowMarkdownModal(true);
+        return;
+      }
+
+      // For other files, fetch download URL and open
       api
         .get(`/nodes/${node.id}`)
         .then(({ data }) => {
@@ -309,6 +319,14 @@ export default function DashboardPage() {
         <ShareModal
           node={shareTargetNode}
           onClose={() => { setShowShareModal(false); setShareTargetNode(null); }}
+        />
+      )}
+
+      {/* Built-in Markdown Reader Modal */}
+      {showMarkdownModal && markdownTargetNode && (
+        <MarkdownViewerModal
+          node={markdownTargetNode}
+          onClose={() => { setShowMarkdownModal(false); setMarkdownTargetNode(null); }}
         />
       )}
     </div>
