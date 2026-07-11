@@ -14,7 +14,7 @@
 //   - Visual distinction for public nodes
 // =============================================================================
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Folder,
   FileText,
@@ -119,7 +119,44 @@ function formatSize(bytes) {
  */
 export default function NodeCard({ node, onClick, onDelete, onShare, onRename }) {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   const { Icon, bgColor, iconColor, fillClass } = getNodeVisuals(node);
+
+  useEffect(() => {
+    if (!showMenu) return;
+
+    function handleClickOutside(event) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        setShowMenu(false);
+      }
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setShowMenu(false);
+      }
+    }
+
+    function handleScroll() {
+      setShowMenu(false);
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [showMenu]);
 
   return (
     <div
@@ -135,7 +172,10 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
 
       {/* Context Menu Button */}
       <button
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-surface-300"
+        ref={buttonRef}
+        className={`absolute top-2 right-2 p-1 rounded-md transition-all z-20 ${
+          showMenu ? 'opacity-100 bg-surface-300' : 'opacity-0 group-hover:opacity-100 hover:bg-surface-300'
+        }`}
         onClick={(e) => {
           e.stopPropagation();
           setShowMenu(!showMenu);
@@ -144,29 +184,45 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
         <MoreVertical className="w-4 h-4 text-text-muted" />
       </button>
 
+      {/* Invisible backdrop to safely catch clicks outside the menu and prevent accidental card navigation */}
+      {showMenu && (
+        <div
+          className="fixed inset-0 z-10 cursor-default"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu(false);
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+        />
+      )}
+
       {/* Context Menu Dropdown */}
       {showMenu && (
         <div
-          className="absolute top-9 right-2 bg-surface-200 border border-surface-400 rounded-lg shadow-xl z-20 py-1 min-w-[140px]"
+          ref={menuRef}
+          className="absolute top-9 right-2 bg-surface-200 border border-surface-400 rounded-lg shadow-xl z-20 py-1 min-w-[140px] animate-fadeIn"
           onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
-            onClick={() => { onRename(); setShowMenu(false); }}
+            onClick={() => { if (onRename) onRename(node); setShowMenu(false); }}
           >
             <Pencil className="w-3.5 h-3.5" />
             Rinomina
           </button>
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
-            onClick={() => { onShare(); setShowMenu(false); }}
+            onClick={() => { if (onShare) onShare(node); setShowMenu(false); }}
           >
             <Share2 className="w-3.5 h-3.5" />
             Condividi
           </button>
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
-            onClick={() => { onDelete(); setShowMenu(false); }}
+            onClick={() => { if (onDelete) onDelete(node.id); setShowMenu(false); }}
           >
             <Trash2 className="w-3.5 h-3.5" />
             Elimina

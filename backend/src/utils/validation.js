@@ -58,7 +58,7 @@ export const createQuickLinkSchema = z.object({
 
 /** Validate node rename / move */
 export const updateNodeSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
+  name: z.string().trim().min(1, 'Il nome non può essere vuoto').max(255, 'Il nome è troppo lungo').optional(),
   parentId: z.string().uuid().nullable().optional(),
 });
 

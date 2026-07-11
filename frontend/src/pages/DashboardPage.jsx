@@ -18,6 +18,7 @@ import Breadcrumb from '../components/Breadcrumb.jsx';
 import QuickLinkModal from '../components/QuickLinkModal.jsx';
 import ShareModal from '../components/ShareModal.jsx';
 import MarkdownViewerModal from '../components/MarkdownViewerModal.jsx';
+import RenameModal from '../components/RenameModal.jsx';
 import UploadButton from '../components/UploadButton.jsx';
 import {
   LogOut,
@@ -46,6 +47,8 @@ export default function DashboardPage() {
   const [shareTargetNode, setShareTargetNode] = useState(null);
   const [showMarkdownModal, setShowMarkdownModal] = useState(false);
   const [markdownTargetNode, setMarkdownTargetNode] = useState(null);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameTargetNode, setRenameTargetNode] = useState(null);
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -168,6 +171,11 @@ export default function DashboardPage() {
   function handleShare(node) {
     setShareTargetNode(node);
     setShowShareModal(true);
+  }
+
+  function handleRename(node) {
+    setRenameTargetNode(node);
+    setShowRenameModal(true);
   }
 
   // --- Render ----------------------------------------------------------------
@@ -298,6 +306,7 @@ export default function DashboardPage() {
           onNodeClick={handleNodeClick}
           onDelete={handleDelete}
           onShare={handleShare}
+          onRename={handleRename}
         />
       </main>
 
@@ -327,6 +336,15 @@ export default function DashboardPage() {
         <MarkdownViewerModal
           node={markdownTargetNode}
           onClose={() => { setShowMarkdownModal(false); setMarkdownTargetNode(null); }}
+        />
+      )}
+
+      {/* Rename Modal */}
+      {showRenameModal && renameTargetNode && (
+        <RenameModal
+          node={renameTargetNode}
+          onClose={() => { setShowRenameModal(false); setRenameTargetNode(null); }}
+          onRenamed={fetchNodes}
         />
       )}
     </div>

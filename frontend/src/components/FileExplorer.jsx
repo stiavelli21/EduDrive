@@ -58,10 +58,10 @@ export default function FileExplorer({
         <NodeCard
           key={node.id}
           node={node}
-          onClick={() => onNodeClick(node)}
-          onDelete={() => onDelete(node.id)}
-          onShare={() => onShare(node)}
-          onRename={() => onRename(node)}
+          onClick={() => onNodeClick && onNodeClick(node)}
+          onDelete={() => onDelete && onDelete(node.id)}
+          onShare={() => onShare && onShare(node)}
+          onRename={() => onRename && onRename(node)}
         />
       ))}
     </div>

@@ -406,18 +406,30 @@ export async function updateNode(req, res, next) {
 
     // Build update object with only provided fields
     const updateData = {};
-    if (name !== undefined) updateData.name = name;
+    if (name !== undefined) {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ error: 'Il nome non può essere vuoto' });
+      }
+      updateData.name = trimmedName;
+    }
     if (parentId !== undefined) updateData.parentId = parentId;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
+    updateData.updatedAt = new Date();
+
     const [updated] = await db
       .update(nodes)
       .set(updateData)
       .where(eq(nodes.id, id))
       .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Elemento non trovato' });
+    }
 
     res.json({ node: updated });
   } catch (error) {
