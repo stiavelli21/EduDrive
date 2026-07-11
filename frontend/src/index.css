@@ -260,3 +260,7 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease;
+}

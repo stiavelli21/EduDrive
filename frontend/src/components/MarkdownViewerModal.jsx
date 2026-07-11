@@ -9,7 +9,7 @@
 //   - Glassmorphism & smooth animations
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../services/api.js';
@@ -36,6 +36,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
   const [mode, setMode] = useState('preview'); // 'preview' | 'raw'
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(null);
+  const codeBlockCounter = useRef(0);
 
   // --- Fetch Markdown Content -----------------------------------------------
   useEffect(() => {
@@ -320,18 +321,21 @@ export default function MarkdownViewerModal({ node, onClose }) {
                         {children}
                       </blockquote>
                     ),
-                    code: ({ inline, className, children, ...props }) => {
+                    code: ({ className, children, ...props }) => {
                       const match = /language-(\w+)/.exec(className || '');
                       const codeText = String(children).replace(/\n$/, '');
-                      const blockIdx = match ? codeText.substring(0, 30) : codeText.substring(0, 15);
 
-                      if (inline || !className) {
+                      // Inline code: no className means no language fence
+                      if (!className) {
                         return (
                           <code className="px-1.5 py-0.5 rounded-md bg-surface-300/90 text-purple-300 font-mono text-xs border border-surface-400/60" {...props}>
                             {children}
                           </code>
                         );
                       }
+
+                      // Block code: use a unique numeric index for copy state
+                      const blockIdx = codeBlockCounter.current++;
 
                       return (
                         <div className="my-5 rounded-xl border border-surface-300/80 bg-surface-300/40 overflow-hidden shadow-lg">

@@ -107,11 +107,10 @@ export default function ShareModal({ node, onClose }) {
         {/* Visibility Toggle */}
         <button
           onClick={handleToggleVisibility}
-          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all mb-5 ${
-            isPublic
+          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all mb-5 ${isPublic
               ? 'border-brand-500/30 bg-brand-500/5'
               : 'border-surface-300 bg-surface-200/50'
-          }`}
+            }`}
         >
           {isPublic ? (
             <Globe className="w-5 h-5 text-brand-600" />

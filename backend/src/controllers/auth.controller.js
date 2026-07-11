@@ -217,7 +217,7 @@ export async function refreshToken(req, res, next) {
  * POST /api/auth/logout
  * Clear the refresh token cookie.
  */
-export async function logout(req, res) {
+export function logout(req, res) {
   res.clearCookie('refreshToken');
   res.json({ message: 'Logged out successfully' });
 }

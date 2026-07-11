@@ -20,7 +20,7 @@
 //   DELETE /api/nodes/:id       → Delete a node (cascades to children)
 // =============================================================================
 
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../app.js';
 import { nodes, permissions } from '../models/schema.js';
 import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../services/storage.service.js';
@@ -30,12 +30,13 @@ import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../servic
 // =============================================================================
 
 /**
- * Recursively check if a user can access a node.
+ * Check if a user can access a node using a single recursive CTE query.
+ * Walks up the folder tree in one DB round-trip instead of N recursive calls.
+ *
  * Access is granted if:
- *   1. The user is the owner
- *   2. The node is public
- *   3. The user has a direct permission on the node
- *   4. The user has an inherited permission from a parent folder
+ *   1. The user is the owner of any node in the ancestor chain
+ *   2. Any ancestor node is public (for viewer access)
+ *   3. The user has a direct or inherited permission on any ancestor
  *
  * @param {string} nodeId - The node to check
  * @param {string} userId - The user requesting access
@@ -43,46 +44,52 @@ import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../servic
  * @returns {Promise<{allowed: boolean, level: string|null}>}
  */
 async function checkAccess(nodeId, userId, requiredLevel = 'viewer') {
-  // Fetch the node
-  const [node] = await db
-    .select()
-    .from(nodes)
-    .where(eq(nodes.id, nodeId))
-    .limit(1);
+  // Single CTE query: walk up the ancestor chain, join permissions once
+  const result = await db.execute(sql`
+    WITH RECURSIVE ancestors AS (
+      SELECT id, owner_id, parent_id, is_public, 0 AS depth
+      FROM nodes WHERE id = ${nodeId}
+      UNION ALL
+      SELECT n.id, n.owner_id, n.parent_id, n.is_public, a.depth + 1
+      FROM nodes n
+      INNER JOIN ancestors a ON n.id = a.parent_id
+    )
+    SELECT
+      a.id,
+      a.owner_id,
+      a.is_public,
+      a.depth,
+      p.level AS perm_level
+    FROM ancestors a
+    LEFT JOIN permissions p ON p.node_id = a.id AND p.user_id = ${userId}
+    ORDER BY a.depth ASC
+  `);
 
-  if (!node) {
+  if (!result.rows || result.rows.length === 0) {
     return { allowed: false, level: null };
   }
 
-  // 1. Owner always has full access
-  if (node.ownerId === userId) {
-    return { allowed: true, level: 'owner' };
+  // Walk through the ancestor chain (from target node upward)
+  for (const row of result.rows) {
+    // 1. Owner always has full access
+    if (row.owner_id === userId) {
+      return { allowed: true, level: 'owner' };
+    }
+
+    // 2. Public nodes are accessible to everyone (as viewer)
+    if (row.is_public && requiredLevel === 'viewer') {
+      return { allowed: true, level: 'viewer' };
+    }
+
+    // 3. Check permission on this ancestor
+    if (row.perm_level) {
+      const allowed =
+        requiredLevel === 'viewer' || row.perm_level === 'editor';
+      return { allowed, level: row.perm_level };
+    }
   }
 
-  // 2. Public nodes are accessible to everyone (as viewer)
-  if (node.isPublic && requiredLevel === 'viewer') {
-    return { allowed: true, level: 'viewer' };
-  }
-
-  // 3. Check direct permission on this node
-  const [directPerm] = await db
-    .select()
-    .from(permissions)
-    .where(and(eq(permissions.nodeId, nodeId), eq(permissions.userId, userId)))
-    .limit(1);
-
-  if (directPerm) {
-    const allowed =
-      requiredLevel === 'viewer' || directPerm.level === 'editor';
-    return { allowed, level: directPerm.level };
-  }
-
-  // 4. Check inherited permission from parent folder (recursive)
-  if (node.parentId) {
-    return checkAccess(node.parentId, userId, requiredLevel);
-  }
-
-  // No access
+  // No access found in entire ancestor chain
   return { allowed: false, level: null };
 }
 
@@ -196,11 +203,16 @@ export async function getNodeContent(req, res, next) {
     }
 
     const stream = await getFileStream(node.storageKey);
-    if (node.mimeType) {
-      res.setHeader('Content-Type', node.mimeType);
-    }
-    if (node.mimeType === 'text/markdown' || node.name?.toLowerCase().endsWith('.md')) {
+
+    // Set Content-Type: prefer markdown-specific header for .md files,
+    // otherwise fall back to the stored MIME type
+    const isMarkdown = node.mimeType === 'text/markdown'
+      || node.name?.toLowerCase().endsWith('.md');
+
+    if (isMarkdown) {
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    } else if (node.mimeType) {
+      res.setHeader('Content-Type', node.mimeType);
     }
 
     stream.pipe(res);
@@ -246,7 +258,26 @@ export async function listChildren(req, res, next) {
       .where(eq(nodes.parentId, id))
       .orderBy(nodes.type, nodes.name);
 
-    res.json({ nodes: children, parent });
+    // Build breadcrumb path in a single CTE query (eliminates N+1 API calls
+    // from the frontend)
+    const breadcrumbResult = await db.execute(sql`
+      WITH RECURSIVE ancestors AS (
+        SELECT id, name, parent_id, 0 AS depth
+        FROM nodes WHERE id = ${id}
+        UNION ALL
+        SELECT n.id, n.name, n.parent_id, a.depth + 1
+        FROM nodes n
+        INNER JOIN ancestors a ON n.id = a.parent_id
+      )
+      SELECT id, name FROM ancestors ORDER BY depth DESC
+    `);
+
+    const breadcrumbs = (breadcrumbResult.rows || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+    }));
+
+    res.json({ nodes: children, parent, breadcrumbs });
   } catch (error) {
     next(error);
   }
@@ -405,15 +436,32 @@ export async function updateNode(req, res, next) {
     }
 
     // Build update object with only provided fields
+    // (name is already validated and trimmed by Zod schema)
     const updateData = {};
-    if (name !== undefined) {
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-        return res.status(400).json({ error: 'Il nome non può essere vuoto' });
+    if (name !== undefined) updateData.name = name;
+    if (parentId !== undefined) {
+      // Prevent circular moves: verify the target parent is not the node
+      // itself or one of its descendants
+      if (parentId === id) {
+        return res.status(400).json({ error: 'Cannot move a node inside itself' });
       }
-      updateData.name = trimmedName;
+      if (parentId !== null) {
+        const circularCheck = await db.execute(sql`
+          WITH RECURSIVE ancestors AS (
+            SELECT id, parent_id FROM nodes WHERE id = ${parentId}
+            UNION ALL
+            SELECT n.id, n.parent_id
+            FROM nodes n
+            INNER JOIN ancestors a ON n.id = a.parent_id
+          )
+          SELECT 1 FROM ancestors WHERE id = ${id} LIMIT 1
+        `);
+        if (circularCheck.rows && circularCheck.rows.length > 0) {
+          return res.status(400).json({ error: 'Cannot move a node inside one of its own descendants' });
+        }
+      }
+      updateData.parentId = parentId;
     }
-    if (parentId !== undefined) updateData.parentId = parentId;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
@@ -428,7 +476,7 @@ export async function updateNode(req, res, next) {
       .returning();
 
     if (!updated) {
-      return res.status(404).json({ error: 'Elemento non trovato' });
+      return res.status(404).json({ error: 'Node not found' });
     }
 
     res.json({ node: updated });
@@ -482,20 +530,35 @@ export async function deleteNode(req, res, next) {
 }
 
 /**
- * Helper: Recursively find and delete S3 files within a folder tree.
- * This is called before deleting a folder to clean up S3 storage.
+ * Helper: Find all file storage keys in a folder tree using a recursive CTE,
+ * then delete them in parallel. Uses Promise.allSettled so that a single S3
+ * failure does not leave remaining files orphaned.
  */
 async function deleteChildrenFiles(folderId) {
-  const children = await db
-    .select()
-    .from(nodes)
-    .where(eq(nodes.parentId, folderId));
+  // Single query to collect all file storage keys in the subtree
+  const result = await db.execute(sql`
+    WITH RECURSIVE subtree AS (
+      SELECT id, type, storage_key FROM nodes WHERE parent_id = ${folderId}
+      UNION ALL
+      SELECT n.id, n.type, n.storage_key
+      FROM nodes n
+      INNER JOIN subtree s ON n.parent_id = s.id
+    )
+    SELECT storage_key FROM subtree
+    WHERE type = 'file' AND storage_key IS NOT NULL
+  `);
 
-  for (const child of children) {
-    if (child.type === 'file' && child.storageKey) {
-      await deleteFile(child.storageKey);
-    } else if (child.type === 'folder') {
-      await deleteChildrenFiles(child.id);
+  const keys = (result.rows || []).map((r) => r.storage_key).filter(Boolean);
+  if (keys.length === 0) return;
+
+  const results = await Promise.allSettled(
+    keys.map((key) => deleteFile(key))
+  );
+
+  // Log any partial failures so orphaned files can be cleaned up later
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      console.warn('⚠️ Failed to delete S3 object:', r.reason?.message || r.reason);
     }
   }
 }

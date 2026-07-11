@@ -66,8 +66,8 @@ export default function DashboardPage() {
         const { data } = await api.get(`/nodes/${folderId}/children`);
         setNodes(data.nodes);
         setParentNode(data.parent);
-        // Build breadcrumbs by walking up the tree
-        await buildBreadcrumbs(folderId);
+        // Use breadcrumbs computed server-side (single CTE query)
+        setBreadcrumbs(data.breadcrumbs || []);
       } else {
         const { data } = await api.get('/nodes');
         setNodes(data.nodes);
@@ -84,26 +84,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchNodes();
   }, [fetchNodes]);
-
-  /**
-   * Build breadcrumb trail by walking up the folder tree.
-   */
-  async function buildBreadcrumbs(nodeId) {
-    const crumbs = [];
-    let currentId = nodeId;
-
-    while (currentId) {
-      try {
-        const { data } = await api.get(`/nodes/${currentId}`);
-        crumbs.unshift({ id: data.node.id, name: data.node.name });
-        currentId = data.node.parentId;
-      } catch {
-        break;
-      }
-    }
-
-    setBreadcrumbs(crumbs);
-  }
 
   // --- Actions ---------------------------------------------------------------
 
@@ -224,21 +204,19 @@ export default function DashboardPage() {
         <div className="flex gap-1 mb-6 p-1 bg-surface-100 rounded-xl w-fit">
           <button
             onClick={() => { setActiveTab('my-files'); navigate('/'); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'my-files'
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'my-files'
                 ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
                 : 'text-text-secondary hover:text-text-primary'
-            }`}
+              }`}
           >
             I Miei File
           </button>
           <button
             onClick={() => setActiveTab('shared')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-              activeTab === 'shared'
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === 'shared'
                 ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
                 : 'text-text-secondary hover:text-text-primary'
-            }`}
+              }`}
           >
             <Users className="w-3.5 h-3.5" />
             Condivisi con me

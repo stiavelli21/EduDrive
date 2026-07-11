@@ -11,6 +11,7 @@
 // Example: const { uploadFile } = await import('../services/storage.service.js');
 // =============================================================================
 
+import path from 'node:path';
 import {
   S3Client,
   PutObjectCommand,
@@ -47,8 +48,8 @@ const BUCKET = process.env.S3_BUCKET || 'edudrive-files';
  */
 export async function uploadFile(fileBuffer, originalName, mimeType, ownerId) {
   // Generate a unique storage key: owner_id/uuid.extension
-  const extension = originalName.split('.').pop() || 'bin';
-  const storageKey = `${ownerId}/${uuidv4()}.${extension}`;
+  const ext = path.extname(originalName).slice(1) || 'bin';
+  const storageKey = `${ownerId}/${uuidv4()}.${ext}`;
 
   const command = new PutObjectCommand({
     Bucket: BUCKET,
