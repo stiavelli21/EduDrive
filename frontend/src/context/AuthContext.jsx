@@ -46,12 +46,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function checkAuth() {
       try {
-        // 1. Controlla prima se torniamo da un redirect di Google Login (fondamentale per app Desktop o se i popup sono bloccati)
+        // 1. Controlla prima se torniamo da un redirect di Google Login (o se Firebase ha già una sessione attiva in cache per Tauri/Browser)
         if (isFirebaseConfigured && auth) {
           try {
-            const redirectResult = await getRedirectResult(auth);
-            if (redirectResult && redirectResult.user) {
-              const idToken = await redirectResult.user.getIdToken();
+            await auth.authStateReady(); // Assicura che Firebase abbia ripristinato l'utente da IndexedDB
+            const redirectResult = await getRedirectResult(auth).catch(() => null);
+            const firebaseUser = redirectResult?.user || auth.currentUser;
+
+            if (firebaseUser) {
+              const idToken = await firebaseUser.getIdToken();
               const { data } = await api.post('/auth/google', { idToken });
               setAccessToken(data.accessToken);
               setUser(data.user);
@@ -59,7 +62,7 @@ export function AuthProvider({ children }) {
               return;
             }
           } catch (redirectErr) {
-            console.warn('Google redirect check:', redirectErr.message);
+            console.warn('Google redirect/auth check:', redirectErr.message);
           }
         }
 
