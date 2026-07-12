@@ -62,11 +62,11 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - **`server.js`**: Punto di ingresso principale del server Node.js; avvia l'ascolto HTTP e gestisce il ciclo di vita dell'applicazione.
 - **`app.js`**: Configurazione centrale di Express (CORS, body-parser, rotte globali, middleware errori) e del pool del database PostgreSQL con supporto SSL intelligente per connessioni cloud (`Neon.tech`).
 - **`routes/`**:
-  - `auth.routes.js`: Endpoint per login, registrazione e gestione sessione/token.
+  - `auth.routes.js`: Endpoint per login classico, registrazione, accesso istantaneo `POST /api/auth/google` e gestione sessione/token.
   - `nodes.routes.js`: Endpoint CRUD e di navigazione per cartelle e file (i "nodi" del filesystem cloud).
   - `permissions.routes.js`: Endpoint per la gestione di permessi e condivisioni (condivisione nodi tra utenti).
 - **`controllers/`**:
-  - `auth.controller.js`: Logica di autenticazione (verifica credenziali, emissione token, hashing).
+  - `auth.controller.js`: Logica di autenticazione (verifica credenziali, verifica crittografica token Google ID `googleLogin`, auto-registrazione su DB Neon, emissione token JWT, hashing).
   - `nodes.controller.js`: Logica principale del drive (creazione cartelle, upload/download file, rinomina, spostamento, eliminazione).
   - `permissions.controller.js`: Gestione delle regole di accesso (permessi in lettura/scrittura per utenti terzi, link condivisi).
 - **`services/`**:
@@ -87,12 +87,13 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
   - `RenameModal.jsx`: Modale di Modifica elementi (`Modifica File/Cartella/QuickLink`), permette ridenominazione con selezione intelligente, aggiunta/modifica di una descrizione opzionale (`description`) e scelta del colore tema per i file Markdown (`color`).
   - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Modifica, Condividi, Elimina).
   - *(Altri componenti UI modulari)*
-- **`pages/`**: Componenti vista/pagina principale (es. Vista Drive principale, pagina di Login, ecc.).
-- **`context/`**: React Context provider per la gestione dello stato globale (es. contesto utente/autenticazione, navigazione cartelle correnti).
+- **`pages/`**: Componenti vista/pagina principale (`LoginPage.jsx` e `RegisterPage.jsx` dotati di pulsanti premium "Accedi con Google", vista Drive principale, ecc.).
+- **`context/`**: React Context provider per la gestione dello stato globale (`AuthContext.jsx` con metodi `login`, `register`, `logout` e `loginWithGoogle`).
 - **`utils/`**:
   - `colors.js`: Utility e catalogo (`MARKDOWN_COLORS`) per la gestione dei colori personalizzabili dei file Markdown ed elementi UI.
 - **`services/`**:
   - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend, configurabile dinamicamente per il cloud tramite la variabile d'ambiente `VITE_API_URL`.
+  - `firebase.js`: Inizializzazione di Firebase Auth e `GoogleAuthProvider` per la gestione dell'accesso ad un clic con account Google (`signInWithPopup`).
 
 ---
 

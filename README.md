@@ -12,9 +12,10 @@
 ## Perché EduDrive? (Punti di Forza)
 
 - **Interfaccia Light & Blue**: Design moderno, luminoso e pulito per un'esperienza di studio senza distrazioni.
+- **Accesso Imediato con Google**: Entra con un clic tramite **Firebase Auth** importing automaticamente Nome, Cognome e Foto Profilo ufficiale, oppure usa la registrazione classica via email.
 - **QuickLink Integrati**: Salva link esterni (Google Drive, YouTube, Dropbox) direttamente come cartelle o file cliccabili nel tuo cloud. Mai più file `.txt` con link incollati!
 - **Condivisione Granulare**: Condividi cartelle con compagni specifici via email scegliendo i permessi (*Lettore* o *Editore*), oppure rendile pubbliche con un clic.
-- **Sicurezza e Performance**: Autenticazione moderna con JWT (Access & Refresh Token) e archiviazione veloce compatibile con S3.
+- **Sicurezza e Performance**: Autenticazione ibrida con OAuth Google e JWT (Access & Refresh Token) su archiviazione veloce compatibile con S3.
 - **100% Modulare per Studenti Sviluppatori**: Struttura pensata per creare e integrare nuovi plugin didattici in pochi minuti.
 
 ---
@@ -23,9 +24,9 @@
 
 | Componente | Tecnologia |
 |---|---|
-| **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) |
+| **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) + Firebase Auth |
 | **Desktop App** | Tauri v2 (Rust + WebView2) |
-| **Backend** | Node.js + Express (REST API modulari) |
+| **Backend** | Node.js + Express (REST API modulari con verifica Google ID e JWT) |
 | **Database** | PostgreSQL locale (Docker) o Cloud Serverless (**Neon.tech**) + Drizzle ORM |
 | **Storage** | Object Storage S3 compatibile (**Cloudflare R2** / MinIO locale / Storj.io) |
 

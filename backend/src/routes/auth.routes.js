@@ -19,6 +19,7 @@ import { validate, registerSchema, loginSchema } from '../utils/validation.js';
 import {
   register,
   login,
+  googleLogin,
   getMe,
   refreshToken,
   logout,
@@ -29,6 +30,7 @@ const router = Router();
 // Public endpoints
 router.post('/register', validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
+router.post('/google', googleLogin);
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 

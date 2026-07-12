@@ -15,7 +15,9 @@
 // =============================================================================
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { signInWithPopup } from 'firebase/auth';
 import api, { setAccessToken } from '../services/api.js';
+import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js';
 
 const AuthContext = createContext(null);
 
@@ -23,7 +25,7 @@ const AuthContext = createContext(null);
  * Hook to access auth state and methods.
  * Must be used within <AuthProvider>.
  *
- * @returns {{ user, loading, login, register, logout }}
+ * @returns {{ user, loading, login, register, logout, loginWithGoogle, isFirebaseConfigured }}
  */
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -93,6 +95,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
+   * Log in or register using Google Sign-In (Firebase Auth).
+   */
+  const loginWithGoogle = useCallback(async () => {
+    if (!isFirebaseConfigured || !auth || !googleProvider) {
+      throw new Error('Autenticazione con Google non configurata (verifica le variabili d\'ambiente VITE_FIREBASE_*).');
+    }
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+
+    // Send ID token to our backend to verify and issue internal JWT & refresh cookie
+    const { data } = await api.post('/auth/google', { idToken });
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  /**
    * Log out — clear state and server-side cookie.
    */
   const logout = useCallback(async () => {
@@ -111,7 +130,10 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    loginWithGoogle,
+    isFirebaseConfigured,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
