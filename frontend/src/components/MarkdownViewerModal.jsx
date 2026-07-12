@@ -12,6 +12,8 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import DownloadFormatModal from './DownloadFormatModal.jsx';
 import api from '../services/api.js';
 import {
   X,
@@ -38,6 +40,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const codeBlockCounter = useRef(0);
 
   // --- Fetch Markdown Content -----------------------------------------------
@@ -109,17 +112,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
   };
 
   const handleDownload = () => {
-    setDownloading(true);
-    const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = node.name || 'documento.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setTimeout(() => setDownloading(false), 2000);
+    setShowDownloadModal(true);
   };
 
   return (
@@ -279,7 +272,13 @@ export default function MarkdownViewerModal({ node, onClose }) {
               <div className="prose prose-invert max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw]}
                   components={{
+                    mark: ({ children }) => (
+                      <mark className="bg-amber-300 dark:bg-amber-400/85 text-slate-900 px-1.5 py-0.5 rounded font-medium shadow-sm border border-amber-400/60 not-italic">
+                        {children}
+                      </mark>
+                    ),
                     h1: ({ children }) => (
                       <h1 className={`text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${customColor.gradient} pb-3 mb-6 border-b border-surface-300/80 flex items-center gap-2`}>
                         {children}
@@ -414,7 +413,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                     ),
                   }}
                 >
-                  {content}
+                  {content.replace(/==([^=\r\n]+)==/g, '<mark>$1</mark>')}
                 </ReactMarkdown>
               </div>
             </div>
@@ -432,6 +431,13 @@ export default function MarkdownViewerModal({ node, onClose }) {
         </div>
 
       </div>
+
+      {showDownloadModal && (
+        <DownloadFormatModal
+          node={node}
+          onClose={() => setShowDownloadModal(false)}
+        />
+      )}
     </div>
   );
 }

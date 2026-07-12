@@ -18,6 +18,7 @@ import Breadcrumb from '../components/Breadcrumb.jsx';
 import QuickLinkModal from '../components/QuickLinkModal.jsx';
 import ShareModal from '../components/ShareModal.jsx';
 import MarkdownViewerModal from '../components/MarkdownViewerModal.jsx';
+import DownloadFormatModal from '../components/DownloadFormatModal.jsx';
 import RenameModal from '../components/RenameModal.jsx';
 import UploadButton from '../components/UploadButton.jsx';
 import {
@@ -49,6 +50,8 @@ export default function DashboardPage() {
   const [markdownTargetNode, setMarkdownTargetNode] = useState(null);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameTargetNode, setRenameTargetNode] = useState(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadTargetNode, setDownloadTargetNode] = useState(null);
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -156,6 +159,21 @@ export default function DashboardPage() {
   function handleRename(node) {
     setRenameTargetNode(node);
     setShowRenameModal(true);
+  }
+
+  function handleDownload(node) {
+    if (node.name?.toLowerCase().endsWith('.md') || node.mimeType?.includes('markdown')) {
+      setDownloadTargetNode(node);
+      setShowDownloadModal(true);
+      return;
+    }
+    if (node.downloadUrl) {
+      if (window.__TAURI_INTERNALS__) {
+        import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(node.downloadUrl)).catch(console.error);
+      } else {
+        window.open(node.downloadUrl, '_blank');
+      }
+    }
   }
 
   // --- Render ----------------------------------------------------------------
@@ -285,6 +303,7 @@ export default function DashboardPage() {
           onDelete={handleDelete}
           onShare={handleShare}
           onRename={handleRename}
+          onDownload={handleDownload}
         />
       </main>
 
@@ -323,6 +342,14 @@ export default function DashboardPage() {
           node={renameTargetNode}
           onClose={() => { setShowRenameModal(false); setRenameTargetNode(null); }}
           onRenamed={fetchNodes}
+        />
+      )}
+
+      {/* Download Format Modal ("Convertitore alla rovescia") */}
+      {showDownloadModal && downloadTargetNode && (
+        <DownloadFormatModal
+          node={downloadTargetNode}
+          onClose={() => { setShowDownloadModal(false); setDownloadTargetNode(null); }}
         />
       )}
     </div>

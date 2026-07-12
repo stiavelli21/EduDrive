@@ -59,6 +59,9 @@
    - Preserva tutti i commenti, docstring e sezioni di codice esistenti che non sono direttamente correlati alle modifiche richieste dal task.
    - Rimuovi `console.log` di debug temporanei e codice commentato obsoleto prima di finalizzare una modifica.
 
+5. **Divieto di Emoji nel Codice**:
+   - Non inserire mai emoji all'interno del codice sorgente (inclusi commenti, messaggi di log o stringhe), salvo esplicita richiesta dell'utente o necessità funzionale dell'interfaccia utente.
+
 ## Stile della UI e Design System (Filosofia ed Estetica)
 
 1. **Colori Principali e Design Tokens (`index.css`)**:

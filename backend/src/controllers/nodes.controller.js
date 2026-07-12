@@ -24,6 +24,11 @@ import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../app.js';
 import { nodes, permissions } from '../models/schema.js';
 import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../services/storage.service.js';
+import {
+  isTextualCandidateForMarkdown,
+  convertFileToMarkdown,
+  convertMarkdownToFormat,
+} from '../services/conversion.service.js';
 
 // =============================================================================
 // HELPER: Check if a user has access to a node
@@ -222,6 +227,54 @@ export async function getNodeContent(req, res, next) {
 }
 
 /**
+ * GET /api/nodes/:id/export?format=md|docx|txt
+ * Export/download a node in the requested format ("convertitore alla rovescia").
+ * For .md files, converts to .docx or .txt before sending.
+ */
+export async function exportNodeHandler(req, res, next) {
+  try {
+    const { id } = req.params;
+    const format = (req.query.format || 'md').toLowerCase();
+    const userId = req.user?.id;
+
+    const [node] = await db.select().from(nodes).where(eq(nodes.id, id));
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    const access = await checkAccess(id, userId);
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (node.type !== 'file' || !node.storageKey) {
+      return res.status(400).json({ error: 'Node is not a file' });
+    }
+
+    const stream = await getFileStream(node.storageKey);
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const fileBuffer = Buffer.concat(chunks);
+
+    const isMarkdown = node.mimeType === 'text/markdown' || node.name?.toLowerCase().endsWith('.md');
+    if (isMarkdown && ['docx', 'txt', 'md'].includes(format)) {
+      const converted = await convertMarkdownToFormat(fileBuffer, format, node.name);
+      res.setHeader('Content-Type', converted.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(converted.filename)}"`);
+      return res.send(converted.buffer);
+    }
+
+    res.setHeader('Content-Type', node.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(node.name)}"`);
+    res.send(fileBuffer);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * GET /api/nodes/:id/children
  * List children of a folder (with access check).
  */
@@ -331,7 +384,7 @@ export async function uploadFileHandler(req, res, next) {
       return res.status(400).json({ error: 'No file provided' });
     }
 
-    const { originalname, mimetype, buffer } = req.file;
+    let { originalname, mimetype, buffer } = req.file;
     const parentId = req.body.parentId || null;
 
     // If uploading into a folder, check editor access
@@ -339,6 +392,20 @@ export async function uploadFileHandler(req, res, next) {
       const access = await checkAccess(parentId, userId, 'editor');
       if (!access.allowed) {
         return res.status(403).json({ error: 'Cannot upload here' });
+      }
+    }
+
+    // ⭐ Convert textual candidates (.docx, .doc, .txt, .rtf, .html) into Markdown (.md)
+    if (isTextualCandidateForMarkdown(originalname, mimetype)) {
+      try {
+        const converted = await convertFileToMarkdown(buffer, mimetype, originalname);
+        if (converted.converted) {
+          buffer = converted.buffer;
+          originalname = converted.filename;
+          mimetype = converted.mimeType;
+        }
+      } catch (convErr) {
+        console.warn('⚠️ Text to Markdown conversion error:', convErr.message);
       }
     }
 

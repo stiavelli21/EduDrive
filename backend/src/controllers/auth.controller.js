@@ -239,34 +239,58 @@ export async function googleLogin(req, res, next) {
     }
 
     // Decode and verify ID Token
-    // We handle both Google OAuth tokens and Firebase ID tokens safely
+    // Firebase ID tokens have the Firebase project ID as their audience,
+    // NOT the Firebase App ID. We support both standard Google OAuth tokens
+    // and Firebase Auth tokens (issued by securetoken.google.com).
     let email, displayName, avatarUrl;
     try {
-      // First try standard Google OAuth verification
+      // Try standard Google OAuth verification with the correct audience.
+      // For Firebase tokens, the audience is the Firebase project ID.
       const ticket = await googleClient.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID || process.env.VITE_FIREBASE_APP_ID || undefined,
+        audience: process.env.GOOGLE_CLIENT_ID || undefined,
       });
       const payload = ticket.getPayload();
       email = payload?.email;
       displayName = payload?.name || payload?.given_name || email?.split('@')[0];
       avatarUrl = payload?.picture;
-    } catch (e) {
-      // Fallback verification for Firebase ID Token (issued by securetoken.google.com)
-      // Parse payload from JWT securely and verify structure
+    } catch {
+      // Fallback: verify Firebase ID Token (issued by securetoken.google.com)
+      // The primary verifyIdToken may fail because:
+      //   - GOOGLE_CLIENT_ID is not set (common in dev)
+      //   - The token is a Firebase Auth token, not a standard Google OAuth token
       const parts = idToken.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-        if (payload.email && payload.exp * 1000 > Date.now()) {
-          email = payload.email;
-          displayName = payload.name || payload.email.split('@')[0];
-          avatarUrl = payload.picture;
-        } else {
-          throw new Error('Token Google/Firebase scaduto o non valido.');
-        }
-      } else {
-        throw new Error('Formato ID token non valido.');
+      if (parts.length !== 3) {
+        return res.status(401).json({ error: 'Formato ID token non valido.' });
       }
+
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+
+      // Validate issuer (must be Firebase securetoken or Google accounts)
+      const validIssuers = [
+        `https://securetoken.google.com/${process.env.FIREBASE_PROJECT_ID || ''}`,
+        'https://accounts.google.com',
+      ];
+      const isValidIssuer = validIssuers.some(
+        (issuer) => issuer && payload.iss && payload.iss === issuer
+      ) || (payload.iss && payload.iss.startsWith('https://securetoken.google.com/'));
+
+      if (!isValidIssuer) {
+        return res.status(401).json({ error: 'Token emittente non riconosciuto.' });
+      }
+
+      // Validate expiration
+      if (!payload.exp || payload.exp * 1000 < Date.now()) {
+        return res.status(401).json({ error: 'Token Google/Firebase scaduto.' });
+      }
+
+      if (!payload.email) {
+        return res.status(401).json({ error: 'Token non contiene un indirizzo email.' });
+      }
+
+      email = payload.email;
+      displayName = payload.name || payload.email.split('@')[0];
+      avatarUrl = payload.picture;
     }
 
     if (!email) {

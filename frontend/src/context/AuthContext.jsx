@@ -14,7 +14,7 @@
 //   - logout() → clear user and tokens
 // =============================================================================
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged } from 'firebase/auth';
 import api, { setAccessToken } from '../services/api.js';
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js';
@@ -42,15 +42,22 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Ref flag to prevent the onAuthStateChanged listener and checkAuth refresh
+  // from racing with an active loginWithGoogle popup/redirect flow.
+  const googleLoginInProgressRef = useRef(false);
+
   // On mount, check redirect login result or try to refresh the token
   useEffect(() => {
-    let unsubscribe = () => {};
+    let unsubscribe = () => { };
 
     async function checkAuth() {
       try {
-        // 1. Ascolta in tempo reale quando Firebase ripristina la sessione o torna da un redirect in Tauri/Browser
+        // 1. Listen for Firebase restoring a session or returning from a redirect (Tauri/Browser)
         if (isFirebaseConfigured && auth) {
           unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            // Skip if loginWithGoogle is actively handling the flow
+            if (googleLoginInProgressRef.current) return;
+
             if (firebaseUser) {
               try {
                 const idToken = await firebaseUser.getIdToken();
@@ -64,13 +71,13 @@ export function AuthProvider({ children }) {
             }
           });
 
-          // Prova anche in modo proattivo il redirect o authStateReady
+          // Also proactively check redirect result or authStateReady
           try {
             await auth.authStateReady();
             const redirectResult = await getRedirectResult(auth).catch(() => null);
             const firebaseUser = redirectResult?.user || auth.currentUser;
 
-            if (firebaseUser) {
+            if (firebaseUser && !googleLoginInProgressRef.current) {
               const idToken = await firebaseUser.getIdToken();
               const { data } = await api.post('/auth/google', { idToken });
               setAccessToken(data.accessToken);
@@ -91,9 +98,11 @@ export function AuthProvider({ children }) {
         const { data: profileData } = await api.get('/auth/me');
         setUser(profileData.user);
       } catch {
-        // Not authenticated with cookie — that's ok unless onAuthStateChanged restores user in a split second
-        setUser(null);
-        setAccessToken(null);
+        // Not authenticated — only reset if loginWithGoogle isn't in progress
+        if (!googleLoginInProgressRef.current) {
+          setUser(null);
+          setAccessToken(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -135,12 +144,17 @@ export function AuthProvider({ children }) {
 
   /**
    * Log in or register using Google Sign-In (Firebase Auth).
-   * Prova prima con Popup nativo; se bloccato (es. in WebView2 di Tauri o browser col blocco), passa al Redirect automatico!
+   * Sets a ref flag to prevent onAuthStateChanged from racing with this flow.
+   * Tries popup first; falls back to redirect in Tauri/WebView2 or if popup is blocked.
    */
   const loginWithGoogle = useCallback(async () => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
       throw new Error('Autenticazione con Google non configurata (verifica le variabili d\'ambiente VITE_FIREBASE_*).');
     }
+
+    googleLoginInProgressRef.current = true;
+    setLoading(true);
+
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
@@ -150,7 +164,7 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       return data.user;
     } catch (err) {
-      // Se siamo nell'app Desktop nativa (Tauri) o se il browser blocca il popup, facciamo il fallback a signInWithRedirect!
+      // If in native Desktop app (Tauri) or browser blocks popup, fallback to signInWithRedirect
       if (
         err.code === 'auth/popup-blocked' ||
         err.code === 'auth/operation-not-supported-in-this-environment' ||
@@ -158,10 +172,20 @@ export function AuthProvider({ children }) {
         window.__TAURI__ ||
         window.__TAURI_INTERNALS__
       ) {
+        // Keep flag active: onAuthStateChanged will handle the redirect result on return
         await signInWithRedirect(auth, googleProvider);
-        return null; // Il browser o WebView reindirizzerà a Google per il login
+        return null;
       }
+      // For all other errors, clear the flag and re-throw
+      googleLoginInProgressRef.current = false;
+      setLoading(false);
       throw err;
+    } finally {
+      // Clear flag after successful popup flow (redirect keeps it for the return trip)
+      if (googleLoginInProgressRef.current) {
+        googleLoginInProgressRef.current = false;
+      }
+      setLoading(false);
     }
   }, []);
 

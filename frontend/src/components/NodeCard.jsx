@@ -29,6 +29,7 @@ import {
   Pencil,
   BookOpen,
   Info,
+  Download,
 } from 'lucide-react';
 import { getMarkdownColor } from '../utils/colors.js';
 
@@ -120,7 +121,7 @@ function formatSize(bytes) {
  * @param {function} onDelete - Called when delete is selected
  * @param {function} onShare - Called when share is selected
  */
-export default function NodeCard({ node, onClick, onDelete, onShare, onRename }) {
+export default function NodeCard({ node, onClick, onDelete, onShare, onRename, onDownload }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const menuRef = useRef(null);
@@ -276,6 +277,15 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
+          {node.type === 'file' && (
+            <button
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
+              onClick={() => { if (onDownload) onDownload(node); setShowMenu(false); }}
+            >
+              <Download className="w-3.5 h-3.5 text-brand-400" />
+              Scarica
+            </button>
+          )}
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
             onClick={() => { if (onRename) onRename(node); setShowMenu(false); }}

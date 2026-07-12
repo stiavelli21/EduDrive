@@ -63,14 +63,15 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - **`app.js`**: Configurazione centrale di Express (CORS, body-parser, rotte globali, middleware errori) e del pool del database PostgreSQL con supporto SSL intelligente per connessioni cloud (`Neon.tech`).
 - **`routes/`**:
   - `auth.routes.js`: Endpoint per login classico, registrazione, accesso istantaneo `POST /api/auth/google` e gestione sessione/token.
-  - `nodes.routes.js`: Endpoint CRUD e di navigazione per cartelle e file (i "nodi" del filesystem cloud).
+  - `nodes.routes.js`: Endpoint CRUD e di navigazione per cartelle e file, più rotta di esportazione formati (`GET /api/nodes/:id/export`).
   - `permissions.routes.js`: Endpoint per la gestione di permessi e condivisioni (condivisione nodi tra utenti).
 - **`controllers/`**:
   - `auth.controller.js`: Logica di autenticazione (verifica credenziali, verifica crittografica token Google ID `googleLogin`, auto-registrazione su DB Neon, emissione token JWT, hashing).
-  - `nodes.controller.js`: Logica principale del drive (creazione cartelle, upload/download file, rinomina, spostamento, eliminazione).
+  - `nodes.controller.js`: Logica principale del drive (creazione cartelle, upload con conversione automatica in Markdown, download/esportazione in formati `.md`/`.docx`/`.txt`, rinomina, spostamento, eliminazione).
   - `permissions.controller.js`: Gestione delle regole di accesso (permessi in lettura/scrittura per utenti terzi, link condivisi).
 - **`services/`**:
   - `storage.service.js`: Servizio di astrazione per l'interazione diretta con lo storage fisico e cloud S3 compatibile (`MinIO`, `Storj.io`, `Cloudflare R2`).
+  - `conversion.service.js`: Servizio di conversione documenti automatico per la traduzione coerente dei file testuali caricati (`.docx`, `.doc`, `.txt`, `.rtf`, `.html`) in `.md` (con mantenimento delle evidenziazioni via `mammoth` + `turndown`) e per il *convertitore alla rovescia* durante lo scaricamento (`.md` -> `.docx`/`.txt` via `docx`).
 - **`models/`**: Modelli dei dati (`schema.js`) e interazione con il livello di persistenza tramite Drizzle ORM.
 - **`middleware/`**: Intercettori di richiesta (autenticazione JWT, controllo permessi, validazione).
 - **`utils/`**:
@@ -83,9 +84,10 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - **`index.css`**: Design system globale e stili CSS Vanilla dell'applicazione.
 - **`components/`**: Componenti riutilizzabili dell'interfaccia utente:
   - `ShareModal.jsx`: Modale per condividere file/cartelle e gestire permessi.
-  - `MarkdownViewerModal.jsx`: Modale per la visualizzazione/anteprima di documenti e file di testo/markdown all'interno del drive, con supporto ai colori personalizzati del tema.
+  - `MarkdownViewerModal.jsx`: Modale per la visualizzazione/anteprima di documenti e file di testo/markdown all'interno del drive, con supporto ai colori personalizzati del tema e formattazione evidenziazioni.
+  - `DownloadFormatModal.jsx`: Modale di scelta del formato di scaricamento (*Convertitore alla rovescia*) che consente allo studente di scegliere tra `.md`, `.docx` o `.txt` quando scarica un file Markdown.
   - `RenameModal.jsx`: Modale di Modifica elementi (`Modifica File/Cartella/QuickLink`), permette ridenominazione con selezione intelligente, aggiunta/modifica di una descrizione opzionale (`description`) e scelta del colore tema per i file Markdown (`color`).
-  - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Modifica, Condividi, Elimina).
+  - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Scarica, Modifica, Condividi, Elimina).
   - *(Altri componenti UI modulari)*
 - **`pages/`**: Componenti vista/pagina principale (`LoginPage.jsx` e `RegisterPage.jsx` dotati di pulsanti premium "Accedi con Google", vista Drive principale, ecc.).
 - **`context/`**: React Context provider per la gestione dello stato globale (`AuthContext.jsx` con metodi `login`, `register`, `logout` e `loginWithGoogle` dotato di fallback automatico e listener in tempo reale `onAuthStateChanged`).

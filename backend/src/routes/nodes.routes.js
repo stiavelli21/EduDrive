@@ -29,6 +29,7 @@ import {
   createQuickLink,
   updateNode,
   deleteNode,
+  exportNodeHandler,
 } from '../controllers/nodes.controller.js';
 
 const router = Router();
@@ -51,6 +52,9 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
       'text/markdown',
+      'text/html',
+      'application/rtf',
+      'text/rtf',
       'image/jpeg',
       'image/png',
       'image/gif',
@@ -76,6 +80,9 @@ router.get('/', listRootNodes);
 
 // Get file content (e.g. for .md viewer)
 router.get('/:id/content', getNodeContent);
+
+// Export/download file in specific format (md, docx, txt)
+router.get('/:id/export', exportNodeHandler);
 
 // List children of a folder
 router.get('/:id/children', listChildren);
