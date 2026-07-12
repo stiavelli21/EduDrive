@@ -15,7 +15,7 @@
 // =============================================================================
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged } from 'firebase/auth';
 import api, { setAccessToken } from '../services/api.js';
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js';
 
@@ -44,12 +44,29 @@ export function AuthProvider({ children }) {
 
   // On mount, check redirect login result or try to refresh the token
   useEffect(() => {
+    let unsubscribe = () => {};
+
     async function checkAuth() {
       try {
-        // 1. Controlla prima se torniamo da un redirect di Google Login (o se Firebase ha già una sessione attiva in cache per Tauri/Browser)
+        // 1. Ascolta in tempo reale quando Firebase ripristina la sessione o torna da un redirect in Tauri/Browser
         if (isFirebaseConfigured && auth) {
+          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+              try {
+                const idToken = await firebaseUser.getIdToken();
+                const { data } = await api.post('/auth/google', { idToken });
+                setAccessToken(data.accessToken);
+                setUser(data.user);
+                setLoading(false);
+              } catch (apiErr) {
+                console.error('Errore login Google sul backend:', apiErr.message);
+              }
+            }
+          });
+
+          // Prova anche in modo proattivo il redirect o authStateReady
           try {
-            await auth.authStateReady(); // Assicura che Firebase abbia ripristinato l'utente da IndexedDB
+            await auth.authStateReady();
             const redirectResult = await getRedirectResult(auth).catch(() => null);
             const firebaseUser = redirectResult?.user || auth.currentUser;
 
@@ -74,7 +91,7 @@ export function AuthProvider({ children }) {
         const { data: profileData } = await api.get('/auth/me');
         setUser(profileData.user);
       } catch {
-        // Not authenticated — that's ok
+        // Not authenticated with cookie — that's ok unless onAuthStateChanged restores user in a split second
         setUser(null);
         setAccessToken(null);
       } finally {
@@ -83,6 +100,8 @@ export function AuthProvider({ children }) {
     }
 
     checkAuth();
+
+    return () => unsubscribe();
   }, []);
 
   /**
