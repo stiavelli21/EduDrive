@@ -15,7 +15,7 @@
 // =============================================================================
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import api, { setAccessToken } from '../services/api.js';
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js';
 
@@ -42,11 +42,28 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, try to refresh the token and fetch user profile
+  // On mount, check redirect login result or try to refresh the token
   useEffect(() => {
     async function checkAuth() {
       try {
-        // Try refreshing the access token using the httpOnly cookie
+        // 1. Controlla prima se torniamo da un redirect di Google Login (fondamentale per app Desktop o se i popup sono bloccati)
+        if (isFirebaseConfigured && auth) {
+          try {
+            const redirectResult = await getRedirectResult(auth);
+            if (redirectResult && redirectResult.user) {
+              const idToken = await redirectResult.user.getIdToken();
+              const { data } = await api.post('/auth/google', { idToken });
+              setAccessToken(data.accessToken);
+              setUser(data.user);
+              setLoading(false);
+              return;
+            }
+          } catch (redirectErr) {
+            console.warn('Google redirect check:', redirectErr.message);
+          }
+        }
+
+        // 2. Try refreshing the access token using the httpOnly cookie
         const { data: refreshData } = await api.post('/auth/refresh');
         setAccessToken(refreshData.accessToken);
 
@@ -96,19 +113,34 @@ export function AuthProvider({ children }) {
 
   /**
    * Log in or register using Google Sign-In (Firebase Auth).
+   * Prova prima con Popup nativo; se bloccato (es. in WebView2 di Tauri o browser col blocco), passa al Redirect automatico!
    */
   const loginWithGoogle = useCallback(async () => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
       throw new Error('Autenticazione con Google non configurata (verifica le variabili d\'ambiente VITE_FIREBASE_*).');
     }
-    const result = await signInWithPopup(auth, googleProvider);
-    const idToken = await result.user.getIdToken();
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
 
-    // Send ID token to our backend to verify and issue internal JWT & refresh cookie
-    const { data } = await api.post('/auth/google', { idToken });
-    setAccessToken(data.accessToken);
-    setUser(data.user);
-    return data.user;
+      const { data } = await api.post('/auth/google', { idToken });
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      return data.user;
+    } catch (err) {
+      // Se siamo nell'app Desktop nativa (Tauri) o se il browser blocca il popup, facciamo il fallback a signInWithRedirect!
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/operation-not-supported-in-this-environment' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        window.__TAURI__ ||
+        window.__TAURI_INTERNALS__
+      ) {
+        await signInWithRedirect(auth, googleProvider);
+        return null; // Il browser o WebView reindirizzerà a Google per il login
+      }
+      throw err;
+    }
   }, []);
 
   /**
