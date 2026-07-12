@@ -25,7 +25,16 @@
    - Il `README.md` va aggiornato ogni volta che:
      - Una modifica è così rilevante da dover essere aggiunta (es. nuove funzionalità principali, cambiamenti nello stack o nelle modalità d'uso/avvio).
      - Un'informazione scritta sul `README.md` non è più valida a seguito delle modifiche effettuate.
-   - In ogni aggiornamento, è fondamentale **mantenere il suo stile sintetico e chiaro**, evitando verbosità ed eccessivi dettagli tecnici.
+## Stack Cloud Ufficiale e Sincronizzazione (`Neon.tech`, `Cloudflare R2`, `Render.com`)
+
+1. **Stack Tecnologico di Produzione Vincolante**:
+   - Lo stack cloud ufficiale in produzione per EduDrive è costituito da:
+     - **Database**: [Neon.tech](https://neon.tech) (PostgreSQL Serverless con SSL obbligatorio e schema gestito via Drizzle ORM).
+     - **Storage File S3**: **Cloudflare R2** (gestito via `@aws-sdk/client-s3` con chiavi e bucket `edudrive-files`).
+     - **Backend API**: [Render.com](https://render.com) (configurato e distribuito tramite il blueprint IaC `render.yaml`).
+2. **Obbligo di Riferimento e Sincronizzazione Proattiva**:
+   - Qualsiasi modifica futura al codice che incida sullo schema del database (es. modifiche a `schema.js`), sulla gestione dei file/storage (es. `storage.service.js` o upload middleware), sulle variabili d'ambiente (`.env`) o sul deploy del backend (`server.js`, `app.js`, `render.yaml`), **DEVE essere verificata e resa pienamente compatibile con questo stack cloud (Neon, Cloudflare R2 e Render)**.
+   - L'assistente AI **ha il dovere di riferire esplicitamente all'utente** se una modifica al codice richiede passaggi aggiuntivi su queste piattaforme cloud (ad esempio: avvisare di eseguire `npm run db:push` per aggiornare le tabelle su Neon, aggiungere una nuova variabile su Render, o aggiornare le policy/CORS su Cloudflare R2).
 
 ## Stile del Codice e Linee Guida di Sviluppo
 
