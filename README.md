@@ -107,6 +107,14 @@ EduDrive è predisposto per far girare l'intero stack online su servizi cloud ad
 
 ---
 
+### 6. Autenticazione Ibrida (Google Auth via Firebase)
+EduDrive offre agli studenti l'accesso istantaneo e sicuro ad un clic tramite il pulsante **"Accedi con Google"**, alimentato da **Firebase Authentication**:
+- **Su Web Browser**: Utilizza il popup nativo e immediato (`signInWithPopup`) per completare l'accesso in frazioni di secondo senza ricaricare la pagina.
+- **Su App Desktop Windows (`.exe` Tauri WebView2)**: Se il popup viene bloccato dalle protezioni del sistema operativo o della WebView, l'app attiva il **fallback automatico al reindirizzamento (`signInWithRedirect`)**, avvalendosi di un listener in tempo reale (`onAuthStateChanged`) per ripristinare e loggare l'utente nel cloud di EduDrive al momento del rientro nell'applicazione.
+- **Sicurezza Backend**: I token JWT di Google vengono validati crittograficamente in modo sicuro sul backend Node.js (`POST /api/auth/google`), associando automaticamente la sessione alla tabella `users` di PostgreSQL su Neon.tech.
+
+---
+
 ## Come funzionano i QuickLink?
 
 1. Clicca su **"Aggiungi QuickLink"** nella dashboard.

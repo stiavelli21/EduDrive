@@ -88,12 +88,12 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
   - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Modifica, Condividi, Elimina).
   - *(Altri componenti UI modulari)*
 - **`pages/`**: Componenti vista/pagina principale (`LoginPage.jsx` e `RegisterPage.jsx` dotati di pulsanti premium "Accedi con Google", vista Drive principale, ecc.).
-- **`context/`**: React Context provider per la gestione dello stato globale (`AuthContext.jsx` con metodi `login`, `register`, `logout` e `loginWithGoogle`).
+- **`context/`**: React Context provider per la gestione dello stato globale (`AuthContext.jsx` con metodi `login`, `register`, `logout` e `loginWithGoogle` dotato di fallback automatico e listener in tempo reale `onAuthStateChanged`).
 - **`utils/`**:
   - `colors.js`: Utility e catalogo (`MARKDOWN_COLORS`) per la gestione dei colori personalizzabili dei file Markdown ed elementi UI.
 - **`services/`**:
   - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend, configurabile dinamicamente per il cloud tramite la variabile d'ambiente `VITE_API_URL`.
-  - `firebase.js`: Inizializzazione di Firebase Auth e `GoogleAuthProvider` per la gestione dell'accesso ad un clic con account Google (`signInWithPopup`).
+  - `firebase.js`: Inizializzazione di Firebase Auth e `GoogleAuthProvider` per la gestione dell'accesso ad un clic con account Google (`signInWithPopup` nei browser e fallback automatico a `signInWithRedirect` + `onAuthStateChanged` in ambienti Desktop nativi Tauri / WebView2 o con blocco popup).
 
 ---
 
