@@ -30,8 +30,21 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware.js'
 // Database Connection
 // =============================================================================
 
+const isCloudDB =
+  process.env.NODE_ENV === 'production' ||
+  process.env.DB_SSL === 'true' ||
+  process.env.DATABASE_URL?.includes('neon.tech') ||
+  process.env.DATABASE_URL?.includes('sslmode=require');
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
+  ...(isCloudDB
+    ? {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      }
+    : {}),
 });
 
 /**

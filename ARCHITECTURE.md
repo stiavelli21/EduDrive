@@ -49,8 +49,9 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 ## 3. Mappa Dettagliata delle Cartelle e dei File Principali
 
 ### Radice del Progetto (`/`)
-- `package.json`: Definizione degli script di orchestrazione (`start`, `start:desktop`, `build:desktop`, `dev`).
-- `docker-compose.yml`: Configurazione dei servizi containerizzati (es. database).
+- `package.json`: Definizione degli script di orchestrazione (`start`, `start:desktop`, `build:desktop`, `dev`, `db:test`, `db:push`).
+- `render.yaml`: Blueprint Infrastructure-as-Code per il deploy e la configurazione automatica su Render.com.
+- `docker-compose.yml`: Configurazione dei servizi containerizzati (es. database e MinIO).
 - `avvia.bat`: Script di avvio rapido per Windows.
 - `IDEE.md`: Documento di raccolta idee, note di progettazione e funzionalità future.
 - `.agents/AGENTS.md`: Linee guida e regole per gli assistenti AI, incluse le convenzioni sullo stile del codice, la gerarchia architetturale e la filosofia UI/UX (Design tokens `index.css`).
@@ -59,7 +60,7 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 
 ### Backend (`/backend/src/`)
 - **`server.js`**: Punto di ingresso principale del server Node.js; avvia l'ascolto HTTP e gestisce il ciclo di vita dell'applicazione.
-- **`app.js`**: Configurazione centrale di Express (CORS, body-parser, registrazione delle rotte globali e middleware di gestione errori).
+- **`app.js`**: Configurazione centrale di Express (CORS, body-parser, rotte globali, middleware errori) e del pool del database PostgreSQL con supporto SSL intelligente per connessioni cloud (`Neon.tech`).
 - **`routes/`**:
   - `auth.routes.js`: Endpoint per login, registrazione e gestione sessione/token.
   - `nodes.routes.js`: Endpoint CRUD e di navigazione per cartelle e file (i "nodi" del filesystem cloud).
@@ -69,10 +70,11 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
   - `nodes.controller.js`: Logica principale del drive (creazione cartelle, upload/download file, rinomina, spostamento, eliminazione).
   - `permissions.controller.js`: Gestione delle regole di accesso (permessi in lettura/scrittura per utenti terzi, link condivisi).
 - **`services/`**:
-  - `storage.service.js`: Servizio di astrazione per l'interazione diretta con lo storage fisico (salvataggio file, rimozione su disco, gestione path reali vs virtuali).
-- **`models/`**: Modelli dei dati e interazione con il livello di persistenza.
+  - `storage.service.js`: Servizio di astrazione per l'interazione diretta con lo storage fisico e cloud S3 compatibile (`MinIO`, `Storj.io`, `Cloudflare R2`).
+- **`models/`**: Modelli dei dati (`schema.js`) e interazione con il livello di persistenza tramite Drizzle ORM.
 - **`middleware/`**: Intercettori di richiesta (autenticazione JWT, controllo permessi, validazione).
-- **`utils/`**: Funzioni di utilità e helper generici condivisi nel backend.
+- **`utils/`**:
+  - `test-db.js`: Script di diagnostica per verificare istantaneamente la connessione ed SSL con il database PostgreSQL locale o cloud (`npm run db:test`).
 
 ---
 
@@ -90,7 +92,7 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - **`utils/`**:
   - `colors.js`: Utility e catalogo (`MARKDOWN_COLORS`) per la gestione dei colori personalizzabili dei file Markdown ed elementi UI.
 - **`services/`**:
-  - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend.
+  - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend, configurabile dinamicamente per il cloud tramite la variabile d'ambiente `VITE_API_URL`.
 
 ---
 

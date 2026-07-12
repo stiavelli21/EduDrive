@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:test": "node src/utils/test-db.js",
     "lint": "eslint src/"
   },
   "dependencies": {
