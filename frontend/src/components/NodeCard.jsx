@@ -128,6 +128,10 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
   const infoTimeoutRef = useRef(null);
   const { Icon, bgColor, iconColor, fillClass } = getNodeVisuals(node);
 
+  const hasDescription = Boolean(node.description && node.description.trim());
+  const hasSize = node.type === 'file' && node.sizeBytes !== undefined && node.sizeBytes !== null;
+  const hasInfoContent = hasDescription || hasSize;
+
   function handleInfoMouseEnter() {
     if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
     setShowInfo(true);
@@ -187,51 +191,61 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
             <Globe className="w-3.5 h-3.5 text-brand-600" />
           </div>
         )}
-        <div
-          className="relative"
-          onMouseEnter={handleInfoMouseEnter}
-          onMouseLeave={handleInfoMouseLeave}
-        >
-          <button
-            type="button"
-            className={`p-1 rounded-md transition-all ${
-              showInfo || node.description ? 'opacity-100 text-brand-600 bg-surface-300/80' : 'opacity-0 group-hover:opacity-100 text-text-muted hover:bg-surface-300'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
-              setShowInfo(!showInfo);
-            }}
+        {hasInfoContent && (
+          <div
+            className="relative"
+            onMouseEnter={handleInfoMouseEnter}
+            onMouseLeave={handleInfoMouseLeave}
           >
-            <Info className="w-4 h-4" />
-          </button>
-
-          {/* Description Popover */}
-          {showInfo && (
-            <div
-              className="absolute top-7 left-0 bg-surface-100/95 backdrop-blur-md border border-surface-300 rounded-xl p-3 shadow-2xl z-30 text-left w-[200px] max-w-[80vw] animate-fadeIn cursor-default pointer-events-auto"
-              onClick={(e) => e.stopPropagation()}
-              onMouseEnter={handleInfoMouseEnter}
-              onMouseLeave={handleInfoMouseLeave}
+            <button
+              type="button"
+              className={`p-1 rounded-md transition-all ${showInfo || hasDescription ? 'opacity-100 text-brand-600 bg-surface-300/80' : 'opacity-0 group-hover:opacity-100 text-text-muted hover:bg-surface-300'
+                }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+                setShowInfo(!showInfo);
+              }}
             >
-              <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                <Info className="w-3 h-3 text-brand-500" />
-                <span>Descrizione</span>
+              <Info className="w-4 h-4" />
+            </button>
+
+            {/* Description Popover */}
+            {showInfo && (
+              <div
+                className="absolute top-7 left-0 bg-surface-100/95 backdrop-blur-md border border-surface-300 rounded-xl p-3 shadow-2xl z-30 text-left w-[200px] max-w-[80vw] animate-fadeIn cursor-default pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+                onMouseEnter={handleInfoMouseEnter}
+                onMouseLeave={handleInfoMouseLeave}
+              >
+                {hasDescription && (
+                  <>
+                    <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                      <Info className="w-3 h-3 text-brand-500" />
+                      <span>Descrizione</span>
+                    </div>
+                    <p className="text-xs text-text-secondary leading-relaxed break-words font-normal">
+                      {node.description}
+                    </p>
+                  </>
+                )}
+                {hasSize && (
+                  <div className={`${hasDescription ? 'mt-2 pt-2 border-t border-surface-300' : ''} flex items-center justify-between text-xs gap-2`}>
+                    <span className="text-text-muted font-medium">Dimensione:</span>
+                    <span className="text-text-primary font-semibold">{formatSize(node.sizeBytes)}</span>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-text-secondary leading-relaxed break-words font-normal">
-                {node.description || 'Nessuna descrizione presente per questo elemento.'}
-              </p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Context Menu Button */}
       <button
         ref={buttonRef}
-        className={`absolute top-2 right-2 p-1 rounded-md transition-all z-20 ${
-          showMenu ? 'opacity-100 bg-surface-300' : 'opacity-0 group-hover:opacity-100 hover:bg-surface-300'
-        }`}
+        className={`absolute top-2 right-2 p-1 rounded-md transition-all z-20 ${showMenu ? 'opacity-100 bg-surface-300' : 'opacity-0 group-hover:opacity-100 hover:bg-surface-300'
+          }`}
         onClick={(e) => {
           e.stopPropagation();
           setShowMenu(!showMenu);
@@ -296,16 +310,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
         {node.name}
       </p>
 
-      {/* Metadata */}
-      <p className="text-xs text-text-muted mt-1">
-        {node.type === 'link' && '🔗 QuickLink'}
-        {node.type === 'folder' && '📁 Cartella'}
-        {node.type === 'file' && (
-          node.name?.toLowerCase().endsWith('.md') || node.mimeType?.includes('markdown')
-            ? `📖 Markdown · ${formatSize(node.sizeBytes)}`
-            : formatSize(node.sizeBytes)
-        )}
-      </p>
+
 
       {/* Permission level badge (for shared items) */}
       {node.permissionLevel && (

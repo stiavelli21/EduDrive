@@ -205,8 +205,8 @@ export default function DashboardPage() {
           <button
             onClick={() => { setActiveTab('my-files'); navigate('/'); }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'my-files'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
-                : 'text-text-secondary hover:text-text-primary'
+              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
+              : 'text-text-secondary hover:text-text-primary'
               }`}
           >
             I Miei File
@@ -214,8 +214,8 @@ export default function DashboardPage() {
           <button
             onClick={() => setActiveTab('shared')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === 'shared'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
-                : 'text-text-secondary hover:text-text-primary'
+              ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
+              : 'text-text-secondary hover:text-text-primary'
               }`}
           >
             <Users className="w-3.5 h-3.5" />

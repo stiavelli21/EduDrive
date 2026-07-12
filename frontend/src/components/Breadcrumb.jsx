@@ -29,11 +29,10 @@ export default function Breadcrumb({ crumbs, onNavigate }) {
           <ChevronRight className="w-4 h-4 text-text-muted" />
           <button
             onClick={() => onNavigate(crumb.id)}
-            className={`px-2 py-1 rounded-md transition-colors ${
-              index === crumbs.length - 1
+            className={`px-2 py-1 rounded-md transition-colors ${index === crumbs.length - 1
                 ? 'text-text-primary font-medium bg-surface-200'
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface-200'
-            }`}
+              }`}
           >
             {crumb.name}
           </button>
