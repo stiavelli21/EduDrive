@@ -60,6 +60,8 @@ export const createQuickLinkSchema = z.object({
 export const updateNodeSchema = z.object({
   name: z.string().trim().min(1, 'Il nome non può essere vuoto').max(255, 'Il nome è troppo lungo').optional(),
   parentId: z.string().uuid().nullable().optional(),
+  description: z.string().max(2000, 'Descrizione troppo lunga').nullable().optional(),
+  color: z.string().max(50, 'Colore non valido').nullable().optional(),
 });
 
 // --- Permission Schemas ------------------------------------------------------

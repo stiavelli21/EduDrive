@@ -28,7 +28,9 @@ import {
   Globe,
   Pencil,
   BookOpen,
+  Info,
 } from 'lucide-react';
+import { getMarkdownColor } from '../utils/colors.js';
 
 /**
  * Get the appropriate icon and color for a node based on its type and mime.
@@ -55,10 +57,11 @@ function getNodeVisuals(node) {
   // File — choose icon based on MIME type
   const mime = node.mimeType || '';
   if (mime.includes('markdown') || node.name?.toLowerCase().endsWith('.md')) {
+    const custom = getMarkdownColor(node.color);
     return {
       Icon: BookOpen,
-      bgColor: 'bg-purple-500/15',
-      iconColor: 'text-purple-400',
+      bgColor: custom.bg,
+      iconColor: custom.text,
       fillClass: '',
     };
   }
@@ -119,9 +122,23 @@ function formatSize(bytes) {
  */
 export default function NodeCard({ node, onClick, onDelete, onShare, onRename }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  const infoTimeoutRef = useRef(null);
   const { Icon, bgColor, iconColor, fillClass } = getNodeVisuals(node);
+
+  function handleInfoMouseEnter() {
+    if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+    setShowInfo(true);
+  }
+
+  function handleInfoMouseLeave() {
+    if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+    infoTimeoutRef.current = setTimeout(() => {
+      setShowInfo(false);
+    }, 150);
+  }
 
   useEffect(() => {
     if (!showMenu) return;
@@ -163,12 +180,51 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
       className="glass-card p-4 cursor-pointer group relative flex flex-col items-center text-center"
       onClick={onClick}
     >
-      {/* Public indicator */}
-      {node.isPublic && (
-        <div className="absolute top-2 left-2" title="Pubblico">
-          <Globe className="w-3.5 h-3.5 text-brand-600" />
+      {/* Top Left Icons: Public Indicator & Info Button */}
+      <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20">
+        {node.isPublic && (
+          <div title="Pubblico">
+            <Globe className="w-3.5 h-3.5 text-brand-600" />
+          </div>
+        )}
+        <div
+          className="relative"
+          onMouseEnter={handleInfoMouseEnter}
+          onMouseLeave={handleInfoMouseLeave}
+        >
+          <button
+            type="button"
+            className={`p-1 rounded-md transition-all ${
+              showInfo || node.description ? 'opacity-100 text-brand-600 bg-surface-300/80' : 'opacity-0 group-hover:opacity-100 text-text-muted hover:bg-surface-300'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+              setShowInfo(!showInfo);
+            }}
+          >
+            <Info className="w-4 h-4" />
+          </button>
+
+          {/* Description Popover */}
+          {showInfo && (
+            <div
+              className="absolute top-7 left-0 bg-surface-100/95 backdrop-blur-md border border-surface-300 rounded-xl p-3 shadow-2xl z-30 text-left w-[200px] max-w-[80vw] animate-fadeIn cursor-default pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={handleInfoMouseEnter}
+              onMouseLeave={handleInfoMouseLeave}
+            >
+              <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                <Info className="w-3 h-3 text-brand-500" />
+                <span>Descrizione</span>
+              </div>
+              <p className="text-xs text-text-secondary leading-relaxed break-words font-normal">
+                {node.description || 'Nessuna descrizione presente per questo elemento.'}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Context Menu Button */}
       <button
@@ -211,7 +267,7 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename })
             onClick={() => { if (onRename) onRename(node); setShowMenu(false); }}
           >
             <Pencil className="w-3.5 h-3.5" />
-            Rinomina
+            Modifica
           </button>
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"

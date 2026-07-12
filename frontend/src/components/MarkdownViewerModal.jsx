@@ -25,17 +25,19 @@ import {
   Eye,
   Clock,
   AlignLeft,
-  Sparkles,
   AlertCircle,
 } from 'lucide-react';
+import { getMarkdownColor } from '../utils/colors.js';
 
 export default function MarkdownViewerModal({ node, onClose }) {
+  const customColor = getMarkdownColor(node?.color);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mode, setMode] = useState('preview'); // 'preview' | 'raw'
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const codeBlockCounter = useRef(0);
 
   // --- Fetch Markdown Content -----------------------------------------------
@@ -91,7 +93,6 @@ export default function MarkdownViewerModal({ node, onClose }) {
 
   // --- Statistics -----------------------------------------------------------
   const wordCount = content ? content.trim().split(/\s+/).filter(Boolean).length : 0;
-  const charCount = content ? content.length : 0;
   const readingTimeMin = Math.max(1, Math.ceil(wordCount / 200));
 
   // --- Actions --------------------------------------------------------------
@@ -108,6 +109,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
   };
 
   const handleDownload = () => {
+    setDownloading(true);
     const blob = new Blob([content], { type: 'text/markdown; charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -117,6 +119,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setTimeout(() => setDownloading(false), 2000);
   };
 
   return (
@@ -128,21 +131,18 @@ export default function MarkdownViewerModal({ node, onClose }) {
         {/* --- Header -------------------------------------------------------- */}
         <div className="px-5 py-4 border-b border-surface-300/60 bg-surface-200/50 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0 border border-purple-500/30">
-              <BookOpen className="w-5 h-5 text-purple-400" />
+            <div className={`w-10 h-10 rounded-xl ${customColor.bg} flex items-center justify-center shrink-0 border ${customColor.border}`}>
+              <BookOpen className={`w-5 h-5 ${customColor.text}`} />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-semibold text-text-primary truncate flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold text-text-primary truncate">
                 {node?.name || 'File Markdown'}
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Markdown
-                </span>
               </h2>
               {!loading && !error && (
                 <div className="flex items-center gap-3 text-xs text-text-muted mt-0.5">
                   <span className="flex items-center gap-1">
                     <AlignLeft className="w-3 h-3 text-brand-400" />
-                    {wordCount} {wordCount === 1 ? 'parola' : 'parole'} ({charCount} caratteri)
+                    {wordCount} {wordCount === 1 ? 'parola' : 'parole'}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-amber-400" />
@@ -205,11 +205,25 @@ export default function MarkdownViewerModal({ node, onClose }) {
                 {/* Download Button */}
                 <button
                   onClick={handleDownload}
+                  disabled={downloading}
                   title="Scarica il file .md"
-                  className="p-2 rounded-xl bg-surface-200 hover:bg-surface-300 text-text-secondary hover:text-text-primary border border-surface-300 transition-colors flex items-center gap-1 text-xs font-medium"
+                  className={`group p-2 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-medium ${
+                    downloading
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 scale-105 shadow-sm'
+                      : 'bg-surface-200 hover:bg-surface-300 text-text-secondary hover:text-text-primary border-surface-300'
+                  }`}
                 >
-                  <Download className="w-4 h-4 text-brand-400" />
-                  <span className="hidden sm:inline">Scarica</span>
+                  {downloading ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400 animate-bounce" />
+                      <span className="hidden sm:inline font-semibold">Scaricato!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 text-brand-400 transition-transform group-hover:-translate-y-0.5" />
+                      <span className="hidden sm:inline">Scarica</span>
+                    </>
+                  )}
                 </button>
               </>
             )}
@@ -267,7 +281,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                   remarkPlugins={[remarkGfm]}
                   components={{
                     h1: ({ children }) => (
-                      <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-brand-300 to-indigo-300 pb-3 mb-6 border-b border-surface-300/80 flex items-center gap-2">
+                      <h1 className={`text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${customColor.gradient} pb-3 mb-6 border-b border-surface-300/80 flex items-center gap-2`}>
                         {children}
                       </h1>
                     ),
@@ -277,7 +291,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                       </h2>
                     ),
                     h3: ({ children }) => (
-                      <h3 className="text-lg sm:text-xl font-semibold text-purple-300 mt-6 mb-3">
+                      <h3 className={`text-lg sm:text-xl font-semibold ${customColor.textAccent} mt-6 mb-3`}>
                         {children}
                       </h3>
                     ),
@@ -296,7 +310,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-purple-400 hover:text-purple-300 underline font-medium transition-colors"
+                        className={`${customColor.text} ${customColor.textHover} underline font-medium transition-colors`}
                       >
                         {children}
                       </a>
@@ -317,7 +331,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                       </li>
                     ),
                     blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-purple-500 bg-purple-500/10 px-5 py-3.5 rounded-r-xl my-5 text-text-secondary italic shadow-inner">
+                      <blockquote className={`border-l-4 ${customColor.borderAccent} ${customColor.badgeBg} px-5 py-3.5 rounded-r-xl my-5 text-text-secondary italic shadow-inner`}>
                         {children}
                       </blockquote>
                     ),
@@ -328,7 +342,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
                       // Inline code: no className means no language fence
                       if (!className) {
                         return (
-                          <code className="px-1.5 py-0.5 rounded-md bg-surface-300/90 text-purple-300 font-mono text-xs border border-surface-400/60" {...props}>
+                          <code className={`px-1.5 py-0.5 rounded-md bg-surface-300/90 ${customColor.textAccent} font-mono text-xs border border-surface-400/60`} {...props}>
                             {children}
                           </code>
                         );
@@ -417,16 +431,6 @@ export default function MarkdownViewerModal({ node, onClose }) {
           )}
         </div>
 
-        {/* --- Footer -------------------------------------------------------- */}
-        <div className="px-5 py-3 border-t border-surface-300/60 bg-surface-200/40 flex items-center justify-between text-xs text-text-muted shrink-0">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-            <span>Lettore Markdown integrato in EduDrive</span>
-          </div>
-          <div>
-            Premere <kbd className="px-1.5 py-0.5 rounded bg-surface-300 border border-surface-400 text-[10px] font-mono text-text-secondary">ESC</kbd> o fare clic all'esterno per chiudere
-          </div>
-        </div>
       </div>
     </div>
   );

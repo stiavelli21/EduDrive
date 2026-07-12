@@ -84,6 +84,10 @@ export const nodes = pgTable('nodes', {
   // QuickLink-specific
   url: text('url'),
 
+  // Customization & Metadata
+  description: text('description'),
+  color: varchar('color', { length: 50 }),
+
   // Visibility
   isPublic: boolean('is_public').notNull().default(false),
 

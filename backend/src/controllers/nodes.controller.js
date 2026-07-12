@@ -427,7 +427,7 @@ export async function updateNode(req, res, next) {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { name, parentId } = req.body;
+    const { name, parentId, description, color } = req.body;
 
     // Check editor access (owner or editor permission)
     const access = await checkAccess(id, userId, 'editor');
@@ -439,6 +439,8 @@ export async function updateNode(req, res, next) {
     // (name is already validated and trimmed by Zod schema)
     const updateData = {};
     if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (color !== undefined) updateData.color = color;
     if (parentId !== undefined) {
       // Prevent circular moves: verify the target parent is not the node
       // itself or one of its descendants

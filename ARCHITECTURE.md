@@ -53,6 +53,7 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - `docker-compose.yml`: Configurazione dei servizi containerizzati (es. database).
 - `avvia.bat`: Script di avvio rapido per Windows.
 - `IDEE.md`: Documento di raccolta idee, note di progettazione e funzionalità future.
+- `.agents/AGENTS.md`: Linee guida e regole per gli assistenti AI, incluse le convenzioni sullo stile del codice, la gerarchia architetturale e la filosofia UI/UX (Design tokens `index.css`).
 
 ---
 
@@ -80,11 +81,14 @@ Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la stru
 - **`index.css`**: Design system globale e stili CSS Vanilla dell'applicazione.
 - **`components/`**: Componenti riutilizzabili dell'interfaccia utente:
   - `ShareModal.jsx`: Modale per condividere file/cartelle e gestire permessi.
-  - `MarkdownViewerModal.jsx`: Modale per la visualizzazione/anteprima di documenti e file di testo/markdown all'interno del drive.
-  - `RenameModal.jsx`: Modale per la rinomina di file, cartelle e QuickLink, con selezione intelligente del testo ed anteprima in tempo reale.
+  - `MarkdownViewerModal.jsx`: Modale per la visualizzazione/anteprima di documenti e file di testo/markdown all'interno del drive, con supporto ai colori personalizzati del tema.
+  - `RenameModal.jsx`: Modale di Modifica elementi (`Modifica File/Cartella/QuickLink`), permette ridenominazione con selezione intelligente, aggiunta/modifica di una descrizione opzionale (`description`) e scelta del colore tema per i file Markdown (`color`).
+  - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Modifica, Condividi, Elimina).
   - *(Altri componenti UI modulari)*
 - **`pages/`**: Componenti vista/pagina principale (es. Vista Drive principale, pagina di Login, ecc.).
 - **`context/`**: React Context provider per la gestione dello stato globale (es. contesto utente/autenticazione, navigazione cartelle correnti).
+- **`utils/`**:
+  - `colors.js`: Utility e catalogo (`MARKDOWN_COLORS`) per la gestione dei colori personalizzabili dei file Markdown ed elementi UI.
 - **`services/`**:
   - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend.
 

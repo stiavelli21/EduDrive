@@ -98,7 +98,14 @@ EduDrive è progettato per essere espanso facilmente dagli studenti. Per aggiung
    app.use('/api/tuo-plugin', pluginRoutes);
    ```
 
- **Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./IDEE.md) per scoprire proposte pronte per essere sviluppate!
+ 💡 **Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./IDEE.md) per scoprire proposte pronte per essere sviluppate!
+
+---
+
+## Documentazione & Linee Guida AI
+
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Mappa strutturale e flusso dei dati dell'applicazione.
+- **[.agents/AGENTS.md](./.agents/AGENTS.md)**: Regole per assistenti AI, convenzioni sullo stile del codice e filosofia UI (Design system `index.css` ed estetica intuitiva essenziale).
 
 ---
 

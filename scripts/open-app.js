@@ -7,12 +7,12 @@ const url = 'http://localhost:5173';
 const maxRetries = 30;
 let retries = 0;
 
-console.log('⏳ Attesa dell\'avvio del server frontend per aprire l\'interfaccia...');
+console.log('Attesa dell\'avvio del server frontend per aprire l\'interfaccia...');
 
 function checkServer() {
   http.get(url, (res) => {
     if (res.statusCode === 200 || res.statusCode === 304 || res.statusCode === 404) {
-      console.log('🚀 Server frontend pronto! Apertura di EduDrive come applicazione standalone...');
+      console.log('Server frontend pronto! Apertura di EduDrive come applicazione standalone...');
       openStandaloneApp();
     } else {
       retry();
@@ -27,7 +27,7 @@ function retry() {
   if (retries <= maxRetries) {
     setTimeout(checkServer, 500);
   } else {
-    console.log('⚠️ Tempo scaduto per l\'attesa del frontend. Tentativo di apertura comunque...');
+    console.log('Tempo scaduto per l\'attesa del frontend. Tentativo di apertura comunque...');
     openStandaloneApp();
   }
 }
@@ -88,7 +88,7 @@ function fallbackLaunch() {
   const command = process.platform === 'win32'
     ? `start "" msedge --app="${url}" || start "" chrome --app="${url}" || start "" "${url}"`
     : `open -n -a "Google Chrome" --args --app="${url}" || open "${url}"`;
-    
+
   exec(command, (err) => {
     if (err) {
       console.error('Nota: Impossibile avviare in modalità standalone, apertura del browser predefinito...', err.message);

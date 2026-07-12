@@ -62,6 +62,10 @@ CREATE TABLE nodes (
     -- QuickLink-specific field
     url         TEXT,
 
+    -- Customization & Metadata
+    description TEXT,
+    color       VARCHAR(50),
+
     -- Visibility
     is_public   BOOLEAN      NOT NULL DEFAULT FALSE,
 
