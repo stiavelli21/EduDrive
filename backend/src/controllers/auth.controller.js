@@ -74,7 +74,7 @@ export async function register(req, res, next) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -129,7 +129,7 @@ export async function login(req, res, next) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -220,7 +220,11 @@ export async function refreshToken(req, res, next) {
  * Clear the refresh token cookie.
  */
 export function logout(req, res) {
-  res.clearCookie('refreshToken');
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
   res.json({ message: 'Logged out successfully' });
 }
 
@@ -235,6 +239,7 @@ export async function googleLogin(req, res, next) {
   try {
     const { idToken } = req.body;
     if (!idToken) {
+      console.warn('⚠️ [googleLogin] idToken mancante nella richiesta body');
       return res.status(400).json({ error: 'ID token di Google mancante' });
     }
 
@@ -254,13 +259,15 @@ export async function googleLogin(req, res, next) {
       email = payload?.email;
       displayName = payload?.name || payload?.given_name || email?.split('@')[0];
       avatarUrl = payload?.picture;
-    } catch {
+      console.log(`✅ [googleLogin] Token verificato con successo via Google OAuth Client: ${email}`);
+    } catch (errPrimary) {
       // Fallback: verify Firebase ID Token (issued by securetoken.google.com)
       // The primary verifyIdToken may fail because:
       //   - GOOGLE_CLIENT_ID is not set (common in dev)
       //   - The token is a Firebase Auth token, not a standard Google OAuth token
       const parts = idToken.split('.');
       if (parts.length !== 3) {
+        console.warn(`⚠️ [googleLogin] Errore verifica primaria (${errPrimary.message}). Il token non ha 3 parti.`);
         return res.status(401).json({ error: 'Formato ID token non valido.' });
       }
 
@@ -276,24 +283,29 @@ export async function googleLogin(req, res, next) {
       ) || (payload.iss && payload.iss.startsWith('https://securetoken.google.com/'));
 
       if (!isValidIssuer) {
+        console.warn(`⚠️ [googleLogin] Emittente token non valido. iss ricevuto: "${payload.iss}", attesi o ammessi: ${JSON.stringify(validIssuers)}`);
         return res.status(401).json({ error: 'Token emittente non riconosciuto.' });
       }
 
       // Validate expiration
       if (!payload.exp || payload.exp * 1000 < Date.now()) {
+        console.warn(`⚠️ [googleLogin] Token scaduto. exp: ${payload.exp}`);
         return res.status(401).json({ error: 'Token Google/Firebase scaduto.' });
       }
 
       if (!payload.email) {
+        console.warn('⚠️ [googleLogin] Token valido ma senza email.');
         return res.status(401).json({ error: 'Token non contiene un indirizzo email.' });
       }
 
       email = payload.email;
       displayName = payload.name || payload.email.split('@')[0];
       avatarUrl = payload.picture;
+      console.log(`✅ [googleLogin] Token verificato con successo via Firebase ID Token: ${email}`);
     }
 
     if (!email) {
+      console.warn('⚠️ [googleLogin] Impossibile ricavare email dal token.');
       return res.status(401).json({ error: 'Impossibile ricavare l\'email dal token Google.' });
     }
 
@@ -307,7 +319,7 @@ export async function googleLogin(req, res, next) {
       .limit(1);
 
     if (!user) {
-      // Create new user automatically
+      console.log(`🆕 [googleLogin] Creazione nuovo utente su DB Neon per email: ${cleanEmail}`);
       const randomPassword = Math.random().toString(36).slice(-10) + Date.now().toString(36);
       const passwordHash = await bcrypt.hash(randomPassword, SALT_ROUNDS);
 
@@ -320,13 +332,16 @@ export async function googleLogin(req, res, next) {
           avatarUrl: avatarUrl || null,
         })
         .returning();
-    } else if (!user.avatarUrl && avatarUrl) {
-      // Update avatar if user existed without one
-      [user] = await db
-        .update(users)
-        .set({ avatarUrl, updatedAt: new Date() })
-        .where(eq(users.id, user.id))
-        .returning();
+      console.log(`🎉 [googleLogin] Utente creato con successo, ID: ${user.id}`);
+    } else {
+      console.log(`ℹ️ [googleLogin] Utente esistente trovato, ID: ${user.id}`);
+      if (!user.avatarUrl && avatarUrl) {
+        [user] = await db
+          .update(users)
+          .set({ avatarUrl, updatedAt: new Date() })
+          .where(eq(users.id, user.id))
+          .returning();
+      }
     }
 
     // Generate internal JWT tokens
@@ -337,7 +352,7 @@ export async function googleLogin(req, res, next) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -347,6 +362,7 @@ export async function googleLogin(req, res, next) {
       accessToken,
     });
   } catch (error) {
+    console.error('🔴 [googleLogin] Errore imprevisto durante il login Google:', error.message, error.stack);
     next(error);
   }
 }

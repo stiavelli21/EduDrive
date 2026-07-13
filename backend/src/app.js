@@ -75,6 +75,19 @@ app.use(express.json());
 // Parse cookies (for refresh tokens)
 app.use(cookieParser());
 
+// Request logger — prints incoming API requests to Render logs
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    // Exclude noisy health checks from clogging logs
+    if (req.originalUrl !== '/api/health') {
+      const duration = Date.now() - start;
+      console.log(`📬 [${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> Status: ${res.statusCode} (${duration}ms)`);
+    }
+  });
+  next();
+});
+
 // --- Health Check ------------------------------------------------------------
 
 app.get('/api/health', (_req, res) => {

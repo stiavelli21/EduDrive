@@ -17,9 +17,9 @@
  */
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
-  // Log the error for debugging (in development)
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('🔴 Error:', err.message);
+  // Always log errors for observability in cloud logs (Render / Docker)
+  console.error(`🔴 [ErrorHandler] ${req.method} ${req.originalUrl} — Error:`, err.message);
+  if (err.stack) {
     console.error(err.stack);
   }
 
