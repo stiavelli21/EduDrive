@@ -209,7 +209,9 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-text-primary">
                   {user?.displayName}
                 </p>
-                <p className="text-xs text-text-muted">{user?.email}</p>
+                <p className="text-xs text-text-muted">
+                  {user?.username ? `@${user.username}` : user?.email}
+                </p>
               </div>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-brand-500/20">
                 {user?.displayName?.charAt(0)?.toUpperCase() || '?'}

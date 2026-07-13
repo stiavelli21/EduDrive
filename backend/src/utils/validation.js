@@ -32,6 +32,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+/** Validate profile update request body */
+export const updateProfileSchema = z.object({
+  username: z.union([
+    z.string().trim().min(3, 'Lo username deve avere almeno 3 caratteri').max(50, 'Lo username è troppo lungo').regex(/^[a-zA-Z0-9._-]+$/, 'Lo username può contenere solo lettere, numeri, punti, trattini e underscore'),
+    z.literal(''),
+    z.null()
+  ]).optional(),
+  displayName: z.string().trim().min(2, 'Il nome deve avere almeno 2 caratteri').max(100, 'Il nome è troppo lungo').optional(),
+});
+
 // --- Node Schemas ------------------------------------------------------------
 
 /** Validate folder creation */

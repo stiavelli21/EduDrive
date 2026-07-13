@@ -62,6 +62,7 @@ export async function register(req, res, next) {
       .returning({
         id: users.id,
         email: users.email,
+        username: users.username,
         displayName: users.displayName,
         createdAt: users.createdAt,
       });
@@ -177,6 +178,7 @@ export async function getMe(req, res, next) {
       .select({
         id: users.id,
         email: users.email,
+        username: users.username,
         displayName: users.displayName,
         avatarUrl: users.avatarUrl,
         storageQuotaBytes: users.storageQuotaBytes,
@@ -195,6 +197,72 @@ export async function getMe(req, res, next) {
     res.json({
       user: {
         ...user,
+        storageUsage,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * PUT /api/auth/profile
+ * Aggiorna il profilo del l'utente corrente (username, displayName).
+ */
+export async function updateProfile(req, res, next) {
+  try {
+    const { username, displayName } = req.body;
+    const userId = req.user.id;
+
+    if (username !== undefined && username !== null && username !== '') {
+      const cleanUsername = username.trim().toLowerCase();
+      if (!/^[a-zA-Z0-9._-]+$/.test(cleanUsername)) {
+        return res.status(400).json({
+          error: 'Username non valido',
+          message: 'Il nome utente può contenere solo lettere, numeri, punti, trattini e underscore.',
+        });
+      }
+      if (cleanUsername.length < 3 || cleanUsername.length > 50) {
+        return res.status(400).json({
+          error: 'Lunghezza non valida',
+          message: 'Il nome utente deve avere tra 3 e 50 caratteri.',
+        });
+      }
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, cleanUsername))
+        .limit(1);
+
+      if (existing.length > 0 && existing[0].id !== userId) {
+        return res.status(409).json({
+          error: 'Username già in uso',
+          message: 'Questo nome utente è già stato scelto da un altro studente.',
+        });
+      }
+    }
+
+    const updateData = {
+      updatedAt: new Date(),
+    };
+    if (displayName !== undefined && displayName.trim()) {
+      updateData.displayName = displayName.trim();
+    }
+    if (username !== undefined) {
+      updateData.username = username ? username.trim().toLowerCase() : null;
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    const { passwordHash: _, ...safeUser } = updatedUser;
+    const storageUsage = await calculateUserStorageUsage(updatedUser.id, updatedUser.storageQuotaBytes);
+    res.json({
+      user: {
+        ...safeUser,
         storageUsage,
       },
     });

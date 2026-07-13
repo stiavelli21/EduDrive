@@ -12,12 +12,12 @@
 ## Perché EduDrive? (Punti di Forza)
 
 - **Interfaccia Light & Blue**: Design moderno, luminoso e pulito per un'esperienza di studio senza distrazioni.
-- **Accesso Imediato con Google**: Entra con un clic tramite **Firebase Auth** importing automaticamente Nome, Cognome e Foto Profilo ufficiale, oppure usa la registrazione classica via email.
+- **Accesso Esclusivo con Google & Nome Utente Personalizzabile**: Entra in un clic tramite **Firebase Auth** importando automaticamente Nome e Foto Profilo ufficiale dal tuo account Google o universitario. In qualsiasi momento puoi personalizzare il tuo **Nome Utente (@username)** univoco e il Nome Visualizzato direttamente dalla modale profilo.
 - **QuickLink Integrati**: Salva link esterni (Google Drive, YouTube, Dropbox) direttamente come cartelle o file cliccabili nel tuo cloud. Mai più file `.txt` con link incollati!
 - **Conversione Testuale Intelligente (.md & Convertitore alla Rovescia)**: Ogni file di testo caricato (`.docx`, `.doc`, `.txt`, `.html`, `.rtf`) viene automaticamente tradotto in un pulito formato **Markdown (.md)** mantenendo intatte evidenziazioni gialle, titoli e stili. E quando scarichi un file `.md`, puoi scegliere in quale formato esportarlo (`.md`, `.docx` o `.txt`) col nostro convertitore alla rovescia!
 - **Gestione Quota e Monitoraggio Memoria**: Ogni utente ha un limite di archiviazione predefinito di **500 MB** (personalizzabile individualmente a database per futuri upscaling). Cliccando sulla propria icona profilo si apre la modale di dettaglio con barra di progresso colorata, memoria utilizzata al byte e percentuale occupata.
-- **Condivisione Granulare**: Condividi cartelle con compagni specifici via email scegliendo i permessi (*Lettore* o *Editore*), oppure rendile pubbliche con un clic.
-- **Sicurezza e Performance**: Autenticazione ibrida con OAuth Google e JWT (Access & Refresh Token) su archiviazione veloce compatibile con S3.
+- **Condivisione Granulare**: Condividi cartelle con compagni specifici via email o con il loro `@username` scegliendo i permessi (*Lettore* o *Editore*), oppure rendile pubbliche con un clic.
+- **Sicurezza e Performance**: Autenticazione con OAuth Google e JWT (Access & Refresh Token) su archiviazione veloce compatibile con S3.
 - **100% Modulare per Studenti Sviluppatori**: Struttura pensata per creare e integrare nuovi plugin didattici in pochi minuti.
 
 ---
@@ -111,11 +111,13 @@ EduDrive è predisposto per far girare l'intero stack online su servizi cloud ad
 
 ---
 
-### 6. Autenticazione Ibrida (Google Auth via Firebase)
-EduDrive offre agli studenti l'accesso istantaneo e sicuro ad un clic tramite il pulsante **"Accedi con Google"**, alimentato da **Firebase Authentication**:
+### 6. Autenticazione Esclusiva con Google Auth & Nome Utente
+EduDrive offre agli studenti l'accesso istantaneo, protetto e moderno ad un clic tramite il pulsante **"Accedi con Google / Continua con Google"**, alimentato da **Firebase Authentication**:
+- **Zero Password Classiche**: Per garantire la massima sicurezza e semplicità, la classica modalità di registrazione ed accesso con email/password è stata rimossa, adottando un flusso 100% Google-driven.
+- **Nome Utente Personalizzato (@username)**: Oltre al Nome Visualizzato e alla foto profilo estratti dall'account Google, ogni studente può definire dalla modale del profilo il proprio **Nome Utente (@username)** univoco (da 3 a 50 caratteri), utile per farsi identificare facilmente nel workspace e nelle condivisioni cartelle.
 - **Su Web Browser**: Utilizza il popup nativo e immediato (`signInWithPopup`) per completare l'accesso in frazioni di secondo senza ricaricare la pagina.
-- **Su App Desktop Windows (`.exe` Tauri WebView2)**: Se il popup viene bloccato dalle protezioni del sistema operativo o della WebView, l'app attiva il **fallback automatico al reindirizzamento (`signInWithRedirect`)**, avvalendosi di un listener in tempo reale (`onAuthStateChanged`) per ripristinare e loggare l'utente nel cloud di EduDrive al momento del rientro nell'applicazione.
-- **Sicurezza Backend**: I token JWT di Google vengono validati crittograficamente in modo sicuro sul backend Node.js (`POST /api/auth/google`), associando automaticamente la sessione alla tabella `users` di PostgreSQL su Neon.tech.
+- **Su App Desktop Windows (`.exe` Tauri WebView2)**: Se il popup viene bloccato dalle protezioni del sistema operativo o della WebView, l'app attiva il **fallback automatico al reindirizzamento (`signInWithRedirect`)**, avvalendosi di un listener in tempo reale (`onAuthStateChanged`) per ripristinare e loggare l'utente nel cloud al momento del rientro nell'applicazione.
+- **Sicurezza Backend**: I token JWT di Google vengono validati crittograficamente sul backend Node.js (`POST /api/auth/google`), associando automaticamente la sessione e lo username alla tabella `users` di PostgreSQL su Neon.tech.
 
 ---
 

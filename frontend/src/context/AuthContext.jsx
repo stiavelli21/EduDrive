@@ -364,6 +364,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
+   * Update current user profile (username, displayName).
+   */
+  const updateProfile = useCallback(async (data) => {
+    const { data: responseData } = await api.put('/auth/profile', data);
+    if (responseData?.user) {
+      setUser(responseData.user);
+      return responseData.user;
+    }
+  }, []);
+
+  /**
    * Log out -- clear state and server-side cookie.
    */
   const logout = useCallback(async () => {
@@ -390,6 +401,7 @@ export function AuthProvider({ children }) {
     logout,
     loginWithGoogle,
     refreshProfile,
+    updateProfile,
     isFirebaseConfigured,
   };
 

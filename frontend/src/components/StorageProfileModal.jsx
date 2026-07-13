@@ -3,20 +3,31 @@
 // =============================================================================
 // Visualizza i dettagli del profilo utente e lo stato di occupazione della
 // memoria con barra progressiva colorata e calcolo del limite assegnato.
+// Consente di impostare e aggiornare il Nome Utente (username) e Nome Visualizzato.
 // Rispettoso della Zero Emoji Policy e del design system (index.css).
 // =============================================================================
 
 import { useState, useEffect } from 'react';
-import { HardDrive, User, X, LogOut } from 'lucide-react';
+import { HardDrive, User, X, LogOut, Edit2, Check, AlertCircle } from 'lucide-react';
 import api from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function StorageProfileModal({ user, onClose, onLogout }) {
+  const { updateProfile } = useAuth();
   const [usageData, setUsageData] = useState(user?.storageUsage || {
     usedBytes: 0,
     quotaBytes: 524288000,
     percentage: 0
   });
   const [loading, setLoading] = useState(false);
+
+  // Profile editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [usernameInput, setUsernameInput] = useState(user?.username || '');
+  const [displayNameInput, setDisplayNameInput] = useState(user?.displayName || '');
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -41,13 +52,35 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !isEditing) {
         onClose();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, isEditing]);
+
+  async function handleSaveProfile(e) {
+    e.preventDefault();
+    setSaveError('');
+    setSaveSuccess('');
+    setSaveLoading(true);
+
+    try {
+      await updateProfile({
+        username: usernameInput.trim() || null,
+        displayName: displayNameInput.trim(),
+      });
+      setSaveSuccess('Profilo aggiornato con successo.');
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError(
+        err.response?.data?.message || err.response?.data?.error || 'Impossibile aggiornare il profilo.'
+      );
+    } finally {
+      setSaveLoading(false);
+    }
+  }
 
   function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0.0 MB';
@@ -87,7 +120,7 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
                 Profilo & Memoria
               </h2>
               <p className="text-xs text-text-muted">
-                Dettagli account e spazio archiviazione
+                Gestione account e spazio archiviazione
               </p>
             </div>
           </div>
@@ -96,19 +129,124 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
           </button>
         </div>
 
-        {/* User Info Card */}
-        <div className="p-4 rounded-xl bg-surface-100 border border-surface-200 mb-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg shadow-md">
-            {user?.displayName?.charAt(0)?.toUpperCase() || '?'}
+        {saveSuccess && !isEditing && (
+          <div className="mb-4 p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{saveSuccess}</span>
           </div>
-          <div className="overflow-hidden flex-1">
-            <h3 className="font-semibold text-text-primary truncate text-base">
-              {user?.displayName}
-            </h3>
-            <p className="text-xs text-text-muted truncate">
-              {user?.email}
-            </p>
-          </div>
+        )}
+
+        {/* User Info & Edit Card */}
+        <div className="p-4 rounded-xl bg-surface-100 border border-surface-200 mb-6">
+          {!isEditing ? (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
+                  {user?.displayName?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <div className="overflow-hidden">
+                  <h3 className="font-semibold text-text-primary truncate text-base">
+                    {user?.displayName}
+                  </h3>
+                  <p className="text-xs font-medium text-brand-600 truncate">
+                    {user?.username ? `@${user.username}` : 'Nessun nome utente impostato'}
+                  </p>
+                  <p className="text-xs text-text-muted truncate mt-0.5">
+                    {user?.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsernameInput(user?.username || '');
+                  setDisplayNameInput(user?.displayName || '');
+                  setSaveError('');
+                  setIsEditing(true);
+                }}
+                className="btn-ghost p-2 shrink-0 text-text-secondary hover:text-brand-600"
+                title="Modifica Nome e Username"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="flex items-center justify-between border-b border-surface-200 pb-2">
+                <span className="text-sm font-semibold text-text-primary">Modifica Dati Profilo</span>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs text-text-muted hover:text-text-primary"
+                >
+                  Annulla
+                </button>
+              </div>
+
+              {saveError && (
+                <div className="p-2.5 rounded-lg bg-error/10 border border-error/20 text-error text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{saveError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">
+                  Nome Visualizzato
+                </label>
+                <input
+                  type="text"
+                  value={displayNameInput}
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  placeholder="Nome Cognome"
+                  required
+                  minLength={2}
+                  className="input-field text-sm py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">
+                  Nome Utente (Username)
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-text-muted text-sm select-none">@</span>
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    placeholder="nome.cognome"
+                    pattern="[a-zA-Z0-9._-]*"
+                    title="Solo lettere, numeri, punti, trattini e underscore"
+                    className="input-field text-sm py-2 pl-7"
+                  />
+                </div>
+                <p className="text-[11px] text-text-muted mt-1">
+                  Da 3 a 50 caratteri. Consentiti lettere, numeri, punti e underscore.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="btn-ghost text-xs px-3 py-1.5"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  disabled={saveLoading}
+                  className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5"
+                >
+                  {saveLoading && (
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  <span>Salva Profilo</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Storage Section */}

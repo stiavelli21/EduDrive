@@ -15,7 +15,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { validate, registerSchema, loginSchema } from '../utils/validation.js';
+import { validate, registerSchema, loginSchema, updateProfileSchema } from '../utils/validation.js';
 import {
   register,
   login,
@@ -24,6 +24,7 @@ import {
   storeDesktopToken,
   pollDesktopToken,
   getMe,
+  updateProfile,
   getStorageUsage,
   refreshToken,
   logout,
@@ -43,6 +44,7 @@ router.post('/logout', logout);
 
 // Protected endpoints
 router.get('/me', authenticate, getMe);
+router.put('/profile', authenticate, validate(updateProfileSchema), updateProfile);
 router.get('/storage-usage', authenticate, getStorageUsage);
 
 export default router;
