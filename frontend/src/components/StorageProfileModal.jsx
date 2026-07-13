@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { useState, useEffect } from 'react';
-import { HardDrive, User, X, LogOut, Shield } from 'lucide-react';
+import { HardDrive, User, X, LogOut } from 'lucide-react';
 import api from '../services/api.js';
 
 export default function StorageProfileModal({ user, onClose, onLogout }) {
@@ -145,14 +145,6 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
               Limite: <strong className="text-text-primary">{quotaFormatted}</strong>
             </span>
           </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="mb-6 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-start gap-2.5">
-          <Shield className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Ogni utente dispone di una quota personalizzabile (predefinita a 500 MB) per garantire la massima stabilità e velocità di archiviazione dei documenti e QuickLink su EduDrive.
-          </p>
         </div>
 
         {/* Actions */}
