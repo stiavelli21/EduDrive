@@ -67,7 +67,7 @@
    - Repository remoto: `https://github.com/stiavelli21/EduDrive.git`.
    - Su ordini di salvataggio/push generici (*"carica su github"*, *"fai push"* senza specificare versione), l'assistente AI **DEVE**:
      1. Leggere `"version"` da `/package.json` principale nella root.
-     2. **Incrementare automaticamente l'ultimo numero** (es. da `0.1.5.5` a `0.1.5.6`).
+     2. **Incrementare automaticamente l'ultimo numero** (es. da `0.1.5.5` a `0.1.5.6`; se si raggiungono le due cifre sull'ultimo numero, si azzera e si incrementa il numero precedente, es: `0.1.6.9` diventa `0.1.7.0`).
      3. Aggiornare `"version"` in `/package.json`.
      4. Eseguire `git add .`.
      5. Creare il commit con il messaggio della versione preceduta da `v` (es. `git commit -m "v0.1.5.6"`).
