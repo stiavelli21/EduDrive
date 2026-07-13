@@ -21,7 +21,7 @@
 
 | Funzionalità / Dominio | Moduli Backend Competenti | Moduli Frontend Competenti |
 | :--- | :--- | :--- |
-| **Autenticazione & Google Auth (Esclusivo)** | `routes/auth.routes.js` (`POST /google`, `PUT /profile`)<br>`controllers/auth.controller.js` (`googleLogin`, `updateProfile`)<br>`utils/jwt.js` | `services/firebase.js`<br>`context/AuthContext.jsx` (`loginWithGoogle`, `updateProfile`)<br>`pages/LoginPage.jsx` / `RegisterPage.jsx` (layout Google Auth) |
+| **Autenticazione & Google Auth (Esclusivo)** | `routes/auth.routes.js` (`POST /google`, `PUT /profile`, `/google/desktop`)<br>`controllers/auth.controller.js` (`googleLogin`, `updateProfile`, `desktopGooglePage` con cfg codificato e redirect)<br>`utils/jwt.js` | `services/firebase.js`<br>`context/AuthContext.jsx` (`loginWithGoogle` con popup interno e fallback `cfg` base64)<br>`pages/LoginPage.jsx` / `RegisterPage.jsx` (layout Google Auth) |
 | **CRUD File, Upload & Download** | `routes/nodes.routes.js`<br>`controllers/nodes.controller.js` | `components/FileExplorer.jsx`<br>`components/NodeCard.jsx`<br>`components/UploadButton.jsx` |
 | **Gestione Quota e Profilo Utente (@username)** | `routes/auth.routes.js` (`/storage-usage`, `/profile`)<br>`controllers/auth.controller.js` | `components/StorageProfileModal.jsx` (Modifica username e nome) |
 | **Conversione Markdown (.md/docx/txt)** | `services/conversion.service.js`<br>*(mammoth + turndown / docx)* | `components/MarkdownViewerModal.jsx`<br>`components/DownloadFormatModal.jsx` |

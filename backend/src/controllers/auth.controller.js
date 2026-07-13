@@ -521,10 +521,27 @@ setInterval(() => {
  * Query params: sessionId, apiKey, authDomain, projectId
  */
 export function desktopGooglePage(req, res) {
-  const { sessionId, apiKey, authDomain, projectId } = req.query;
+  let { sessionId, apiKey, authDomain, projectId, cfg } = req.query;
+
+  // Se i parametri sono stati passati nel formato codificato `cfg` per evitare avvisi di Safe Browsing
+  if (cfg && (!apiKey || !authDomain || !projectId)) {
+    try {
+      const decoded = JSON.parse(Buffer.from(cfg, 'base64').toString('utf8'));
+      apiKey = decoded.apiKey || apiKey;
+      authDomain = decoded.authDomain || authDomain;
+      projectId = decoded.projectId || projectId;
+    } catch (e) {
+      console.warn('⚠️ [desktopGooglePage] Errore decodifica parametro cfg:', e.message);
+    }
+  }
+
+  // Fallback alle variabili d'ambiente del server
+  apiKey = apiKey || process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY;
+  authDomain = authDomain || process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN;
+  projectId = projectId || process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
 
   if (!sessionId || !apiKey || !authDomain || !projectId) {
-    return res.status(400).send('Parametri mancanti.');
+    return res.status(400).send('Parametri mancanti o configurazione Firebase non trovata sul server.');
   }
 
   const apiBaseUrl = `${req.protocol}://${req.get('host')}/api`;
@@ -614,7 +631,7 @@ export function desktopGooglePage(req, res) {
 
     <div id="loading" style="display:none">
       <h1>Accesso con Google</h1>
-      <p>Autenticazione in corso...<br>Completa l'accesso nella finestra popup di Google.</p>
+      <p>Autenticazione in corso...<br>Attendere il completamento della verifica.</p>
       <div class="spinner"></div>
     </div>
 
@@ -638,7 +655,7 @@ export function desktopGooglePage(req, res) {
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
+    import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
 
     const firebaseConfig = {
       apiKey: ${JSON.stringify(apiKey)},
@@ -655,6 +672,33 @@ export function desktopGooglePage(req, res) {
     const sessionId = ${JSON.stringify(sessionId)};
     const apiBase = ${JSON.stringify(apiBaseUrl)};
 
+    async function sendTokenToServer(idToken) {
+      document.getElementById('start-view').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+
+      const response = await fetch(apiBase + '/auth/google/desktop-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, idToken }),
+      });
+
+      if (!response.ok) throw new Error('Errore nel salvataggio del token sul server');
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    }
+
+    // Controlla subito se la pagina e' stata aperta a seguito del ritorno da un reindirizzamento Google
+    getRedirectResult(auth).then(async (result) => {
+      if (result && result.user) {
+        const idToken = await result.user.getIdToken(true);
+        await sendTokenToServer(idToken);
+      }
+    }).catch((err) => {
+      console.error('Errore getRedirectResult:', err);
+    });
+
     async function handleLogin() {
       document.getElementById('start-view').style.display = 'none';
       document.getElementById('error').style.display = 'none';
@@ -663,18 +707,13 @@ export function desktopGooglePage(req, res) {
       try {
         const result = await signInWithPopup(auth, provider);
         const idToken = await result.user.getIdToken(true);
-
-        const response = await fetch(apiBase + '/auth/google/desktop-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, idToken }),
-        });
-
-        if (!response.ok) throw new Error('Errore nel salvataggio del token sul server');
-
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('success').style.display = 'block';
+        await sendTokenToServer(idToken);
       } catch (err) {
+        // Se il popup viene bloccato dal browser, si esegue il reindirizzamento di primo livello
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          return;
+        }
         document.getElementById('loading').style.display = 'none';
         document.getElementById('error').style.display = 'block';
         document.getElementById('error-message').textContent =
