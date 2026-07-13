@@ -56,8 +56,8 @@ build.bat
 ```
  **Cosa fa in automatico?**
 1. Installa e verifica le dipendenze del progetto.
-2. Compila l'applicazione Desktop nativa (**Tauri v2**) configurata per collegarsi direttamente ai servizi Cloud (**Render.com**, database **Neon.tech** e storage **Cloudflare R2**), senza bisogno di avviare Docker o Node.js in locale!
-3. Genera il file di installazione autonomo e leggerissimo (`.exe`) nella cartella `frontend/src-tauri/target/release/bundle/nsis/`.
+2. Compila l'applicazione Desktop nativa (**Tauri v2**). Di default punta al server locale (`http://localhost:3001/api`). Per generare un `.exe` connesso direttamente a un backend in Cloud (**Render.com**, **Neon.tech**, **Cloudflare R2**), crea prima della compilazione un file `frontend/.env` contenente `VITE_API_URL=https://tuo-servizio.onrender.com/api`.
+3. Genera il file di installazione autonomo (`.exe`) nella cartella `frontend/src-tauri/target/release/bundle/nsis/`.
 
 ---
 

@@ -51,7 +51,7 @@
 - `middleware/auth.middleware.js`: Verifica e decodifica token JWT.
 
 ### Frontend (`/frontend/src/` & `/frontend/src-tauri/`)
-- `services/api.js`: Client HTTP centralizzato verso il backend.
+- `services/api.js`: Client HTTP centralizzato verso il backend (di default punta a `http://localhost:3001/api` sia in web che su Tauri nativo, salvo override con `VITE_API_URL` in `frontend/.env`).
 - `services/firebase.js`: Google Auth (`signInWithPopup` e fallback nativo `signInWithRedirect` per Tauri).
 - `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `refreshProfile`).
 - `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal`, `StorageProfileModal`, `NodeCard`).

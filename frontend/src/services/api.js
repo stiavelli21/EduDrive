@@ -16,7 +16,7 @@ import axios from 'axios';
 /**
  * Compute the base API URL:
  * 1. If VITE_API_URL is explicitly defined in environment variables, use it.
- * 2. If running inside native Tauri desktop app (.exe), point directly to the Render cloud backend.
+ * 2. If running inside native Tauri desktop app (.exe), default to local server ('http://localhost:3001/api') unless VITE_API_URL is configured.
  * 3. Otherwise default to '/api' (proxied by Vite to localhost:3001 in web dev).
  */
 export function getApiBaseUrl() {
