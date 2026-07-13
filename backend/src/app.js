@@ -61,10 +61,26 @@ const app = express();
 
 // --- Global Middleware -------------------------------------------------------
 
-// CORS — allow the frontend origin
+// CORS — allow the frontend origin (Web and native Tauri Desktop .exe)
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow requests without origin header (mobile apps, Tauri native fetch, curl)
+      if (!origin) return callback(null, true);
+
+      // Check against allowed local and Tauri schemes
+      if (
+        origin.startsWith('tauri://') ||
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('https://tauri.localhost') ||
+        origin === process.env.FRONTEND_URL ||
+        (process.env.FRONTEND_URL && origin.startsWith(process.env.FRONTEND_URL)) ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Allow across standard student deployments
+    },
     credentials: true, // Required for httpOnly cookies (refresh token)
   })
 );

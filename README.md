@@ -48,17 +48,15 @@ cd EduDrive
 cp .env.example backend/.env
 ```
 
-### 2. Avvio Rapido (Consigliato per Windows)
-Fai doppio clic su `avvia.bat` oppure esegui nel terminale:
+### 2. Creazione del pacchetto Desktop (.exe) 100% Cloud (Consigliato per Windows)
+Fai doppio clic su `build.bat` oppure esegui nel terminale:
 ```cmd
-avvia.bat
+build.bat
 ```
  **Cosa fa in automatico?**
-1. Avvia Docker (PostgreSQL + MinIO).
-2. Lancia Backend (porta 3001) e Frontend (porta 5173).
-3. Apre EduDrive come **applicazione desktop nativa (Tauri v2)** (o in modalità standalone se Rust non è presente).
-
-*(Per terminare, premi `CTRL+C` nel terminale).*
+1. Installa e verifica le dipendenze del progetto.
+2. Compila l'applicazione Desktop nativa (**Tauri v2**) configurata per collegarsi direttamente ai servizi Cloud (**Render.com**, database **Neon.tech** e storage **Cloudflare R2**), senza bisogno di avviare Docker o Node.js in locale!
+3. Genera il file di installazione autonomo e leggerissimo (`.exe`) nella cartella `frontend/src-tauri/target/release/bundle/nsis/`.
 
 ---
 

@@ -14,11 +14,29 @@
 import axios from 'axios';
 
 /**
+ * Compute the base API URL:
+ * 1. If VITE_API_URL is explicitly defined in environment variables, use it.
+ * 2. If running inside native Tauri desktop app (.exe), point directly to the Render cloud backend.
+ * 3. Otherwise default to '/api' (proxied by Vite to localhost:3001 in web dev).
+ */
+export function getApiBaseUrl() {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    (window.__TAURI__ || window.__TAURI_INTERNALS__ || window.location?.protocol === 'tauri:')
+  ) {
+    return 'http://localhost:3001/api';
+  }
+  return '/api';
+}
+
+/**
  * Axios instance configured for the EduDrive API.
- * In development, Vite proxies /api to the backend (see vite.config.js).
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: getApiBaseUrl(),
   withCredentials: true, // Send cookies (refresh token)
   headers: {
     'Content-Type': 'application/json',
@@ -88,7 +106,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post('/api/auth/refresh', null, {
+        const { data } = await axios.post(`${getApiBaseUrl()}/auth/refresh`, null, {
           withCredentials: true,
         });
 

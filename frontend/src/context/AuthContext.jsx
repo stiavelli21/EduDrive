@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
             const redirectResult = await getRedirectResult(auth).catch(() => null);
             const firebaseUser = redirectResult?.user || auth.currentUser;
 
-            if (firebaseUser && !googleLoginInProgressRef.current) {
+            if (firebaseUser) {
               const idToken = await firebaseUser.getIdToken();
               const { data } = await api.post('/auth/google', { idToken });
               setAccessToken(data.accessToken);
@@ -176,15 +176,10 @@ export function AuthProvider({ children }) {
         await signInWithRedirect(auth, googleProvider);
         return null;
       }
-      // For all other errors, clear the flag and re-throw
       googleLoginInProgressRef.current = false;
       setLoading(false);
       throw err;
     } finally {
-      // Clear flag after successful popup flow (redirect keeps it for the return trip)
-      if (googleLoginInProgressRef.current) {
-        googleLoginInProgressRef.current = false;
-      }
       setLoading(false);
     }
   }, []);
