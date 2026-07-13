@@ -369,7 +369,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Update current user profile (username, displayName).
+   * Update current user profile (displayName).
    */
   const updateProfile = useCallback(async (data) => {
     const { data: responseData } = await api.put('/auth/profile', data);

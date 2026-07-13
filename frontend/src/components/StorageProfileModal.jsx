@@ -3,7 +3,7 @@
 // =============================================================================
 // Visualizza i dettagli del profilo utente e lo stato di occupazione della
 // memoria con barra progressiva colorata e calcolo del limite assegnato.
-// Consente di impostare e aggiornare il Nome Utente (username) e Nome Visualizzato.
+// Consente di aggiornare il Nome Visualizzato.
 // Rispettoso della Zero Emoji Policy e del design system (index.css).
 // =============================================================================
 
@@ -23,7 +23,6 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
 
   // Profile editing state
   const [isEditing, setIsEditing] = useState(false);
-  const [usernameInput, setUsernameInput] = useState(user?.username || '');
   const [displayNameInput, setDisplayNameInput] = useState(user?.displayName || '');
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -68,7 +67,6 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
 
     try {
       await updateProfile({
-        username: usernameInput.trim() || null,
         displayName: displayNameInput.trim(),
       });
       setSaveSuccess('Profilo aggiornato con successo.');
@@ -148,10 +146,7 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
                   <h3 className="font-semibold text-text-primary truncate text-base">
                     {user?.displayName}
                   </h3>
-                  <p className="text-xs font-medium text-brand-600 truncate">
-                    {user?.username ? `@${user.username}` : 'Nessun nome utente impostato'}
-                  </p>
-                  <p className="text-xs text-text-muted truncate mt-0.5">
+                  <p className="text-xs text-text-secondary truncate mt-0.5">
                     {user?.email}
                   </p>
                 </div>
@@ -159,13 +154,12 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
               <button
                 type="button"
                 onClick={() => {
-                  setUsernameInput(user?.username || '');
                   setDisplayNameInput(user?.displayName || '');
                   setSaveError('');
                   setIsEditing(true);
                 }}
                 className="btn-ghost p-2 shrink-0 text-text-secondary hover:text-brand-600"
-                title="Modifica Nome e Username"
+                title="Modifica Nome Visualizzato"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
@@ -203,27 +197,6 @@ export default function StorageProfileModal({ user, onClose, onLogout }) {
                   minLength={2}
                   className="input-field text-sm py-2"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">
-                  Nome Utente (Username)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-text-muted text-sm select-none">@</span>
-                  <input
-                    type="text"
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="nome.cognome"
-                    pattern="[a-zA-Z0-9._-]*"
-                    title="Solo lettere, numeri, punti, trattini e underscore"
-                    className="input-field text-sm py-2 pl-7"
-                  />
-                </div>
-                <p className="text-[11px] text-text-muted mt-1">
-                  Da 3 a 50 caratteri. Consentiti lettere, numeri, punti e underscore.
-                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
