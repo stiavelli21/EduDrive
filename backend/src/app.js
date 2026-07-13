@@ -63,6 +63,10 @@ pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS storage_quota_bytes BIGIN
 
 const app = express();
 
+// Trust reverse proxy headers (Render, Cloudflare, etc.) so req.protocol reports
+// the correct scheme (https) and req.ip returns the client's real IP.
+app.set('trust proxy', 1);
+
 // --- Global Middleware -------------------------------------------------------
 
 // CORS — allow the frontend origin (Web and native Tauri Desktop .exe)

@@ -20,6 +20,9 @@ import {
   register,
   login,
   googleLogin,
+  desktopGooglePage,
+  storeDesktopToken,
+  pollDesktopToken,
   getMe,
   getStorageUsage,
   refreshToken,
@@ -32,6 +35,9 @@ const router = Router();
 router.post('/register', validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
 router.post('/google', googleLogin);
+router.get('/google/desktop', desktopGooglePage);
+router.post('/google/desktop-token', storeDesktopToken);
+router.get('/google/desktop-poll/:sessionId', pollDesktopToken);
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 
@@ -40,3 +46,4 @@ router.get('/me', authenticate, getMe);
 router.get('/storage-usage', authenticate, getStorageUsage);
 
 export default router;
+

@@ -417,8 +417,218 @@ export async function googleLogin(req, res, next) {
       accessToken,
     });
   } catch (error) {
-    console.error('🔴 [googleLogin] Errore imprevisto durante il login Google:', error.message, error.stack);
+    console.error('[googleLogin] Errore imprevisto durante il login Google:', error.message, error.stack);
     next(error);
   }
+}
+
+// =============================================================================
+// Desktop Google Login (for Tauri / native apps where signInWithPopup fails)
+// =============================================================================
+// Flow:
+//   1. Desktop app generates a sessionId and opens the system browser to
+//      GET /api/auth/google/desktop?sessionId=...&apiKey=...&authDomain=...&projectId=...
+//   2. Backend serves an HTML page that uses Firebase JS SDK to call signInWithPopup
+//   3. On success, the page POSTs the Firebase ID token to /api/auth/google/desktop-token
+//   4. Desktop app polls GET /api/auth/google/desktop-poll/:sessionId to retrieve the token
+//   5. Desktop app then calls POST /api/auth/google with the token to complete authentication
+// =============================================================================
+
+const desktopLoginSessions = new Map();
+const DESKTOP_SESSION_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Clean up expired sessions periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, session] of desktopLoginSessions) {
+    if (now - session.createdAt > DESKTOP_SESSION_TTL) {
+      desktopLoginSessions.delete(key);
+    }
+  }
+}, 60 * 1000);
+
+/**
+ * GET /api/auth/google/desktop
+ * Serves an HTML page that handles Google sign-in via Firebase JS SDK in the system browser.
+ * Query params: sessionId, apiKey, authDomain, projectId
+ */
+export function desktopGooglePage(req, res) {
+  const { sessionId, apiKey, authDomain, projectId } = req.query;
+
+  if (!sessionId || !apiKey || !authDomain || !projectId) {
+    return res.status(400).send('Parametri mancanti.');
+  }
+
+  const apiBaseUrl = `${req.protocol}://${req.get('host')}/api`;
+
+  const html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduDrive - Accesso con Google</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f7fc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #0f172a;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .logo {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      border-radius: 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+    }
+    .logo svg { width: 28px; height: 28px; fill: white; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    p { color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e2e8f0; border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .success-color { color: #16a34a; }
+    .error-color { color: #dc2626; }
+    .status-icon { margin-bottom: 12px; }
+    .status-icon svg { width: 48px; height: 48px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+    </div>
+
+    <div id="loading">
+      <h1>Accesso con Google</h1>
+      <p>Autenticazione in corso...<br>Completa l'accesso nella finestra popup di Google.</p>
+      <div class="spinner"></div>
+    </div>
+
+    <div id="success" style="display:none">
+      <div class="status-icon success-color">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <h1 class="success-color">Accesso riuscito!</h1>
+      <p>Puoi chiudere questa finestra e tornare all'app EduDrive.</p>
+    </div>
+
+    <div id="error" style="display:none">
+      <div class="status-icon error-color">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+      <h1 class="error-color">Errore di accesso</h1>
+      <p id="error-message">Si e' verificato un errore durante l'accesso.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
+    import { getAuth, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: ${JSON.stringify(apiKey)},
+      authDomain: ${JSON.stringify(authDomain)},
+      projectId: ${JSON.stringify(projectId)},
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+
+    const sessionId = ${JSON.stringify(sessionId)};
+    const apiBase = ${JSON.stringify(apiBaseUrl)};
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken(true);
+
+      const response = await fetch(apiBase + '/auth/google/desktop-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, idToken }),
+      });
+
+      if (!response.ok) throw new Error('Errore nel salvataggio del token');
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+    } catch (err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error-message').textContent =
+        err.message || 'Errore sconosciuto durante l\\'accesso con Google.';
+    }
+  </script>
+</body>
+</html>`;
+
+  res.type('html').send(html);
+}
+
+/**
+ * POST /api/auth/google/desktop-token
+ * Stores a Firebase ID token temporarily for a desktop login session.
+ * Body: { sessionId, idToken }
+ */
+export function storeDesktopToken(req, res) {
+  const { sessionId, idToken } = req.body;
+
+  if (!sessionId || !idToken) {
+    return res.status(400).json({ error: 'Missing sessionId or idToken' });
+  }
+
+  desktopLoginSessions.set(sessionId, {
+    idToken,
+    createdAt: Date.now(),
+  });
+
+  res.json({ success: true });
+}
+
+/**
+ * GET /api/auth/google/desktop-poll/:sessionId
+ * Returns the stored Firebase ID token for a desktop login session.
+ * Single-use: the token is deleted after retrieval.
+ */
+export function pollDesktopToken(req, res) {
+  const { sessionId } = req.params;
+  const session = desktopLoginSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(202).json({ status: 'pending' });
+  }
+
+  if (Date.now() - session.createdAt > DESKTOP_SESSION_TTL) {
+    desktopLoginSessions.delete(sessionId);
+    return res.status(410).json({ error: 'Session expired' });
+  }
+
+  // Single use: delete after retrieval
+  desktopLoginSessions.delete(sessionId);
+  res.json({ status: 'complete', idToken: session.idToken });
 }
 
