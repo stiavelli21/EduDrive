@@ -11,9 +11,9 @@
 // =============================================================================
 
 import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../app.js';
-import { users } from '../models/schema.js';
+import { users, nodes } from '../models/schema.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -79,7 +79,10 @@ export async function register(req, res, next) {
     });
 
     res.status(201).json({
-      user: newUser,
+      user: {
+        ...newUser,
+        storageUsage: { usedBytes: 0, quotaBytes: 524288000, percentage: 0 },
+      },
       accessToken,
     });
   } catch (error) {
@@ -135,8 +138,12 @@ export async function login(req, res, next) {
 
     // Return user without password hash
     const { passwordHash: _, ...safeUser } = user;
+    const storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes);
     res.json({
-      user: safeUser,
+      user: {
+        ...safeUser,
+        storageUsage,
+      },
       accessToken,
     });
   } catch (error) {
@@ -151,6 +158,19 @@ export async function login(req, res, next) {
  *
  * Returns: { user }
  */
+export async function calculateUserStorageUsage(userId, storageQuotaBytes) {
+  const quotaBytes = Number(storageQuotaBytes || 524288000);
+  const usageResult = await db.execute(sql`
+    SELECT COALESCE(SUM(size_bytes), 0) AS used_bytes
+    FROM nodes
+    WHERE owner_id = ${userId} AND type = 'file'
+  `);
+  const row = Array.isArray(usageResult) ? usageResult[0] : (usageResult?.rows?.[0] || usageResult?.[0]);
+  const usedBytes = Number(row?.used_bytes ?? row?.usedBytes ?? 0);
+  const percentage = Number(Math.min(100, (usedBytes / quotaBytes) * 100).toFixed(1));
+  return { usedBytes, quotaBytes, percentage };
+}
+
 export async function getMe(req, res, next) {
   try {
     const [user] = await db
@@ -159,6 +179,7 @@ export async function getMe(req, res, next) {
         email: users.email,
         displayName: users.displayName,
         avatarUrl: users.avatarUrl,
+        storageQuotaBytes: users.storageQuotaBytes,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -169,7 +190,37 @@ export async function getMe(req, res, next) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user });
+    const storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes);
+
+    res.json({
+      user: {
+        ...user,
+        storageUsage,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/auth/storage-usage
+ * Get current storage usage and quota for the authenticated user.
+ */
+export async function getStorageUsage(req, res, next) {
+  try {
+    const [user] = await db
+      .select({ id: users.id, storageQuotaBytes: users.storageQuotaBytes })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes);
+    res.json(storageUsage);
   } catch (error) {
     next(error);
   }
@@ -357,8 +408,12 @@ export async function googleLogin(req, res, next) {
     });
 
     const { passwordHash: _, ...safeUser } = user;
+    const storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes);
     res.json({
-      user: safeUser,
+      user: {
+        ...safeUser,
+        storageUsage,
+      },
       accessToken,
     });
   } catch (error) {

@@ -1,114 +1,62 @@
-# ARCHITECTURE.md — Documentazione Architetturale & Mappa del Codice (EduDrive)
+# ARCHITECTURE.md - Mappa Architetturale e Riferimento Rapido (EduDrive)
 
-Questo documento sintetizza l'architettura tecnica, il flusso dei dati e la struttura dei file del progetto **EduDrive**. È concepito per guidare sviluppatori e assistenti AI nell'orientamento rapido all'interno della codebase senza dover analizzare l'intero progetto riga per riga ad ogni task.
-
----
-
-## 1. Panoramica del Sistema & Stack Tecnologico
-
-**EduDrive** è una piattaforma di cloud storage orientata agli studenti, strutturata in un'architettura client-server modulare predisposta sia per esecuzione Web che per esecuzione Desktop (tramite Tauri).
-
-- **Frontend**: React + Vite (JS/JSX), stilizzazione tramite CSS Vanilla (`index.css`), integrazione con **Tauri** per build Desktop (`src-tauri`).
-- **Backend**: Node.js + Express (`backend/src`), architettura RESTful.
-- **Database / Container**: Gestito via Docker (`docker-compose.yml`, cartella `database/`).
-- **Integrazione / Avvio Multiprocesso**: Concurrency gestita via root `package.json` / `avvia.bat` (`concurrently` per avviare in parallelo Backend e Frontend/Tauri).
-
----
-
-## 2. Flusso dei Dati & Pattern Architetturali
+## 1. Stack Tecnologico e Flusso Dati
+- **Frontend**: React 18 + Vite (`frontend/src/`), stili in `index.css`, chiamate HTTP centralizzate in `services/api.js`.
+- **Desktop App**: Tauri v2 (`frontend/src-tauri/`) con Rust + WebView2.
+- **Backend**: Node.js + Express (`backend/src/`), architettura RESTful a 3 strati (Routes -> Controllers -> Services).
+- **Database & Storage Cloud**: PostgreSQL su **Neon.tech** (Drizzle ORM), Object Storage su **Cloudflare R2** (`storage.service.js`).
+- **Deploy**: Backend su **Render.com** (via `render.yaml`), avvio multiprocesso con `concurrently` (`package.json`).
 
 ```
-[Frontend (React / Tauri)]
-     │
-     ▼ (Chiamate REST API via frontend/src/services/api.js)
-[Backend Express (backend/src/server.js -> app.js)]
-     │
-     ├──► [Middleware] (Autenticazione / Validazione / Gestione Errori)
-     ├──► [Routes] (`backend/src/routes/*.routes.js`)
-     │        │
-     │        ▼
-     ├──► [Controllers] (`backend/src/controllers/*.controller.js`)
-     │        │
-     │        ▼
-     ├──► [Services] (`backend/src/services/*.service.js` - es. Storage / FileSystem)
-     │        │
-     │        ▼
-     └──► [Models / Database] (Interazione con DB & Storage Locale)
+[Frontend React / Tauri] 
+   └─► `services/api.js` (REST API JSON) 
+          └─► [Express Backend] (`app.js` / `server.js`)
+                 ├─► `routes/*.routes.js` (Auth JWT / Validazione)
+                 ├─► `controllers/*.controller.js` (Logica HTTP / Business)
+                 ├─► `services/*.service.js` (I/O Storage R2 / Conversione .md)
+                 └─► `models/schema.js` (Drizzle ORM -> DB PostgreSQL)
 ```
 
-### Principi Chiave:
-1. **Separazione delle Responsabilità**:
-   - I **Controller** (`*.controller.js`) gestiscono la validazione degli input HTTP, coordinano la logica di business chiamando i servizi/modelli e formattano le risposte HTTP.
-   - I **Servizi** (`*.service.js`) incapsulano logiche di sistema pesanti o riutilizzabili (come le operazioni su disco I/O in `storage.service.js`).
-   - Le **Rotelle (Routes)** (`*.routes.js`) definiscono esclusivamente gli endpoint REST e applicano i middleware (es. autenticazione via JWT).
-2. **Frontend Centralizzato API**:
-   - Tutte le comunicazioni verso il backend passano tramite `frontend/src/services/api.js`. I componenti UI non fanno `fetch` dirette ad URL hardcoded, ma sfruttano il client centralizzato.
+## 2. Mappa Rapida Operativa (Dove modifico X?)
 
----
+| Funzionalità / Dominio | Moduli Backend Competenti | Moduli Frontend Competenti |
+| :--- | :--- | :--- |
+| **Autenticazione & Google Auth** | `routes/auth.routes.js`<br>`controllers/auth.controller.js`<br>`utils/jwt.js` | `services/firebase.js`<br>`context/AuthContext.jsx`<br>`pages/LoginPage.jsx` / `RegisterPage.jsx` |
+| **CRUD File, Upload & Download** | `routes/nodes.routes.js`<br>`controllers/nodes.controller.js` | `components/FileExplorer.jsx`<br>`components/NodeCard.jsx`<br>`components/UploadButton.jsx` |
+| **Gestione Quota e Profilo Utente** | `routes/auth.routes.js` (`/storage-usage`)<br>`controllers/auth.controller.js` | `components/StorageProfileModal.jsx` |
+| **Conversione Markdown (.md/docx/txt)** | `services/conversion.service.js`<br>*(mammoth + turndown / docx)* | `components/MarkdownViewerModal.jsx`<br>`components/DownloadFormatModal.jsx` |
+| **Storage S3 / Cloudflare R2** | `services/storage.service.js`<br>*(SDK `@aws-sdk/client-s3`)* | `services/api.js` |
+| **Condivisione File & Permessi** | `routes/permissions.routes.js`<br>`controllers/permissions.controller.js` | `components/ShareModal.jsx` |
+| **Ridenominazione, Colori & Descrizioni** | `controllers/nodes.controller.js` | `components/RenameModal.jsx`<br>`utils/colors.js` (`MARKDOWN_COLORS`) |
+| **Design System & Stili UI** | N/A | `index.css` (Design tokens `--color-*`)<br>`components/QuickLinkModal.jsx` |
+| **Database & Schema ORM** | `models/schema.js` (`schema.sql`)<br>`utils/test-db.js` | N/A |
+| **Configurazione Cloud / Env / Deploy** | `render.yaml`<br>`backend/.env` | `frontend/.env.example` (`VITE_API_URL`)<br>`build.bat` |
 
-## 3. Mappa Dettagliata delle Cartelle e dei File Principali
+## 3. Struttura Dettagliata dei File Principali
 
-### Radice del Progetto (`/`)
-- `package.json`: Definizione degli script di orchestrazione (`start`, `start:desktop`, `build:desktop`, `dev`, `db:test`, `db:push`).
-- `render.yaml`: Blueprint Infrastructure-as-Code per il deploy e la configurazione automatica su Render.com.
-- `docker-compose.yml`: Configurazione dei servizi containerizzati (es. database e MinIO).
-- `avvia.bat`: Script di avvio rapido per Windows.
-- `IDEE.md`: Documento di raccolta idee, note di progettazione e funzionalità future.
-- `.agents/AGENTS.md`: Linee guida e regole per gli assistenti AI, incluse le convenzioni sullo stile del codice, la gerarchia architetturale e la filosofia UI/UX (Design tokens `index.css`).
-
----
+### Root & Orchestrazione (`/`)
+- `package.json`: Script e concurrency (`start:desktop`, `build:desktop`, `dev`, `db:push`).
+- `render.yaml`: Blueprint IaC per il deploy su Render.com.
+- `docker-compose.yml`: Servizi locali containerizzati (PostgreSQL, MinIO).
+- `.agents/AGENTS.md`: Regole AI (Zero Emoji Policy, stile MVC, design tokens, versioning git automatico).
 
 ### Backend (`/backend/src/`)
-- **`server.js`**: Punto di ingresso principale del server Node.js; avvia l'ascolto HTTP e gestisce il ciclo di vita dell'applicazione.
-- **`app.js`**: Configurazione centrale di Express (CORS, body-parser, rotte globali, middleware errori) e del pool del database PostgreSQL con supporto SSL intelligente per connessioni cloud (`Neon.tech`).
-- **`routes/`**:
-  - `auth.routes.js`: Endpoint per login classico, registrazione, accesso istantaneo `POST /api/auth/google` e gestione sessione/token.
-  - `nodes.routes.js`: Endpoint CRUD e di navigazione per cartelle e file, più rotta di esportazione formati (`GET /api/nodes/:id/export`).
-  - `permissions.routes.js`: Endpoint per la gestione di permessi e condivisioni (condivisione nodi tra utenti).
-- **`controllers/`**:
-  - `auth.controller.js`: Logica di autenticazione (verifica credenziali, verifica crittografica token Google ID `googleLogin`, auto-registrazione su DB Neon, emissione token JWT, hashing).
-  - `nodes.controller.js`: Logica principale del drive (creazione cartelle, upload con conversione automatica in Markdown, download/esportazione in formati `.md`/`.docx`/`.txt`, rinomina, spostamento, eliminazione).
-  - `permissions.controller.js`: Gestione delle regole di accesso (permessi in lettura/scrittura per utenti terzi, link condivisi).
-- **`services/`**:
-  - `storage.service.js`: Servizio di astrazione per l'interazione diretta con lo storage fisico e cloud S3 compatibile (`MinIO`, `Storj.io`, `Cloudflare R2`).
-  - `conversion.service.js`: Servizio di conversione documenti automatico per la traduzione coerente dei file testuali caricati (`.docx`, `.doc`, `.txt`, `.rtf`, `.html`) in `.md` (con mantenimento delle evidenziazioni via `mammoth` + `turndown`) e per il *convertitore alla rovescia* durante lo scaricamento (`.md` -> `.docx`/`.txt` via `docx`).
-- **`models/`**: Modelli dei dati (`schema.js`) e interazione con il livello di persistenza tramite Drizzle ORM.
-- **`middleware/`**: Intercettori di richiesta (autenticazione JWT, controllo permessi, validazione).
-- **`utils/`**:
-  - `test-db.js`: Script di diagnostica per verificare istantaneamente la connessione ed SSL con il database PostgreSQL locale o cloud (`npm run db:test`).
+- `server.js` & `app.js`: Inizializzazione Express, CORS, middleware globali e pool PostgreSQL (SSL per Neon.tech e auto-migrazione colonne come `storage_quota_bytes`).
+- `routes/`: (`auth.routes.js`, `nodes.routes.js`, `permissions.routes.js`) Endpoint HTTP e middleware di rotte.
+- `controllers/`: (`auth.controller.js`, `nodes.controller.js`, `permissions.controller.js`) Gestione richieste/risposte JSON, calcolo consumo memoria e business logic.
+- `services/`:
+  - `storage.service.js`: Astrazione I/O su disco locale o Cloudflare R2 / S3.
+  - `conversion.service.js`: Conversione in input (`.docx/.doc/.txt/.rtf/.html` -> `.md`) e in output (`.md` -> `.docx/.txt`).
+- `models/schema.js`: Definizione tabelle (`users`, `nodes`, `permissions`) via Drizzle ORM.
+- `middleware/auth.middleware.js`: Verifica e decodifica token JWT.
 
----
+### Frontend (`/frontend/src/` & `/frontend/src-tauri/`)
+- `services/api.js`: Client HTTP centralizzato verso il backend.
+- `services/firebase.js`: Google Auth (`signInWithPopup` e fallback nativo `signInWithRedirect` per Tauri).
+- `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `refreshProfile`).
+- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal`, `StorageProfileModal`, `NodeCard`).
+- `index.css`: Variabili di tema (`--color-brand-*`, `--color-surface-*`, `--color-text-*`).
+- `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`app.exe` / installer NSIS).
 
-### Frontend (`/frontend/src/`)
-- **`main.jsx` & `App.jsx`**: Bootstrapping di React, definizione del router/layout di base e provider di stato globale.
-- **`index.css`**: Design system globale e stili CSS Vanilla dell'applicazione.
-- **`components/`**: Componenti riutilizzabili dell'interfaccia utente:
-  - `ShareModal.jsx`: Modale per condividere file/cartelle e gestire permessi.
-  - `MarkdownViewerModal.jsx`: Modale per la visualizzazione/anteprima di documenti e file di testo/markdown all'interno del drive, con supporto ai colori personalizzati del tema e formattazione evidenziazioni.
-  - `DownloadFormatModal.jsx`: Modale di scelta del formato di scaricamento (*Convertitore alla rovescia*) che consente allo studente di scegliere tra `.md`, `.docx` o `.txt` quando scarica un file Markdown.
-  - `RenameModal.jsx`: Modale di Modifica elementi (`Modifica File/Cartella/QuickLink`), permette ridenominazione con selezione intelligente, aggiunta/modifica di una descrizione opzionale (`description`) e scelta del colore tema per i file Markdown (`color`).
-  - `NodeCard.jsx`: Card interattiva per il rendering dei nodi, dotata di pulsante Info (`i`) per la visualizzazione della descrizione via popover e menu contestuale (Scarica, Modifica, Condividi, Elimina).
-  - *(Altri componenti UI modulari)*
-- **`pages/`**: Componenti vista/pagina principale (`LoginPage.jsx` e `RegisterPage.jsx` dotati di pulsanti premium "Accedi con Google", vista Drive principale, ecc.).
-- **`context/`**: React Context provider per la gestione dello stato globale (`AuthContext.jsx` con metodi `login`, `register`, `logout` e `loginWithGoogle` dotato di fallback automatico e listener in tempo reale `onAuthStateChanged`).
-- **`utils/`**:
-  - `colors.js`: Utility e catalogo (`MARKDOWN_COLORS`) per la gestione dei colori personalizzabili dei file Markdown ed elementi UI.
-- **`services/`**:
-  - `api.js`: Wrapper e client di chiamata HTTP centralizzato verso l'API REST del backend, configurabile dinamicamente per il cloud tramite la variabile d'ambiente `VITE_API_URL`.
-  - `firebase.js`: Inizializzazione di Firebase Auth e `GoogleAuthProvider` per la gestione dell'accesso ad un clic con account Google (`signInWithPopup` nei browser e fallback automatico a `signInWithRedirect` + `onAuthStateChanged` in ambienti Desktop nativi Tauri / WebView2 o con blocco popup).
-
----
-
-### Frontend Desktop — Tauri (`/frontend/src-tauri/`)
-- `tauri.conf.json`: Configurazione dell'applicazione nativa Desktop (nome, finestre, permessi OS).
-- `capabilities/default.json`: Definizione delle permission per le API native di Tauri (accesso file, finestre, ecc.).
-
----
-
-## 4. Linee Guida per Modiche e Manutenzione (Per Sviluppatori & AI)
-
-1. **Lettura Mirata**:
-   - Prima di apportare una modifica, **non è necessario** leggere ogni file del progetto. È sufficiente consultare questo `ARCHITECTURE.md`, individuare il modulo/file competente (es. se si modifica l'upload di un file, controllare `nodes.routes.js`, `nodes.controller.js` e `storage.service.js`) e leggere via tool i file strettamente pertinenti.
-2. **Aggiornamento Obbligatorio e Continuo di questo Documento**:
-   - **REGOLA CRITICA**: Ad ogni prompt o modifica effettuata nel progetto, l'assistente AI deve **valutare rapidamente se l'intervento ha alterato la struttura o l'architettura** (es. creazione/eliminazione di un nuovo file, aggiunta di una nuova rotta API, introduzione di un nuovo servizio o componente chiave).
-   - In caso di modifiche strutturali, l'AI ha l'obbligo di **aggiornare immediatamente questo file (`ARCHITECTURE.md`)** nella stessa sessione di lavoro affinché rimanga costantemente allineato alla realtà del codice.
+## 4. Regola di Manutenzione Architetturale
+- Ad ogni modifica strutturale (nuovi file, endpoint o servizi), **aggiorna tempestivamente questo file (`ARCHITECTURE.md`)** prima di chiudere il turno per mantenere la codebase sincronizzata.

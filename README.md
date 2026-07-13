@@ -15,6 +15,7 @@
 - **Accesso Imediato con Google**: Entra con un clic tramite **Firebase Auth** importing automaticamente Nome, Cognome e Foto Profilo ufficiale, oppure usa la registrazione classica via email.
 - **QuickLink Integrati**: Salva link esterni (Google Drive, YouTube, Dropbox) direttamente come cartelle o file cliccabili nel tuo cloud. Mai più file `.txt` con link incollati!
 - **Conversione Testuale Intelligente (.md & Convertitore alla Rovescia)**: Ogni file di testo caricato (`.docx`, `.doc`, `.txt`, `.html`, `.rtf`) viene automaticamente tradotto in un pulito formato **Markdown (.md)** mantenendo intatte evidenziazioni gialle, titoli e stili. E quando scarichi un file `.md`, puoi scegliere in quale formato esportarlo (`.md`, `.docx` o `.txt`) col nostro convertitore alla rovescia!
+- **Gestione Quota e Monitoraggio Memoria**: Ogni utente ha un limite di archiviazione predefinito di **500 MB** (personalizzabile individualmente a database per futuri upscaling). Cliccando sulla propria icona profilo si apre la modale di dettaglio con barra di progresso colorata, memoria utilizzata al byte e percentuale occupata.
 - **Condivisione Granulare**: Condividi cartelle con compagni specifici via email scegliendo i permessi (*Lettore* o *Editore*), oppure rendile pubbliche con un clic.
 - **Sicurezza e Performance**: Autenticazione ibrida con OAuth Google e JWT (Access & Refresh Token) su archiviazione veloce compatibile con S3.
 - **100% Modulare per Studenti Sviluppatori**: Struttura pensata per creare e integrare nuovi plugin didattici in pochi minuti.
@@ -76,8 +77,8 @@ npm run build:desktop
 *(Oppure fai semplicemente doppio clic su `build.bat` su Windows)*
 
 Al termine della compilazione troverai **due tipi di file**:
-- ⚡ **Eseguibile Diretto (`app.exe`)**: `frontend/src-tauri/target/release/app.exe` (il programma binario grezzo pronto all'esecuzione immediata senza installazione).
-- 📦 **Installer Setup (`.exe` / `.msi`)**: `frontend/src-tauri/target/release/bundle/nsis/EduDrive_0.1.0_x64-setup.exe` (il pacchetto di installazione classico per Windows).
+- **Eseguibile Diretto (`app.exe`)**: `frontend/src-tauri/target/release/app.exe` (il programma binario grezzo pronto all'esecuzione immediata senza installazione).
+- **Installer Setup (`.exe` / `.msi`)**: `frontend/src-tauri/target/release/bundle/nsis/EduDrive_0.1.0_x64-setup.exe` (il pacchetto di installazione classico per Windows).
 
 ---
 
@@ -139,7 +140,7 @@ EduDrive è progettato per essere espanso facilmente dagli studenti. Per aggiung
    app.use('/api/tuo-plugin', pluginRoutes);
    ```
 
- 💡 **Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./IDEE.md) per scoprire proposte pronte per essere sviluppate!
+**Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./IDEE.md) per scoprire proposte pronte per essere sviluppate!
 
 ---
 
@@ -147,6 +148,7 @@ EduDrive è progettato per essere espanso facilmente dagli studenti. Per aggiung
 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Mappa strutturale e flusso dei dati dell'applicazione.
 - **[.agents/AGENTS.md](./.agents/AGENTS.md)**: Regole per assistenti AI, convenzioni sullo stile del codice e filosofia UI (Design system `index.css` ed estetica intuitiva essenziale).
+- **Divieto Assoluto di Emoji (Zero Emoji Policy)**: È rigorosamente vietato agli assistenti AI inserire emoji all'interno del codice sorgente, dei commenti, dei messaggi di commit e di **qualsiasi file di documentazione `.md`** (`README.md`, `ARCHITECTURE.md`, `IDEE.md`, ecc.), salvo esplicita richiesta contraria dell'utente.
 
 ---
 

@@ -22,7 +22,7 @@
 
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../app.js';
-import { nodes, permissions } from '../models/schema.js';
+import { nodes, permissions, users } from '../models/schema.js';
 import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../services/storage.service.js';
 import {
   isTextualCandidateForMarkdown,
@@ -405,8 +405,32 @@ export async function uploadFileHandler(req, res, next) {
           mimetype = converted.mimeType;
         }
       } catch (convErr) {
-        console.warn('⚠️ Text to Markdown conversion error:', convErr.message);
+        console.warn('Text to Markdown conversion error:', convErr.message);
       }
+    }
+
+    // Check user storage quota (default 500 MB)
+    const [userRecord] = await db
+      .select({ storageQuotaBytes: users.storageQuotaBytes })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const quotaBytes = Number(userRecord?.storageQuotaBytes || 524288000);
+
+    const usageResult = await db.execute(sql`
+      SELECT COALESCE(SUM(size_bytes), 0) AS used_bytes
+      FROM nodes
+      WHERE owner_id = ${userId} AND type = 'file'
+    `);
+    const row = Array.isArray(usageResult) ? usageResult[0] : (usageResult?.rows?.[0] || usageResult?.[0]);
+    const usedBytes = Number(row?.used_bytes ?? row?.usedBytes ?? 0);
+
+    if (usedBytes + buffer.length > quotaBytes) {
+      const quotaMB = (quotaBytes / (1024 * 1024)).toFixed(0);
+      return res.status(413).json({
+        error: `Quota di archiviazione superata. Hai raggiunto il limite massimo di ${quotaMB} MB per il tuo account.`
+      });
     }
 
     // Upload to S3-compatible storage

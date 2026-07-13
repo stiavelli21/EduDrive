@@ -29,6 +29,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     display_name  VARCHAR(100) NOT NULL,
     avatar_url    TEXT,
+    storage_quota_bytes BIGINT NOT NULL DEFAULT 524288000,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );

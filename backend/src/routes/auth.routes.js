@@ -21,6 +21,7 @@ import {
   login,
   googleLogin,
   getMe,
+  getStorageUsage,
   refreshToken,
   logout,
 } from '../controllers/auth.controller.js';
@@ -36,5 +37,6 @@ router.post('/logout', logout);
 
 // Protected endpoints
 router.get('/me', authenticate, getMe);
+router.get('/storage-usage', authenticate, getStorageUsage);
 
 export default router;

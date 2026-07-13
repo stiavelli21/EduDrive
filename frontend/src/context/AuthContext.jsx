@@ -232,6 +232,21 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
+   * Refresh current user profile and storage usage statistics.
+   */
+  const refreshProfile = useCallback(async () => {
+    try {
+      const { data } = await api.get('/auth/me');
+      if (data?.user) {
+        setUser(data.user);
+        return data.user;
+      }
+    } catch {
+      // Ignore errors if offline or unauthorized
+    }
+  }, []);
+
+  /**
    * Log out — clear state and server-side cookie.
    */
   const logout = useCallback(async () => {
@@ -251,6 +266,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     loginWithGoogle,
+    refreshProfile,
     isFirebaseConfigured,
   };
 

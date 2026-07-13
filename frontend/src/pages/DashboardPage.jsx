@@ -21,6 +21,7 @@ import MarkdownViewerModal from '../components/MarkdownViewerModal.jsx';
 import DownloadFormatModal from '../components/DownloadFormatModal.jsx';
 import RenameModal from '../components/RenameModal.jsx';
 import UploadButton from '../components/UploadButton.jsx';
+import StorageProfileModal from '../components/StorageProfileModal.jsx';
 import {
   LogOut,
   FolderPlus,
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const { folderId } = useParams();
   const navigate = useNavigate();
 
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('my-files'); // 'my-files' | 'shared'
 
   // Modal states
+  const [showStorageModal, setShowStorageModal] = useState(false);
   const [showQuickLinkModal, setShowQuickLinkModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareTargetNode, setShareTargetNode] = useState(null);
@@ -81,8 +83,9 @@ export default function DashboardPage() {
       console.error('Failed to fetch nodes:', err);
     } finally {
       setLoading(false);
+      if (refreshProfile) refreshProfile();
     }
-  }, [folderId, activeTab]);
+  }, [folderId, activeTab, refreshProfile]);
 
   useEffect(() => {
     fetchNodes();
@@ -197,14 +200,20 @@ export default function DashboardPage() {
 
           {/* User info & Logout */}
           <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-text-primary">
-                {user?.displayName}
-              </p>
-              <p className="text-xs text-text-muted">{user?.email}</p>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-semibold text-sm">
-              {user?.displayName?.charAt(0)?.toUpperCase() || '?'}
+            <div
+              onClick={() => setShowStorageModal(true)}
+              className="flex items-center gap-3 cursor-pointer p-1 rounded-xl hover:bg-surface-200/50 transition-all"
+              title="Clicca per visualizzare dettagli profilo e memoria utilizzata"
+            >
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-medium text-text-primary">
+                  {user?.displayName}
+                </p>
+                <p className="text-xs text-text-muted">{user?.email}</p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-semibold text-sm shadow-sm ring-2 ring-brand-500/20">
+                {user?.displayName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
             </div>
             <button onClick={logout} className="btn-ghost flex items-center gap-1.5" title="Esci">
               <LogOut className="w-4 h-4" />
@@ -350,6 +359,15 @@ export default function DashboardPage() {
         <DownloadFormatModal
           node={downloadTargetNode}
           onClose={() => { setShowDownloadModal(false); setDownloadTargetNode(null); }}
+        />
+      )}
+
+      {/* Storage & Profile Modal */}
+      {showStorageModal && (
+        <StorageProfileModal
+          user={user}
+          onClose={() => setShowStorageModal(false)}
+          onLogout={logout}
         />
       )}
     </div>

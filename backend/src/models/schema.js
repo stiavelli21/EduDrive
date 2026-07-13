@@ -44,6 +44,9 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
   avatarUrl: text('avatar_url'),
+  storageQuotaBytes: bigint('storage_quota_bytes', { mode: 'number' })
+    .notNull()
+    .default(524288000),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

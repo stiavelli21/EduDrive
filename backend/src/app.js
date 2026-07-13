@@ -53,6 +53,10 @@ const pool = new pg.Pool({
  */
 export const db = drizzle(pool);
 
+// Ensure storage_quota_bytes exists on existing DB instances (auto-migration)
+pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS storage_quota_bytes BIGINT NOT NULL DEFAULT 524288000;')
+  .catch((err) => console.warn('[Auto-migration] Avviso verifica colonna storage_quota_bytes:', err.message));
+
 // =============================================================================
 // Express App Configuration
 // =============================================================================
