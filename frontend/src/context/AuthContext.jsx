@@ -255,25 +255,8 @@ export function AuthProvider({ children }) {
     localStorage.setItem('edudrive_google_login_pending', 'true');
     setLoading(true);
 
-    // ---- Tauri Desktop Flow: tentativo interno + fallback sul browser di sistema ----
+    // ---- Tauri Desktop Flow: apertura istantanea nel browser di sistema predefinito con parametro base64 `cfg` ----
     if (isTauri) {
-      // 1. Prova prima l'accesso diretto via popup all'interno della WebView di Tauri (evita l'apertura di Chrome/Edge se supportato)
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const data = await authenticateWithBackend(result.user);
-
-        setAccessToken(data.accessToken);
-        setUser(data.user);
-        hasAuthenticatedRef.current = true;
-        localStorage.removeItem('edudrive_google_login_pending');
-        googleLoginInProgressRef.current = false;
-        setLoading(false);
-        return data.user;
-      } catch (internalErr) {
-        console.warn('⚠️ [Tauri Auth] Accesso interno non completato (' + internalErr.code + '). Avvio del browser di sistema...', internalErr.message);
-      }
-
-      // 2. Fallback sul browser di sistema con parametro `cfg` codificato in base64 (per impedire falsi positivi di Safe Browsing su onrender.com)
       try {
         const sessionId = crypto.randomUUID();
 
