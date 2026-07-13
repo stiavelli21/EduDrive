@@ -56,7 +56,7 @@
 - `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `refreshProfile`, `updateProfile`).
 - `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal`, `StorageProfileModal` per modifica nome visualizzato, `NodeCard`).
 - `index.css`: Variabili di tema (`--color-brand-*`, `--color-surface-*`, `--color-text-*`).
-- `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`app.exe` / installer NSIS).
+- `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`EduDrive.exe` / installer NSIS).
 
 ## 4. Regola di Manutenzione Architetturale
 - Ad ogni modifica strutturale (nuovi file, endpoint o servizi), **aggiorna tempestivamente questo file (`ARCHITECTURE.md`)** prima di chiudere il turno per mantenere la codebase sincronizzata.
