@@ -55,9 +55,6 @@ export default function LoginPage() {
             <h2 className="text-lg font-semibold text-text-primary">
               Accesso Sicuro con Google
             </h2>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Utilizza il tuo account Google o universitario per entrare nel workspace, gestire i file e condividere appunti con gli altri studenti.
-            </p>
           </div>
 
           {isFirebaseConfigured ? (
