@@ -512,6 +512,24 @@ export function desktopGooglePage(req, res) {
     .error-color { color: #dc2626; }
     .status-icon { margin-bottom: 12px; }
     .status-icon svg { width: 48px; height: 48px; }
+    .btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-block;
+      width: 100%;
+    }
+    .btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
   </style>
 </head>
 <body>
@@ -520,7 +538,13 @@ export function desktopGooglePage(req, res) {
       <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
     </div>
 
-    <div id="loading">
+    <div id="start-view">
+      <h1>Accesso per Desktop</h1>
+      <p>Per continuare sull'applicazione EduDrive, effettua l'autenticazione sicura con il tuo account Google.</p>
+      <button id="login-btn" class="btn">Accedi con Google</button>
+    </div>
+
+    <div id="loading" style="display:none">
       <h1>Accesso con Google</h1>
       <p>Autenticazione in corso...<br>Completa l'accesso nella finestra popup di Google.</p>
       <div class="spinner"></div>
@@ -531,7 +555,7 @@ export function desktopGooglePage(req, res) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
       </div>
       <h1 class="success-color">Accesso riuscito!</h1>
-      <p>Puoi chiudere questa finestra e tornare all'app EduDrive.</p>
+      <p>Puoi chiudere questa finestra e tornare all'app EduDrive per Desktop.</p>
     </div>
 
     <div id="error" style="display:none">
@@ -540,6 +564,7 @@ export function desktopGooglePage(req, res) {
       </div>
       <h1 class="error-color">Errore di accesso</h1>
       <p id="error-message">Si e' verificato un errore durante l'accesso.</p>
+      <button id="retry-btn" class="btn" style="margin-top: 12px;">Riprova</button>
     </div>
   </div>
 
@@ -562,26 +587,35 @@ export function desktopGooglePage(req, res) {
     const sessionId = ${JSON.stringify(sessionId)};
     const apiBase = ${JSON.stringify(apiBaseUrl)};
 
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken(true);
+    async function handleLogin() {
+      document.getElementById('start-view').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
 
-      const response = await fetch(apiBase + '/auth/google/desktop-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, idToken }),
-      });
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const idToken = await result.user.getIdToken(true);
 
-      if (!response.ok) throw new Error('Errore nel salvataggio del token');
+        const response = await fetch(apiBase + '/auth/google/desktop-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, idToken }),
+        });
 
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('success').style.display = 'block';
-    } catch (err) {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('error-message').textContent =
-        err.message || 'Errore sconosciuto durante l\\'accesso con Google.';
+        if (!response.ok) throw new Error('Errore nel salvataggio del token sul server');
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('success').style.display = 'block';
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error-message').textContent =
+          err.message || 'Errore sconosciuto durante l\\'accesso con Google.';
+      }
     }
+
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+    document.getElementById('retry-btn').addEventListener('click', handleLogin);
   </script>
 </body>
 </html>`;
