@@ -68,12 +68,16 @@ Se preferisci gestire i processi separatamente:
 
 ---
 
-### 4. Creare l'Installer Desktop (`.exe` / `.msi`)
-Per generare il file di installazione autonomo e leggerissimo (~15 MB) da distribuire agli studenti:
+### 4. Creare e trovare i file Desktop (`app.exe` e Installer)
+Per generare l'eseguibile connesso al cloud o l'installer da distribuire:
 ```bash
 npm run build:desktop
 ```
-Il pacchetto di installazione verrà generato nella cartella `frontend/src-tauri/target/release/bundle/`.
+*(Oppure fai semplicemente doppio clic su `build.bat` su Windows)*
+
+Al termine della compilazione troverai **due tipi di file**:
+- ⚡ **Eseguibile Diretto (`app.exe`)**: `frontend/src-tauri/target/release/app.exe` (il programma binario grezzo pronto all'esecuzione immediata senza installazione).
+- 📦 **Installer Setup (`.exe` / `.msi`)**: `frontend/src-tauri/target/release/bundle/nsis/EduDrive_0.1.0_x64-setup.exe` (il pacchetto di installazione classico per Windows).
 
 ---
 

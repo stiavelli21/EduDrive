@@ -6,7 +6,13 @@
 // =============================================================================
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -31,6 +37,11 @@ if (isFirebaseConfigured) {
   // Request user profile info explicitly
   googleProvider.addScope('profile');
   googleProvider.addScope('email');
+
+  // Explicitly set local persistence so sessions survive desktop/browser refreshes & redirects
+  setPersistence(auth, indexedDBLocalPersistence).catch(() => {
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+  });
 }
 
 export { auth, googleProvider, isFirebaseConfigured };

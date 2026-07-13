@@ -49,24 +49,29 @@ export function AuthProvider({ children }) {
   // On mount, check redirect login result or try to refresh the token
   useEffect(() => {
     let unsubscribe = () => { };
+    let isMounted = true;
 
     async function checkAuth() {
-      try {
-        // 1. Listen for Firebase restoring a session or returning from a redirect (Tauri/Browser)
-        if (isFirebaseConfigured && auth) {
-          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            // Skip if loginWithGoogle is actively handling the flow
-            if (googleLoginInProgressRef.current) return;
+      const isPendingGoogleRedirect = localStorage.getItem('edudrive_google_login_pending') === 'true';
 
-            if (firebaseUser) {
+      try {
+        if (isFirebaseConfigured && auth) {
+          // 1. Listen for Firebase restoring a session or returning from a redirect (Tauri/Browser)
+          unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser && isMounted) {
               try {
                 const idToken = await firebaseUser.getIdToken();
                 const { data } = await api.post('/auth/google', { idToken });
-                setAccessToken(data.accessToken);
-                setUser(data.user);
-                setLoading(false);
+                if (isMounted) {
+                  setAccessToken(data.accessToken);
+                  setUser(data.user);
+                  localStorage.removeItem('edudrive_google_login_pending');
+                  googleLoginInProgressRef.current = false;
+                  setLoading(false);
+                }
               } catch (apiErr) {
                 console.error('Errore login Google sul backend:', apiErr.message);
+                if (isMounted) setLoading(false);
               }
             }
           });
@@ -74,15 +79,22 @@ export function AuthProvider({ children }) {
           // Also proactively check redirect result or authStateReady
           try {
             await auth.authStateReady();
-            const redirectResult = await getRedirectResult(auth).catch(() => null);
+            const redirectResult = await getRedirectResult(auth).catch((err) => {
+              console.warn('Google redirect check warning:', err.message);
+              return null;
+            });
             const firebaseUser = redirectResult?.user || auth.currentUser;
 
             if (firebaseUser) {
               const idToken = await firebaseUser.getIdToken();
               const { data } = await api.post('/auth/google', { idToken });
-              setAccessToken(data.accessToken);
-              setUser(data.user);
-              setLoading(false);
+              if (isMounted) {
+                setAccessToken(data.accessToken);
+                setUser(data.user);
+                localStorage.removeItem('edudrive_google_login_pending');
+                googleLoginInProgressRef.current = false;
+                setLoading(false);
+              }
               return;
             }
           } catch (redirectErr) {
@@ -90,27 +102,59 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // 2. Try refreshing the access token using the httpOnly cookie
+        // If a Google redirect login is actively pending return, don't immediately abort with a 401 refresh check!
+        if (isPendingGoogleRedirect || googleLoginInProgressRef.current) {
+          // Give Firebase Auth up to 3.5 seconds to restore session/IndexedDB state across the redirect boundary
+          const maxWait = 3500;
+          const start = Date.now();
+          while (Date.now() - start < maxWait) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            if (auth?.currentUser) {
+              const idToken = await auth.currentUser.getIdToken();
+              const { data } = await api.post('/auth/google', { idToken });
+              if (isMounted) {
+                setAccessToken(data.accessToken);
+                setUser(data.user);
+                localStorage.removeItem('edudrive_google_login_pending');
+                googleLoginInProgressRef.current = false;
+                setLoading(false);
+              }
+              return;
+            }
+          }
+          // If after 3.5s no user appeared, clean up the pending flag
+          localStorage.removeItem('edudrive_google_login_pending');
+          googleLoginInProgressRef.current = false;
+        }
+
+        // 2. Try refreshing the access token using the httpOnly cookie (standard email/pass session or returning user)
         const { data: refreshData } = await api.post('/auth/refresh');
+        if (!isMounted) return;
         setAccessToken(refreshData.accessToken);
 
         // Fetch user profile
         const { data: profileData } = await api.get('/auth/me');
+        if (!isMounted) return;
         setUser(profileData.user);
       } catch {
-        // Not authenticated — only reset if loginWithGoogle isn't in progress
-        if (!googleLoginInProgressRef.current) {
+        // Not authenticated — only reset if loginWithGoogle isn't actively running
+        if (!googleLoginInProgressRef.current && isMounted) {
           setUser(null);
           setAccessToken(null);
         }
       } finally {
-        setLoading(false);
+        if (isMounted && !googleLoginInProgressRef.current && !localStorage.getItem('edudrive_google_login_pending')) {
+          setLoading(false);
+        }
       }
     }
 
     checkAuth();
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   /**
@@ -153,6 +197,7 @@ export function AuthProvider({ children }) {
     }
 
     googleLoginInProgressRef.current = true;
+    localStorage.setItem('edudrive_google_login_pending', 'true');
     setLoading(true);
 
     try {
@@ -162,6 +207,8 @@ export function AuthProvider({ children }) {
       const { data } = await api.post('/auth/google', { idToken });
       setAccessToken(data.accessToken);
       setUser(data.user);
+      localStorage.removeItem('edudrive_google_login_pending');
+      googleLoginInProgressRef.current = false;
       return data.user;
     } catch (err) {
       // If in native Desktop app (Tauri) or browser blocks popup, fallback to signInWithRedirect
@@ -170,17 +217,17 @@ export function AuthProvider({ children }) {
         err.code === 'auth/operation-not-supported-in-this-environment' ||
         err.code === 'auth/cancelled-popup-request' ||
         window.__TAURI__ ||
-        window.__TAURI_INTERNALS__
+        window.__TAURI_INTERNALS__ ||
+        window.location.protocol === 'tauri:'
       ) {
-        // Keep flag active: onAuthStateChanged will handle the redirect result on return
+        localStorage.setItem('edudrive_google_login_pending', 'true');
         await signInWithRedirect(auth, googleProvider);
         return null;
       }
+      localStorage.removeItem('edudrive_google_login_pending');
       googleLoginInProgressRef.current = false;
       setLoading(false);
       throw err;
-    } finally {
-      setLoading(false);
     }
   }, []);
 
