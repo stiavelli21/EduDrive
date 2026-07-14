@@ -154,22 +154,20 @@ export default function MarkdownViewerModal({ node, onClose }) {
                 <div className="flex bg-surface-300/80 p-1 rounded-xl border border-surface-400/50">
                   <button
                     onClick={() => setMode('preview')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                      mode === 'preview'
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${mode === 'preview'
                         ? 'bg-brand-600 text-white shadow-sm'
                         : 'text-text-secondary hover:text-text-primary'
-                    }`}
+                      }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Anteprima
                   </button>
                   <button
                     onClick={() => setMode('raw')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                      mode === 'raw'
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${mode === 'raw'
                         ? 'bg-brand-600 text-white shadow-sm'
                         : 'text-text-secondary hover:text-text-primary'
-                    }`}
+                      }`}
                   >
                     <Code className="w-3.5 h-3.5" />
                     Sorgente
@@ -200,11 +198,10 @@ export default function MarkdownViewerModal({ node, onClose }) {
                   onClick={handleDownload}
                   disabled={downloading}
                   title="Scarica il file .md"
-                  className={`group p-2 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-medium ${
-                    downloading
+                  className={`group p-2 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-medium ${downloading
                       ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 scale-105 shadow-sm'
                       : 'bg-surface-200 hover:bg-surface-300 text-text-secondary hover:text-text-primary border-surface-300'
-                  }`}
+                    }`}
                 >
                   {downloading ? (
                     <>

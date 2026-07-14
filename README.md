@@ -34,51 +34,71 @@
 
 ---
 
-## Guida all'Avvio (In 60 secondi)
+## Guida all'Avvio e Sviluppo (Per Amici e Collaboratori)
+
+Se hai scaricato il codice da GitHub o vuoi provare l'applicazione sul tuo computer, devi sapere che il file `.exe` di EduDrive comunica con un server (locale o in Cloud). Per questo motivo, il comportamento dipende da come configuri le variabili d'ambiente prima di compilarlo o avviarlo.
 
 ### Prerequisiti
 - **Node.js** (v18+)
-- **Docker & Docker Compose** (per database e storage in locale)
-- *(Opzionale per App Nativa)* **Rust & C++ Build Tools** (se installati, `avvia.bat` apre la vera app nativa Tauri v2, altrimenti fa il fallback automatico al browser in modalità standalone).
-
-### 1. Configurazione
-Clona il progetto e configura le variabili d'ambiente:
-```bash
-git clone https://github.com/stiavelli21/EduDrive.git
-cd EduDrive
-cp .env.example backend/.env
-```
-
-### 2. Creazione del pacchetto Desktop (.exe) 100% Cloud (Consigliato per Windows)
-Fai doppio clic su `build.bat` oppure esegui nel terminale:
-```cmd
-build.bat
-```
- **Cosa fa in automatico?**
-1. Installa e verifica le dipendenze del progetto.
-2. Compila l'applicazione Desktop nativa (**Tauri v2**). Di default punta al server locale (`http://localhost:3001/api`). Per generare un `.exe` connesso direttamente a un backend in Cloud (**Render.com**, **Neon.tech**, **Cloudflare R2**), crea prima della compilazione un file `frontend/.env` contenente `VITE_API_URL=https://tuo-servizio.onrender.com/api`.
-3. Genera il file di installazione autonomo (`.exe`) nella cartella `frontend/src-tauri/target/release/bundle/nsis/`.
+- **Docker & Docker Compose** (necessari solo per avviare database e storage sul tuo PC in modalità locale 100%)
+- *(Opzionale per App Nativa)* **Rust & C++ Build Tools** (per compilare il file `.exe` con `build.bat` su Windows)
 
 ---
 
-### 3. Avvio Manuale / Sviluppo
-Se preferisci gestire i processi separatamente:
-1. **Infrastruttura**: `docker compose up -d`
-2. **Backend + App Desktop Nativa**: `npm run start:desktop`
-3. **Solo Web / Dev Server**: `npm run dev`
+### Come provare o compilare EduDrive scaricato da GitHub
+
+Ci sono **due modalità principali** con cui puoi provare l'applicazione sul tuo computer:
+
+#### Modalità 1: Compilare l'App (.exe) connessa al Cloud Online (Per provare l'app come utente)
+Se l'autore del progetto ha già pubblicato il server sul Cloud (es. su Render.com) e vuoi generare un `.exe` che funzioni subito sul tuo PC senza dover avviare un server locale:
+1. Clona o scarica il repository:
+   ```bash
+   git clone https://github.com/stiavelli21/EduDrive.git
+   cd EduDrive
+   ```
+2. Crea un file chiamato `.env` dentro la cartella `frontend/` copiando il modello di esempio:
+   ```bash
+   cp frontend/.env.example frontend/.env
+   ```
+3. Apri il file `frontend/.env` e inserisci l'indirizzo delle API online (es. `VITE_API_URL=https://tuo-servizio.onrender.com/api`) e le chiavi di Firebase per l'accesso Google (`VITE_FIREBASE_*`).
+   *(Nota bene: se salti questo passaggio o compili senza il file `.env`, l'app punterà di default a `http://localhost:3001/api`. Di conseguenza, se sul tuo PC non c'è un server attivo su quella porta, l'app rimarrà bloccata nella schermata di caricamento all'infinito!)*
+4. Fai doppio clic su `build.bat` su Windows (o esegui `npm run build:desktop`). Il sistema compilerà il file `.exe` autonomo includendo al suo interno l'URL del Cloud, salvandolo in:
+   `frontend/src-tauri/target/release/bundle/nsis/` (oppure `app.exe` in `frontend/src-tauri/target/release/`).
+
+#### Modalità 2: Avviare l'intero Stack 100% in Locale (Per sviluppatori che vogliono server e database sul proprio PC)
+Se invece vuoi far girare sia il server Node.js che l'applicazione interamente sul tuo computer:
+1. Clona il repository e installa tutte le dipendenze:
+   ```bash
+   git clone https://github.com/stiavelli21/EduDrive.git
+   cd EduDrive
+   npm install
+   ```
+2. Configura il backend creando il file `backend/.env` (puoi copiarlo da `backend/.env.example`):
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+3. Avvia il database locale con Docker ed esegui i servizi:
+   - Per avviare contemporaneamente il **Backend Node.js locale** e l'**App Desktop Tauri** connessa a `localhost:3001`:
+     ```bash
+     npm run start:desktop
+     ```
+   - Per avviare invece il **Backend** e l'interfaccia **Web nel browser** (`localhost:5173`):
+     ```bash
+     npm run dev
+     ```
 
 ---
 
-### 4. Creare e trovare i file Desktop (`app.exe` e Installer)
-Per generare l'eseguibile connesso al cloud o l'installer da distribuire:
+### Creare e trovare i file Desktop (`app.exe` e Installer)
+Per generare l'eseguibile di produzione per Windows (dopo aver configurato `frontend/.env` per il cloud o per il locale):
 ```bash
 npm run build:desktop
 ```
-*(Oppure fai semplicemente doppio clic su `build.bat` su Windows)*
+*(Oppure fai doppio clic su `build.bat`)*
 
-Al termine della compilazione troverai **due tipi di file**:
-- **Eseguibile Diretto (`app.exe`)**: `frontend/src-tauri/target/release/app.exe` (il programma binario grezzo pronto all'esecuzione immediata senza installazione).
-- **Installer Setup (`.exe` / `.msi`)**: `frontend/src-tauri/target/release/bundle/nsis/EduDrive_0.1.0_x64-setup.exe` (il pacchetto di installazione classico per Windows).
+Al termine della compilazione troverai due tipi di file:
+- **Eseguibile Diretto (`app.exe`)**: in `frontend/src-tauri/target/release/app.exe` (il binario pronto all'esecuzione immediata).
+- **Installer Setup (`.exe`)**: in `frontend/src-tauri/target/release/bundle/nsis/EduDrive_0.1.0_x64-setup.exe` (il classico programma di installazione per Windows).
 
 ---
 
@@ -106,7 +126,7 @@ EduDrive è predisposto per far girare l'intero stack online su servizi cloud ad
 
 #### C. Deploy Istantaneo del Backend su Render.com:
 1. Carica il progetto su una tua repository GitHub.
-2. Vai su **Render.com** $\rightarrow$ **New** $\rightarrow$ **Blueprint** e seleziona il tuo repository.
+2. Vai su **Render.com** -> **New** -> **Blueprint** e seleziona il tuo repository.
 3. Render leggerà automaticamente il file `render.yaml` creando all'istante il servizio backend e chiedendoti solo di incollare l'URL del database Neon e le chiavi di Cloudflare R2!
 
 ---
@@ -125,7 +145,7 @@ EduDrive offre agli studenti l'accesso istantaneo, protetto e moderno ad un clic
 
 1. Clicca su **"Aggiungi QuickLink"** nella dashboard.
 2. Inserisci un titolo e l'URL esterno (es. una dispensa su Google Drive).
-3. Il link appare nell'albero dei file come un vero e proprio documento con icona 🔗.
+3. Il link appare nell'albero dei file come un vero e proprio documento di collegamento.
 4. Con un clic si apre direttamente nella risorsa esterna!
 
 ---

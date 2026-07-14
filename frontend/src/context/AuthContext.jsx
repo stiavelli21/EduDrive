@@ -66,21 +66,40 @@ export function AuthProvider({ children }) {
 
     async function checkAuth() {
       const isPendingGoogleRedirect = localStorage.getItem('edudrive_google_login_pending') === 'true';
+      const isTauri = Boolean(
+        typeof window !== 'undefined' &&
+        (window.__TAURI__ || window.__TAURI_INTERNALS__ || window.location?.protocol === 'tauri:')
+      );
+
+      // Timeout antiblocco: se Firebase o il cold-start di Render impiegano oltre 4 secondi, esce dal caricamento all'infinito
+      const withTimeout = (promise, ms = 4000) =>
+        Promise.race([
+          promise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout di sicurezza sul controllo di autenticazione')), ms)
+          ),
+        ]);
 
       try {
         // --- Phase 1: Handle Google redirect results or existing Firebase sessions ---
         if (isFirebaseConfigured && auth) {
-          await auth.authStateReady();
-
-          // Check for a redirect result first (user returning from signInWithRedirect)
-          let firebaseUser = null;
           try {
-            const redirectResult = await getRedirectResult(auth);
-            if (redirectResult?.user) {
-              firebaseUser = redirectResult.user;
+            await withTimeout(auth.authStateReady(), 3000);
+          } catch {
+            // Se authStateReady impiega più di 3s su WebView2, prosegue
+          }
+
+          // Check for a redirect result first (solo nel browser standard; in Tauri il redirect iframe si blocca)
+          let firebaseUser = null;
+          if (!isTauri) {
+            try {
+              const redirectResult = await withTimeout(getRedirectResult(auth), 3000);
+              if (redirectResult?.user) {
+                firebaseUser = redirectResult.user;
+              }
+            } catch (redirectErr) {
+              console.warn('Google redirect check:', redirectErr.message);
             }
-          } catch (redirectErr) {
-            console.warn('Google redirect check:', redirectErr.message);
           }
 
           // If no redirect result, check if Firebase already has a restored session
@@ -91,7 +110,7 @@ export function AuthProvider({ children }) {
           // If we have a Firebase user (from redirect or restored session), authenticate
           if (firebaseUser) {
             try {
-              const data = await authenticateWithBackend(firebaseUser);
+              const data = await withTimeout(authenticateWithBackend(firebaseUser), 4000);
               if (isMounted) {
                 setAccessToken(data.accessToken);
                 setUser(data.user);
@@ -100,7 +119,6 @@ export function AuthProvider({ children }) {
                 googleLoginInProgressRef.current = false;
                 setLoading(false);
               }
-              // Set up the listener but it won't re-process since hasAuthenticatedRef is true
               unsubscribe = onAuthStateChanged(auth, () => { });
               return;
             } catch (apiErr) {
@@ -109,10 +127,7 @@ export function AuthProvider({ children }) {
           }
 
           // Set up onAuthStateChanged listener for future auth changes.
-          // This handles cases like: user signs in via popup AFTER checkAuth has finished.
           unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-            // Skip if: no user, component unmounted, loginWithGoogle is handling it,
-            // or we've already authenticated this session.
             if (
               !fbUser ||
               !isMounted ||
@@ -138,8 +153,8 @@ export function AuthProvider({ children }) {
           });
 
           // If a redirect was pending but no Firebase user appeared, wait briefly
-          if (isPendingGoogleRedirect && !firebaseUser) {
-            const maxWait = 3000;
+          if (isPendingGoogleRedirect && !firebaseUser && !isTauri) {
+            const maxWait = 2500;
             const start = Date.now();
             while (Date.now() - start < maxWait && isMounted) {
               await new Promise((resolve) => setTimeout(resolve, 250));
@@ -161,25 +176,29 @@ export function AuthProvider({ children }) {
                 }
               }
             }
-            // Clean up if nothing resolved
             localStorage.removeItem('edudrive_google_login_pending');
             googleLoginInProgressRef.current = false;
           }
         }
 
         // --- Phase 2: Standard token refresh (email/password sessions) ---
-        // Skip if we already authenticated via Google above
         if (hasAuthenticatedRef.current) return;
 
-        const { data: refreshData } = await api.post('/auth/refresh');
-        if (!isMounted) return;
-        setAccessToken(refreshData.accessToken);
+        try {
+          const { data: refreshData } = await withTimeout(api.post('/auth/refresh'), 4000);
+          if (!isMounted) return;
+          setAccessToken(refreshData.accessToken);
 
-        const { data: profileData } = await api.get('/auth/me');
-        if (!isMounted) return;
-        setUser(profileData.user);
+          const { data: profileData } = await withTimeout(api.get('/auth/me'), 3000);
+          if (!isMounted) return;
+          setUser(profileData.user);
+        } catch {
+          if (!googleLoginInProgressRef.current && isMounted) {
+            setUser(null);
+            setAccessToken(null);
+          }
+        }
       } catch {
-        // Not authenticated -- only reset if loginWithGoogle isn't actively running
         if (!googleLoginInProgressRef.current && isMounted) {
           setUser(null);
           setAccessToken(null);

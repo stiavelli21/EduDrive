@@ -27,23 +27,23 @@ const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ...(isCloudDB
     ? {
-        ssl: {
-          rejectUnauthorized: false,
-        },
-      }
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    }
     : {}),
 });
 
 try {
   const client = await pool.connect();
   const res = await client.query('SELECT version();');
-  
+
   console.log('✅ Connessione al database completata con successo!');
   console.log(`📡 URL Configurato: ${process.env.DATABASE_URL.replace(/:[^:@]+@/, ':****@')}`);
   console.log(`🔐 Modalità SSL: ${isCloudDB ? 'Attiva (Cloud / Neon Ready)' : 'Disattivata (Locale)'}`);
   console.log(`🗄️  Versione Server DB: ${res.rows[0].version.split(',')[0]}`);
   console.log('\nPuoi ora avviare la sincronizzazione delle tabelle con: npm run db:push\n');
-  
+
   client.release();
   await pool.end();
   process.exit(0);

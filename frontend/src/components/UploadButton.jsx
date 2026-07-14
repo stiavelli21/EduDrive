@@ -88,11 +88,9 @@ export default function UploadButton({ parentId, onUploadComplete }) {
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        className={`btn-secondary flex items-center gap-2 transition-all ${
-          dragOver ? 'border-brand-500 bg-brand-500/10 scale-105' : ''
-        } ${uploadStatus === 'success' ? 'border-success text-success' : ''} ${
-          uploadStatus === 'error' ? 'border-error text-error' : ''
-        }`}
+        className={`btn-secondary flex items-center gap-2 transition-all ${dragOver ? 'border-brand-500 bg-brand-500/10 scale-105' : ''
+          } ${uploadStatus === 'success' ? 'border-success text-success' : ''} ${uploadStatus === 'error' ? 'border-error text-error' : ''
+          }`}
       >
         {uploading ? (
           <div className="w-4 h-4 border-2 border-text-muted/30 border-t-text-primary rounded-full animate-spin" />
@@ -106,10 +104,10 @@ export default function UploadButton({ parentId, onUploadComplete }) {
         {uploading
           ? 'Caricamento...'
           : uploadStatus === 'success'
-          ? 'Caricato!'
-          : uploadStatus === 'error'
-          ? 'Errore'
-          : 'Carica'}
+            ? 'Caricato!'
+            : uploadStatus === 'error'
+              ? 'Errore'
+              : 'Carica'}
       </button>
     </div>
   );
