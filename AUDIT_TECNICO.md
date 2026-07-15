@@ -1,4 +1,4 @@
-# Audit Indipendente — 14 Luglio 2026
+# Audit Indipendente — 14 Luglio 2026 (v0.2.0.0)
 
 **Cosa dice davvero il codice di EduDrive, sezione per sezione.**
 

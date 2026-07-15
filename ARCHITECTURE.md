@@ -47,7 +47,7 @@
 - `routes/`: (`auth.routes.js`, `nodes.routes.js`, `permissions.routes.js`) Endpoint HTTP e middleware di rotte (es. `POST /api/auth/local-login`, `PUT /api/nodes/:id/storage-location`).
 - `controllers/`: (`auth.controller.js`, `nodes.controller.js`, `permissions.controller.js`) Gestione richieste/risposte JSON, calcolo consumo memoria, accesso Google o locale offline (`localLogin`), spostamento file cloud/locale (`moveStorageLocation`), e controllo permessi `checkAccess` ottimizzato senza query CTE ricorsive per l'utente locale (`00000000-0000-0000-0000-000000000001`). `localDownloadHandler` e `getNodeContent` integrano la normalizzazione multi-formato delle chiavi e la protezione da errori di stream in lettura dal disco locale.
 - `services/`:
-  - `storage.service.js`: Astrazione I/O ibrida su disco locale (`node:fs`) o Cloudflare R2 / S3 con ricerca multi-path dinamica (`local_storage/`, `backend/local_storage/`) e normalizzazione automatica dei separatori di percorso Windows e Linux (`getNormalizedKeys`) per prevenire errori di lettura o scrittura su file locali.
+  - `storage.service.js`: Astrazione I/O ibrida su disco locale (`node:fs`) o Cloudflare R2 / S3 con ricerca multi-path dinamica (`local_storage/`, `backend/local_storage/`), ricerca ricorsiva per nome file (`findLocalFile` e `searchFileRecursively`) e normalizzazione automatica dei separatori di percorso Windows e Linux (`getNormalizedKeys`) per prevenire errori di lettura su file locali preesistenti o offline all'avvio.
   - `conversion.service.js`: Conversione in input (`.docx/.doc/.txt/.rtf/.html` -> `.md`) e in output (`.md` -> `.docx/.txt`).
 - `models/schema.js`: Definizione tabelle (`users` con colonna `username` univoca, `nodes` con `storageLocation`, `permissions`) via Drizzle ORM.
 - `middleware/auth.middleware.js`: Verifica e decodifica token JWT o bypass token locale (`LOCAL_MODE_TOKEN`).
@@ -56,7 +56,7 @@
 - `services/api.js`: Client HTTP centralizzato verso il backend.
 - `services/firebase.js`: Google Auth (`signInWithPopup` e fallback nativo `signInWithRedirect` per Tauri).
 - `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `loginAsLocal`, check avvio automatico con `isLocalModeActive`).
-- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal` con fetch autenticata ottimizzata e tentativi di caricamento multipli via ID, local-download o URL diretta per file locali e offline, `StorageProfileModal`, `NodeCard` con indicatori e spostamento rapido tra storage locale e server).
+- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal` con fetch autenticata resiliente e tentativi multipli su chiavi normalizzate via ID, `local-download` o URL diretta per file locali preesistenti e offline, `StorageProfileModal`, `NodeCard` con indicatori e spostamento rapido tra storage locale e server).
 - `pages/DashboardPage.jsx`: Navigazione nel filesystem e gestione cartelle ottimizzata (disaccoppiamento tra ricaricamento nodi `fetchNodes` e ricaricamento profilo utente `refreshProfile`).
 - `index.css`: Variabili di tema (`--color-brand-*`, `--color-surface-*`, `--color-text-*`).
 - `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`EduDrive.exe` / installer NSIS).

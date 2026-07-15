@@ -236,8 +236,6 @@ export async function getNodeContent(req, res, next) {
 
     const stream = await getFileStream(node.storageKey, node.storageLocation);
 
-    // Set Content-Type: prefer markdown-specific header for .md files,
-    // otherwise fall back to the stored MIME type
     const isMarkdown = node.mimeType === 'text/markdown'
       || node.name?.toLowerCase().endsWith('.md');
 
@@ -249,12 +247,15 @@ export async function getNodeContent(req, res, next) {
 
     stream.on('error', (err) => {
       if (!res.headersSent) {
-        res.status(500).json({ error: 'Errore durante la lettura del file dal disco' });
+        res.status(404).json({ error: 'Errore durante la lettura del file o file non trovato', details: err.message });
       }
     });
 
     stream.pipe(res);
   } catch (error) {
+    if (!res.headersSent) {
+      return res.status(404).json({ error: 'File non trovato sul disco o sul cloud', details: error.message });
+    }
     next(error);
   }
 }
@@ -867,14 +868,19 @@ export async function localDownloadHandler(req, res, next) {
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     }
 
-    const stream = await getFileStream(key, 'local');
+    const targetKey = node?.storageKey || key;
+    const targetLocation = node?.storageLocation || (req.user?.id === '00000000-0000-0000-0000-000000000001' ? 'local' : 'cloud');
+    const stream = await getFileStream(targetKey, targetLocation);
     stream.on('error', (err) => {
       if (!res.headersSent) {
-        res.status(500).json({ error: 'Impossibile leggere il file locale dal disco' });
+        res.status(404).json({ error: 'Impossibile leggere il file dal disco locale o cloud', details: err.message });
       }
     });
     stream.pipe(res);
   } catch (error) {
+    if (!res.headersSent) {
+      return res.status(404).json({ error: 'File locale non trovato', details: error.message });
+    }
     next(error);
   }
 }

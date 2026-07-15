@@ -79,18 +79,27 @@ export default function MarkdownViewerModal({ node, onClose }) {
       // 2. Prova tramite local-download se e' disponibile una storageKey o key (file locale su disco)
       const storageOrKey = node?.storageKey || node?.key;
       if (storageOrKey) {
-        try {
-          const resContent = await api.get(`/nodes/local-download?key=${encodeURIComponent(storageOrKey)}&inline=true`, { responseType: 'text' });
-          const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
-          if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
-            if (isMounted) {
-              setContent(text);
-              setLoading(false);
+        const keysToTry = [...new Set([
+          storageOrKey,
+          storageOrKey.replace(/\\/g, '/'),
+          storageOrKey.replace(/\//g, '\\'),
+          storageOrKey.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '')
+        ])].filter(Boolean);
+
+        for (const k of keysToTry) {
+          try {
+            const resContent = await api.get(`/nodes/local-download?key=${encodeURIComponent(k)}&inline=true`, { responseType: 'text' });
+            const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
+            if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
+              if (isMounted) {
+                setContent(text);
+                setLoading(false);
+              }
+              return;
             }
-            return;
+          } catch (_) {
+            // Prova con la variante di chiave successiva se fallisce
           }
-        } catch (_) {
-          // Passa al tentativo successivo se fallisce
         }
       }
 
