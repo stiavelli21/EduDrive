@@ -83,9 +83,8 @@ export default function DashboardPage() {
       console.error('Failed to fetch nodes:', err);
     } finally {
       setLoading(false);
-      if (refreshProfile) refreshProfile();
     }
-  }, [folderId, activeTab, refreshProfile]);
+  }, [folderId, activeTab]);
 
   useEffect(() => {
     fetchNodes();
@@ -115,6 +114,7 @@ export default function DashboardPage() {
     try {
       await api.delete(`/nodes/${nodeId}`);
       fetchNodes();
+      if (refreshProfile) refreshProfile();
     } catch (err) {
       console.error('Failed to delete node:', err);
     }
@@ -312,7 +312,7 @@ export default function DashboardPage() {
             )}
 
             {/* Upload */}
-            <UploadButton parentId={folderId || null} onUploadComplete={fetchNodes} />
+            <UploadButton parentId={folderId || null} onUploadComplete={() => { fetchNodes(); if (refreshProfile) refreshProfile(); }} />
 
             {/* ⭐ QuickLink Button */}
             <button

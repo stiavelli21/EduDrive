@@ -10,15 +10,22 @@ import app from './app.js';
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
+  const env = process.env.NODE_ENV || 'development';
+  const lines = [
+    '',
+    'EduDrive API Server',
+    '',
+    `Running on:  http://localhost:${PORT}`,
+    `Environment: ${env}`,
+    `Health:      http://localhost:${PORT}/api/health`,
+    ''
+  ];
+  const width = 50;
+  const formattedLines = lines.map(line => `  ║   ${line.padEnd(width - 3)}║`);
   console.log(`
-  ╔══════════════════════════════════════════════╗
-  ║                                              ║
-  ║   🎓 EduDrive API Server                     ║
-  ║                                              ║
-  ║   Running on: http://localhost:${PORT}          ║
-  ║   Environment: ${process.env.NODE_ENV || 'development'}              ║
-  ║   Health: http://localhost:${PORT}/api/health   ║
-  ║                                              ║
-  ╚══════════════════════════════════════════════╝
-  `);
+  ╔${'═'.repeat(width)}╗
+${formattedLines.join('\n')}
+  ╚${'═'.repeat(width)}╝
+`);
 });
+

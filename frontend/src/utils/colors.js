@@ -1,5 +1,5 @@
 // =============================================================================
-// EduDrive — Theme & Markdown Colors Utility ⭐
+// EduDrive — Theme & Markdown Colors Utility
 // =============================================================================
 // Gestione dei colori personalizzati per i file Markdown e gli elementi UI.
 // =============================================================================
@@ -10,6 +10,8 @@ export const MARKDOWN_COLORS = [
     label: 'Viola (Predefinito)',
     bg: 'bg-purple-500/15',
     text: 'text-purple-400',
+    icon: 'text-purple-400',
+    fill: '',
     border: 'border-purple-500/30',
     ring: 'ring-purple-400/50',
     hex: '#a855f7',
@@ -24,6 +26,8 @@ export const MARKDOWN_COLORS = [
     label: 'Blu Brand',
     bg: 'bg-blue-500/15',
     text: 'text-blue-400',
+    icon: 'text-blue-400',
+    fill: '',
     border: 'border-blue-500/30',
     ring: 'ring-blue-400/50',
     hex: '#3b82f6',
@@ -38,6 +42,8 @@ export const MARKDOWN_COLORS = [
     label: 'Smeraldo',
     bg: 'bg-emerald-500/15',
     text: 'text-emerald-400',
+    icon: 'text-emerald-400',
+    fill: '',
     border: 'border-emerald-500/30',
     ring: 'ring-emerald-400/50',
     hex: '#10b981',
@@ -52,6 +58,8 @@ export const MARKDOWN_COLORS = [
     label: 'Rosa',
     bg: 'bg-pink-500/15',
     text: 'text-pink-400',
+    icon: 'text-pink-400',
+    fill: '',
     border: 'border-pink-500/30',
     ring: 'ring-pink-400/50',
     hex: '#ec4899',
@@ -66,6 +74,8 @@ export const MARKDOWN_COLORS = [
     label: 'Ambra',
     bg: 'bg-amber-500/15',
     text: 'text-amber-400',
+    icon: 'text-amber-400',
+    fill: '',
     border: 'border-amber-500/30',
     ring: 'ring-amber-400/50',
     hex: '#f59e0b',
@@ -80,6 +90,8 @@ export const MARKDOWN_COLORS = [
     label: 'Rosso',
     bg: 'bg-rose-500/15',
     text: 'text-rose-400',
+    icon: 'text-rose-400',
+    fill: '',
     border: 'border-rose-500/30',
     ring: 'ring-rose-400/50',
     hex: '#f43f5e',
@@ -94,6 +106,8 @@ export const MARKDOWN_COLORS = [
     label: 'Cielo',
     bg: 'bg-sky-500/15',
     text: 'text-sky-400',
+    icon: 'text-sky-400',
+    fill: '',
     border: 'border-sky-500/30',
     ring: 'ring-sky-400/50',
     hex: '#0ea5e9',
@@ -108,6 +122,7 @@ export const MARKDOWN_COLORS = [
 /**
  * Ottiene l'oggetto colore corrispondente all'id (o il viola di default)
  */
-export function getMarkdownColor(colorId) {
+export function getMarkdownColor(colorInput) {
+  const colorId = typeof colorInput === 'object' && colorInput !== null ? colorInput.color : colorInput;
   return MARKDOWN_COLORS.find((c) => c.id === colorId) || MARKDOWN_COLORS[0];
 }

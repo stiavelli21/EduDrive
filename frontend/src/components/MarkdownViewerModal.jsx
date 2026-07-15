@@ -53,43 +53,94 @@ export default function MarkdownViewerModal({ node, onClose }) {
   }, [onClose]);
 
   useEffect(() => {
-    if (!node?.id) return;
+    if (!node?.id && !node?.storageKey && !node?.downloadUrl && !node?.url && !node?.key) return;
     let isMounted = true;
     setLoading(true);
     setError(null);
 
-    // Fetch directly via authenticated content endpoint
-    api.get(`/nodes/${node.id}/content`, { responseType: 'text' })
-      .then((res) => {
-        if (isMounted) {
-          const text = typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
-          setContent(text);
-          setLoading(false);
-        }
-      })
-      .catch(async () => {
-        // Fallback: fetch from presigned download URL
+    async function loadMarkdownContent() {
+      // 1. Prova prima tramite ID se disponibile
+      if (node?.id) {
         try {
+          const res = await api.get(`/nodes/${node.id}/content?inline=true`, { responseType: 'text' });
+          const text = typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
+          if (typeof res.data !== 'string' || (!res.data.trim().startsWith('<!DOCTYPE html>') && !res.data.trim().startsWith('<html'))) {
+            if (isMounted) {
+              setContent(text);
+              setLoading(false);
+            }
+            return;
+          }
+        } catch (_) {
+          // Fallback a passaggi successivi in caso di errore (es. file locale o non in cloud)
+        }
+      }
+
+      // 2. Prova tramite local-download se e' disponibile una storageKey o key (file locale su disco)
+      const storageOrKey = node?.storageKey || node?.key;
+      if (storageOrKey) {
+        try {
+          const resContent = await api.get(`/nodes/local-download?key=${encodeURIComponent(storageOrKey)}&inline=true`, { responseType: 'text' });
+          const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
+          if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
+            if (isMounted) {
+              setContent(text);
+              setLoading(false);
+            }
+            return;
+          }
+        } catch (_) {
+          // Passa al tentativo successivo se fallisce
+        }
+      }
+
+      // 3. Fallback finale via downloadUrl o url del nodo
+      try {
+        let dlUrl = node?.downloadUrl || node?.url;
+        if (!dlUrl && node?.id) {
           const { data } = await api.get(`/nodes/${node.id}`);
           if (data?.node?.downloadUrl) {
-            const resp = await fetch(data.node.downloadUrl);
-            if (resp.ok) {
-              const text = await resp.text();
+            dlUrl = data.node.downloadUrl;
+          }
+        }
+
+        if (dlUrl) {
+          if (dlUrl.startsWith('/api/') || dlUrl.startsWith('/')) {
+            const cleanPath = dlUrl.replace(/^\/api\/?/, '/');
+            const resContent = await api.get(`${cleanPath}${cleanPath.includes('?') ? '&' : '?'}inline=true`, { responseType: 'text' });
+            const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
+            if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
               if (isMounted) {
                 setContent(text);
                 setLoading(false);
+              }
+              return;
+            }
+          } else {
+            const resp = await fetch(dlUrl);
+            if (resp.ok) {
+              const text = await resp.text();
+              if (!text.trim().startsWith('<!DOCTYPE html>') && !text.trim().startsWith('<html')) {
+                if (isMounted) {
+                  setContent(text);
+                  setLoading(false);
+                }
                 return;
               }
             }
           }
-        } catch (_) {
-          // Ignore secondary failure
         }
-        if (isMounted) {
-          setError('Impossibile caricare il contenuto del file Markdown.');
-          setLoading(false);
-        }
-      });
+      } catch (_) {
+        // Fallimento di tutte le procedure
+      }
+
+      if (isMounted) {
+        setError('Impossibile caricare il contenuto del file Markdown locale.');
+        setLoading(false);
+      }
+    }
+
+    loadMarkdownContent();
 
     return () => { isMounted = false; };
   }, [node]);

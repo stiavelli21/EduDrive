@@ -62,12 +62,12 @@ function getNodeVisuals(node) {
   const name = (node.name || '').toLowerCase();
 
   if (mime.includes('markdown') || name.endsWith('.md')) {
-    const mdColor = getMarkdownColor(node);
+    const mdColor = getMarkdownColor(node.color || node);
     return {
       Icon: BookOpen,
       bgColor: mdColor.bg,
-      iconColor: mdColor.icon,
-      fillClass: mdColor.fill,
+      iconColor: mdColor.icon || mdColor.text,
+      fillClass: mdColor.fill || '',
     };
   }
   if (mime.includes('image/')) {

@@ -14,6 +14,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import {
   S3Client,
   PutObjectCommand,
@@ -22,6 +23,9 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // --- S3 Client Setup ---------------------------------------------------------
 
@@ -36,7 +40,35 @@ const s3Client = new S3Client({
 });
 
 const BUCKET = process.env.S3_BUCKET || 'edudrive-files';
-const LOCAL_STORAGE_DIR = path.resolve(process.cwd(), 'local_storage');
+
+const LOCAL_STORAGE_DIRS = [
+  path.resolve(process.cwd(), 'local_storage'),
+  path.resolve(process.cwd(), 'backend', 'local_storage'),
+  path.resolve(__dirname, '../../local_storage'),
+  path.resolve(__dirname, '../../../local_storage'),
+];
+
+function getNormalizedKeys(storageKey) {
+  if (!storageKey) return [];
+  const cleanKey = storageKey.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '');
+  const normalizedSlash = cleanKey.replace(/\\/g, '/');
+  const normalizedBackslash = cleanKey.replace(/\//g, '\\');
+  return [...new Set([storageKey, cleanKey, normalizedSlash, normalizedBackslash])];
+}
+
+function getLocalFilePath(storageKey) {
+  const keysToCheck = getNormalizedKeys(storageKey);
+  for (const dir of LOCAL_STORAGE_DIRS) {
+    for (const k of keysToCheck) {
+      const fullPath = path.join(dir, k);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
+    }
+  }
+  const clean = storageKey ? storageKey.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '') : storageKey;
+  return path.join(path.resolve(__dirname, '../../local_storage'), clean || storageKey);
+}
 
 // --- Public API --------------------------------------------------------------
 
@@ -55,7 +87,7 @@ export async function uploadFile(fileBuffer, originalName, mimeType, ownerId, st
   const storageKey = `${ownerId}/${uuidv4()}.${ext}`;
 
   if (storageLocation === 'local') {
-    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
+    const fullPath = getLocalFilePath(storageKey);
     await fsPromises.mkdir(path.dirname(fullPath), { recursive: true });
     await fsPromises.writeFile(fullPath, fileBuffer);
     return {
@@ -112,21 +144,47 @@ export async function getDownloadUrl(storageKey, expiresIn = 3600, storageLocati
  * @returns {Promise<ReadableStream|fs.ReadStream>} File body stream
  */
 export async function getFileStream(storageKey, storageLocation = 'cloud') {
-  if (storageLocation === 'local') {
-    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
-    if (!fs.existsSync(fullPath)) {
+  const keysToCheck = getNormalizedKeys(storageKey);
+
+  if (storageLocation === 'local' || process.env.LOCAL_MODE === 'true') {
+    for (const dir of LOCAL_STORAGE_DIRS) {
+      for (const k of keysToCheck) {
+        const fullPath = path.join(dir, k);
+        if (fs.existsSync(fullPath)) {
+          return fs.createReadStream(fullPath);
+        }
+      }
+    }
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: storageKey,
+      });
+      const response = await s3Client.send(command);
+      return response.Body;
+    } catch (_) {
       throw new Error('Local file not found on device disk: ' + storageKey);
     }
-    return fs.createReadStream(fullPath);
   }
 
-  const command = new GetObjectCommand({
-    Bucket: BUCKET,
-    Key: storageKey,
-  });
-
-  const response = await s3Client.send(command);
-  return response.Body;
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: storageKey,
+    });
+    const response = await s3Client.send(command);
+    return response.Body;
+  } catch (err) {
+    for (const dir of LOCAL_STORAGE_DIRS) {
+      for (const k of keysToCheck) {
+        const fullPath = path.join(dir, k);
+        if (fs.existsSync(fullPath)) {
+          return fs.createReadStream(fullPath);
+        }
+      }
+    }
+    throw err;
+  }
 }
 
 /**
@@ -137,22 +195,47 @@ export async function getFileStream(storageKey, storageLocation = 'cloud') {
  * @returns {Promise<void>}
  */
 export async function deleteFile(storageKey, storageLocation = 'cloud') {
-  if (storageLocation === 'local') {
-    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
-    try {
-      await fsPromises.unlink(fullPath);
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.warn('Errore durante la rimozione file locale:', err.message);
+  const keysToCheck = getNormalizedKeys(storageKey);
+
+  if (storageLocation === 'local' || process.env.LOCAL_MODE === 'true') {
+    let deleted = false;
+    for (const dir of LOCAL_STORAGE_DIRS) {
+      for (const k of keysToCheck) {
+        const fullPath = path.join(dir, k);
+        if (fs.existsSync(fullPath)) {
+          try {
+            await fsPromises.unlink(fullPath);
+            deleted = true;
+          } catch (err) {
+            if (err.code !== 'ENOENT') {
+              console.warn('Errore durante la rimozione file locale:', err.message);
+            }
+          }
+        }
       }
+    }
+    if (!deleted) {
+      try {
+        await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: storageKey }));
+      } catch (_) {}
     }
     return;
   }
 
-  const command = new DeleteObjectCommand({
-    Bucket: BUCKET,
-    Key: storageKey,
-  });
-
-  await s3Client.send(command);
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: BUCKET,
+      Key: storageKey,
+    });
+    await s3Client.send(command);
+  } catch (err) {
+    for (const dir of LOCAL_STORAGE_DIRS) {
+      for (const k of keysToCheck) {
+        const fullPath = path.join(dir, k);
+        if (fs.existsSync(fullPath)) {
+          try { await fsPromises.unlink(fullPath); } catch (_) {}
+        }
+      }
+    }
+  }
 }

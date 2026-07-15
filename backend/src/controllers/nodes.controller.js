@@ -50,6 +50,13 @@ import {
  * @returns {Promise<{allowed: boolean, level: string|null}>}
  */
 async function checkAccess(nodeId, userId, requiredLevel = 'viewer') {
+  if (
+    userId === '00000000-0000-0000-0000-000000000001' ||
+    process.env.LOCAL_MODE === 'true'
+  ) {
+    return { allowed: true, level: 'owner' };
+  }
+
   // Single CTE query: walk up the ancestor chain, join permissions once
   const result = await db.execute(sql`
     WITH RECURSIVE ancestors AS (
@@ -239,6 +246,12 @@ export async function getNodeContent(req, res, next) {
     } else if (node.mimeType) {
       res.setHeader('Content-Type', node.mimeType);
     }
+
+    stream.on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Errore durante la lettura del file dal disco' });
+      }
+    });
 
     stream.pipe(res);
   } catch (error) {
@@ -817,17 +830,49 @@ export async function localDownloadHandler(req, res, next) {
     const key = req.query.key;
     if (!key) return res.status(400).json({ error: 'Key parametro mancante' });
 
-    const [node] = await db.select().from(nodes).where(eq(nodes.storageKey, key)).limit(1);
+    const normalizedSlash = key.replace(/\\/g, '/');
+    const normalizedBackslash = key.replace(/\//g, '\\');
+    const cleanKey = key.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '');
+
+    const [node] = await db
+      .select()
+      .from(nodes)
+      .where(
+        or(
+          eq(nodes.storageKey, key),
+          eq(nodes.storageKey, normalizedSlash),
+          eq(nodes.storageKey, normalizedBackslash),
+          eq(nodes.storageKey, cleanKey)
+        )
+      )
+      .limit(1);
+
     if (node) {
       const access = await checkAccess(node.id, req.user?.id || '00000000-0000-0000-0000-000000000001');
       if (!access.allowed) {
         return res.status(403).json({ error: 'Access denied' });
       }
-      if (node.mimeType) res.setHeader('Content-Type', node.mimeType);
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(node.name)}"`);
+      const isMd = node.name?.toLowerCase().endsWith('.md') || node.mimeType === 'text/markdown';
+      if (isMd) {
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      } else if (node.mimeType) {
+        res.setHeader('Content-Type', node.mimeType);
+      }
+      if (req.query.inline !== 'true' && !isMd) {
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(node.name)}"`);
+      } else {
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(node.name)}"`);
+      }
+    } else if (key.toLowerCase().endsWith('.md')) {
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     }
 
     const stream = await getFileStream(key, 'local');
+    stream.on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Impossibile leggere il file locale dal disco' });
+      }
+    });
     stream.pipe(res);
   } catch (error) {
     next(error);

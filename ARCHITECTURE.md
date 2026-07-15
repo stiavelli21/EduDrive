@@ -27,7 +27,7 @@
 | **Conversione Markdown (.md/docx/txt)** | `services/conversion.service.js`<br>*(mammoth + turndown / docx)* | `components/MarkdownViewerModal.jsx`<br>`components/DownloadFormatModal.jsx` |
 | **Storage S3 / Cloudflare R2 / Disco Locale** | `services/storage.service.js` (Supporto ibrido S3 `s3Client` e filesystem locale `node:fs` in `local_storage/`) | `services/api.js`<br>`pages/DashboardPage.jsx` (`handleMoveStorage`) |
 | **Condivisione File & Permessi** | `routes/permissions.routes.js`<br>`controllers/permissions.controller.js` | `components/ShareModal.jsx` |
-| **Ridenominazione, Colori & Descrizioni** | `controllers/nodes.controller.js` | `components/RenameModal.jsx`<br>`utils/colors.js` (`MARKDOWN_COLORS`) |
+| **Ridenominazione, Colori & Descrizioni** | `controllers/nodes.controller.js` | `components/RenameModal.jsx`<br>`components/NodeCard.jsx` (Colori e icone Markdown)<br>`components/MarkdownViewerModal.jsx`<br>`utils/colors.js` (`MARKDOWN_COLORS`) |
 | **Design System & Stili UI** | N/A | `index.css` (Design tokens `--color-*`)<br>`components/QuickLinkModal.jsx` |
 | **Database & Schema ORM** | `models/schema.js` (`schema.sql`, colonna `username` e `storage_location` per archiviazione locale o cloud)<br>`utils/test-db.js` | N/A |
 | **Configurazione Cloud / Env / Deploy / Avvio Locale** | `render.yaml`<br>`backend/.env`<br>`avvia.bat` (Avvio Docker e app standalone senza login) | `frontend/.env.example` (`VITE_API_URL`)<br>`scripts/open-app.js` (flag `--local`)<br>`build.bat` |
@@ -45,9 +45,9 @@
 ### Backend (`/backend/src/`)
 - `server.js` & `app.js`: Inizializzazione Express, CORS, middleware globali e pool PostgreSQL (SSL per Neon.tech e auto-migrazione colonne `storage_quota_bytes`, `username`, `storage_location` e utente dispositivo locale `00000000-0000-0000-0000-000000000001`).
 - `routes/`: (`auth.routes.js`, `nodes.routes.js`, `permissions.routes.js`) Endpoint HTTP e middleware di rotte (es. `POST /api/auth/local-login`, `PUT /api/nodes/:id/storage-location`).
-- `controllers/`: (`auth.controller.js`, `nodes.controller.js`, `permissions.controller.js`) Gestione richieste/risposte JSON, calcolo consumo memoria, accesso Google o locale offline (`localLogin`), spostamento file cloud/locale (`moveStorageLocation`).
+- `controllers/`: (`auth.controller.js`, `nodes.controller.js`, `permissions.controller.js`) Gestione richieste/risposte JSON, calcolo consumo memoria, accesso Google o locale offline (`localLogin`), spostamento file cloud/locale (`moveStorageLocation`), e controllo permessi `checkAccess` ottimizzato senza query CTE ricorsive per l'utente locale (`00000000-0000-0000-0000-000000000001`). `localDownloadHandler` e `getNodeContent` integrano la normalizzazione multi-formato delle chiavi e la protezione da errori di stream in lettura dal disco locale.
 - `services/`:
-  - `storage.service.js`: Astrazione I/O ibrida su disco locale (`node:fs` in `local_storage/`) o Cloudflare R2 / S3.
+  - `storage.service.js`: Astrazione I/O ibrida su disco locale (`node:fs`) o Cloudflare R2 / S3 con ricerca multi-path dinamica (`local_storage/`, `backend/local_storage/`) e normalizzazione automatica dei separatori di percorso Windows e Linux (`getNormalizedKeys`) per prevenire errori di lettura o scrittura su file locali.
   - `conversion.service.js`: Conversione in input (`.docx/.doc/.txt/.rtf/.html` -> `.md`) e in output (`.md` -> `.docx/.txt`).
 - `models/schema.js`: Definizione tabelle (`users` con colonna `username` univoca, `nodes` con `storageLocation`, `permissions`) via Drizzle ORM.
 - `middleware/auth.middleware.js`: Verifica e decodifica token JWT o bypass token locale (`LOCAL_MODE_TOKEN`).
@@ -56,7 +56,8 @@
 - `services/api.js`: Client HTTP centralizzato verso il backend.
 - `services/firebase.js`: Google Auth (`signInWithPopup` e fallback nativo `signInWithRedirect` per Tauri).
 - `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `loginAsLocal`, check avvio automatico con `isLocalModeActive`).
-- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal`, `StorageProfileModal`, `NodeCard` con indicatori e spostamento rapido tra storage locale e server).
+- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal` con fetch autenticata ottimizzata e tentativi di caricamento multipli via ID, local-download o URL diretta per file locali e offline, `StorageProfileModal`, `NodeCard` con indicatori e spostamento rapido tra storage locale e server).
+- `pages/DashboardPage.jsx`: Navigazione nel filesystem e gestione cartelle ottimizzata (disaccoppiamento tra ricaricamento nodi `fetchNodes` e ricaricamento profilo utente `refreshProfile`).
 - `index.css`: Variabili di tema (`--color-brand-*`, `--color-surface-*`, `--color-text-*`).
 - `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`EduDrive.exe` / installer NSIS).
 
