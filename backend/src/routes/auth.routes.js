@@ -28,6 +28,7 @@ import {
   getStorageUsage,
   refreshToken,
   logout,
+  localLogin,
 } from '../controllers/auth.controller.js';
 
 const router = Router();
@@ -35,6 +36,7 @@ const router = Router();
 // Public endpoints
 router.post('/register', validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
+router.post('/local-login', localLogin);
 router.post('/google', googleLogin);
 router.get('/google/desktop', desktopGooglePage);
 router.post('/google/desktop-token', storeDesktopToken);

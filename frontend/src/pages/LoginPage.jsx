@@ -4,10 +4,10 @@
 
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { GraduationCap, ShieldCheck } from 'lucide-react';
+import { GraduationCap, ShieldCheck, HardDrive } from 'lucide-react';
 
 export default function LoginPage() {
-  const { loginWithGoogle, isFirebaseConfigured } = useAuth();
+  const { loginWithGoogle, loginAsLocal, isFirebaseConfigured } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,6 +18,18 @@ export default function LoginPage() {
       await loginWithGoogle();
     } catch (err) {
       setError(err.message || err.response?.data?.error || 'Accesso con Google non riuscito. Riprova.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLocalLogin() {
+    setError('');
+    setLoading(true);
+    try {
+      await loginAsLocal();
+    } catch (err) {
+      setError(err.message || 'Accesso in locale non riuscito.');
     } finally {
       setLoading(false);
     }
@@ -53,7 +65,7 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <h2 className="text-lg font-semibold text-text-primary">
-              Accesso Sicuro con Google
+              Accesso e Archiviazione
             </h2>
           </div>
 
@@ -96,9 +108,27 @@ export default function LoginPage() {
             </div>
           )}
 
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-surface-200" />
+            <span className="flex-shrink mx-4 text-xs font-semibold text-text-muted uppercase tracking-wider">
+              oppure
+            </span>
+            <div className="flex-grow border-t border-surface-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLocalLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-surface-200 hover:bg-surface-300 text-text-primary font-medium border border-surface-300 shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <HardDrive className="w-5 h-5 text-brand-600" />
+            <span>Accedi in Locale (Offline)</span>
+          </button>
+
           <div className="pt-4 border-t border-surface-200 flex items-center justify-center gap-2 text-xs text-text-muted">
             <ShieldCheck className="w-4 h-4 text-brand-600" />
-            <span>Autenticazione protetta e gestita da Google</span>
+            <span>Autenticazione protetta e gestita dal tuo dispositivo</span>
           </div>
         </div>
       </div>

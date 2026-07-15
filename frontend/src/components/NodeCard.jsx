@@ -30,6 +30,8 @@ import {
   BookOpen,
   Info,
   Download,
+  HardDrive,
+  Cloud,
 } from 'lucide-react';
 import { getMarkdownColor } from '../utils/colors.js';
 
@@ -55,30 +57,32 @@ function getNodeVisuals(node) {
     };
   }
 
-  // File — choose icon based on MIME type
+  // Files -- differentiate by MIME type
   const mime = node.mimeType || '';
-  if (mime.includes('markdown') || node.name?.toLowerCase().endsWith('.md')) {
-    const custom = getMarkdownColor(node.color);
+  const name = (node.name || '').toLowerCase();
+
+  if (mime.includes('markdown') || name.endsWith('.md')) {
+    const mdColor = getMarkdownColor(node);
     return {
       Icon: BookOpen,
-      bgColor: custom.bg,
-      iconColor: custom.text,
-      fillClass: '',
+      bgColor: mdColor.bg,
+      iconColor: mdColor.icon,
+      fillClass: mdColor.fill,
     };
   }
-  if (mime.startsWith('image/')) {
+  if (mime.includes('image/')) {
     return {
       Icon: Image,
-      bgColor: 'bg-pink-500/15',
-      iconColor: 'text-pink-400',
+      bgColor: 'bg-purple-500/15',
+      iconColor: 'text-purple-400',
       fillClass: '',
     };
   }
-  if (mime.includes('spreadsheet') || mime.includes('excel')) {
+  if (mime.includes('spreadsheet') || mime.includes('excel') || mime.includes('csv')) {
     return {
       Icon: FileSpreadsheet,
-      bgColor: 'bg-green-500/15',
-      iconColor: 'text-green-400',
+      bgColor: 'bg-emerald-500/15',
+      iconColor: 'text-emerald-400',
       fillClass: '',
     };
   }
@@ -91,27 +95,24 @@ function getNodeVisuals(node) {
     };
   }
 
-  // Default: document icon
+  // Default file
   return {
     Icon: FileText,
-    bgColor: 'bg-blue-500/15',
-    iconColor: 'text-blue-400',
+    bgColor: 'bg-brand-600/15',
+    iconColor: 'text-brand-400',
     fillClass: '',
   };
 }
 
 /**
- * Format file size to human-readable string.
+ * Format file size into human readable string.
  */
 function formatSize(bytes) {
-  if (!bytes) return '';
+  if (!bytes && bytes !== 0) return '';
+  if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
-  let i = 0;
-  let size = bytes;
-  while (size >= 1024 && i < units.length - 1) {
-    size /= 1024;
-    i++;
-  }
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const size = bytes / Math.pow(1024, i);
   return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
@@ -120,8 +121,9 @@ function formatSize(bytes) {
  * @param {function} onClick - Called when the card is clicked
  * @param {function} onDelete - Called when delete is selected
  * @param {function} onShare - Called when share is selected
+ * @param {function} onMoveStorage - Called when move between local and cloud is requested
  */
-export default function NodeCard({ node, onClick, onDelete, onShare, onRename, onDownload }) {
+export default function NodeCard({ node, onClick, onDelete, onShare, onRename, onDownload, onMoveStorage }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const menuRef = useRef(null);
@@ -132,6 +134,8 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
   const hasDescription = Boolean(node.description && node.description.trim());
   const hasSize = node.type === 'file' && node.sizeBytes !== undefined && node.sizeBytes !== null;
   const hasInfoContent = hasDescription || hasSize;
+
+  const isLocal = node.storageLocation === 'local' || node.ownerId === '00000000-0000-0000-0000-000000000001';
 
   function handleInfoMouseEnter() {
     if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
@@ -182,19 +186,24 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
 
   return (
     <div
-      className="glass-card p-4 cursor-pointer group relative flex flex-col items-center text-center"
+      className="glass-card p-4 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-visible transition-all hover:scale-[1.02]"
       onClick={onClick}
     >
-      {/* Top Left Icons: Public Indicator & Info Button */}
+      {/* Public / Info badges */}
       <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20">
         {node.isPublic && (
-          <div title="Pubblico">
-            <Globe className="w-3.5 h-3.5 text-brand-600" />
-          </div>
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+            title="Pubblico -- Accessibile a tutti"
+          >
+            <Globe className="w-3 h-3" />
+            <span>Pubblico</span>
+          </span>
         )}
+
         {hasInfoContent && (
           <div
-            className="relative"
+            className="relative inline-flex items-center"
             onMouseEnter={handleInfoMouseEnter}
             onMouseLeave={handleInfoMouseLeave}
           >
@@ -286,6 +295,23 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
               Scarica
             </button>
           )}
+          {isLocal ? (
+            <button
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
+              onClick={() => { if (onMoveStorage) onMoveStorage(node, 'cloud'); setShowMenu(false); }}
+            >
+              <Cloud className="w-3.5 h-3.5 text-blue-400" />
+              Sposta sul Server
+            </button>
+          ) : (
+            <button
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
+              onClick={() => { if (onMoveStorage) onMoveStorage(node, 'local'); setShowMenu(false); }}
+            >
+              <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+              Sposta in Locale
+            </button>
+          )}
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-300 hover:text-text-primary transition-colors"
             onClick={() => { if (onRename) onRename(node); setShowMenu(false); }}
@@ -320,14 +346,42 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
         {node.name}
       </p>
 
+      {/* Storage location & permission badges */}
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+        {isLocal ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMoveStorage) onMoveStorage(node, 'cloud');
+            }}
+            title="Clicca per spostare sul server"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+          >
+            <HardDrive className="w-3 h-3" />
+            Locale
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMoveStorage) onMoveStorage(node, 'local');
+            }}
+            title="Clicca per spostare in locale"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 transition-colors cursor-pointer"
+          >
+            <Cloud className="w-3 h-3" />
+            Server
+          </button>
+        )}
 
-
-      {/* Permission level badge (for shared items) */}
-      {node.permissionLevel && (
-        <span className="mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 border border-brand-200">
-          {node.permissionLevel}
-        </span>
-      )}
+        {node.permissionLevel && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 border border-brand-200">
+            {node.permissionLevel}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

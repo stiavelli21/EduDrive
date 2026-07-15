@@ -89,21 +89,48 @@ api.interceptors.response.use(
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/register') &&
-      !originalRequest.url?.includes('/auth/logout')
+      !originalRequest.url?.includes('/auth/logout') &&
+      !originalRequest.url?.includes('/auth/local-login')
     ) {
       originalRequest._retry = true;
+
+      const isLocalMode =
+        typeof window !== 'undefined' &&
+        (localStorage.getItem('edudrive_local_mode') === 'true' ||
+          window.location.search.includes('local=true'));
 
       if (isRefreshing) {
         // Queue the request until refresh completes
         return new Promise((resolve, reject) => {
           refreshQueue.push({ resolve, reject });
         }).then(() => {
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${accessToken || 'LOCAL_MODE_TOKEN'}`;
           return api(originalRequest);
         });
       }
 
       isRefreshing = true;
+
+      if (isLocalMode) {
+        try {
+          const { data } = await axios.post(`${getApiBaseUrl()}/auth/local-login`, null, {
+            withCredentials: true,
+          });
+          accessToken = data?.accessToken || 'LOCAL_MODE_TOKEN';
+          refreshQueue.forEach(({ resolve }) => resolve());
+          refreshQueue = [];
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } catch (localLoginErr) {
+          accessToken = 'LOCAL_MODE_TOKEN';
+          refreshQueue.forEach(({ resolve }) => resolve());
+          refreshQueue = [];
+          originalRequest.headers.Authorization = `Bearer LOCAL_MODE_TOKEN`;
+          return api(originalRequest);
+        } finally {
+          isRefreshing = false;
+        }
+      }
 
       try {
         const { data } = await axios.post(`${getApiBaseUrl()}/auth/refresh`, null, {

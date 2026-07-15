@@ -12,7 +12,9 @@
 ## Perché EduDrive? (Punti di Forza)
 
 - **Interfaccia Light & Blue**: Design moderno, luminoso e pulito per un'esperienza di studio senza distrazioni.
-- **Accesso Esclusivo con Google & Nome Utente Personalizzabile**: Entra in un clic tramite **Firebase Auth** importando automaticamente Nome e Foto Profilo ufficiale dal tuo account Google o universitario. In qualsiasi momento puoi personalizzare il tuo **Nome Utente (@username)** univoco e il Nome Visualizzato direttamente dalla modale profilo.
+- **Accesso Ibrido: Google Auth Online o Modalità Locale Offline 100%**: Entra in un clic tramite **Firebase Auth** importando automaticamente Nome e Foto Profilo ufficiale dal tuo account Google o universitario, oppure accedi istantaneamente in **Modalità Locale Offline** (senza account, senza credenziali e persino senza connessione a internet) trasformando il tuo dispositivo nel server di archiviazione principale.
+- **Spostamento Rapido dei File tra Cloud e Locale**: Nella vista unificata, i file memorizzati in locale e quelli nel cloud convivono con indicatori visivi distinti ("Locale" e "Server"). Con un semplice clic puoi spostare la memorizzazione fisica di un file dal cloud al tuo hard disk locale e viceversa.
+- **Avvio Istantaneo su PC con `avvia.bat`**: Grazie allo script di automazione `avvia.bat` nella cartella principale, puoi avviare l'applicazione in modalità locale e standalone senza dover generare preventivamente il file `.exe`. Lo script accende e verifica in automatico il motore Docker (avviando Docker Desktop se spento) e apre direttamente l'interfaccia collegata ai tuoi file locali.
 - **QuickLink Integrati**: Salva link esterni (Google Drive, YouTube, Dropbox) direttamente come cartelle o file cliccabili nel tuo cloud. Mai più file `.txt` con link incollati!
 - **Conversione Testuale Intelligente (.md & Convertitore alla Rovescia)**: Ogni file di testo caricato (`.docx`, `.doc`, `.txt`, `.html`, `.rtf`) viene automaticamente tradotto in un pulito formato **Markdown (.md)** mantenendo intatte evidenziazioni gialle, titoli e stili. E quando scarichi un file `.md`, puoi scegliere in quale formato esportarlo (`.md`, `.docx` o `.txt`) col nostro convertitore alla rovescia!
 - **Gestione Quota e Monitoraggio Memoria**: Ogni utente ha un limite di archiviazione predefinito di **500 MB** (personalizzabile individualmente a database per futuri upscaling). Cliccando sulla propria icona profilo si apre la modale di dettaglio con barra di progresso colorata, memoria utilizzata al byte e percentuale occupata.
@@ -27,10 +29,10 @@
 | Componente | Tecnologia |
 |---|---|
 | **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) + Firebase Auth |
-| **Desktop App** | Tauri v2 (Rust + WebView2) |
-| **Backend** | Node.js + Express (REST API modulari con verifica Google ID e JWT) |
+| **Desktop App & Standalone** | Tauri v2 (Rust + WebView2) e Launcher Standalone (`open-app.js`) |
+| **Backend** | Node.js + Express (REST API modulari con verifica Google ID, JWT e supporto Offline) |
 | **Database** | PostgreSQL locale (Docker) o Cloud Serverless (**Neon.tech**) + Drizzle ORM |
-| **Storage** | Object Storage S3 compatibile (**Cloudflare R2** / MinIO locale / Storj.io) |
+| **Storage** | Object Storage S3 compatibile (**Cloudflare R2** / MinIO locale) + Hard Disk Locale |
 
 ---
 
@@ -47,7 +49,13 @@ Se hai scaricato il codice da GitHub o vuoi provare l'applicazione sul tuo compu
 
 ### Come provare o compilare EduDrive scaricato da GitHub
 
-Ci sono **due modalità principali** con cui puoi provare l'applicazione sul tuo computer:
+Ci sono **tre modalità principali** con cui puoi provare l'applicazione sul tuo computer:
+
+#### Modalità 0 (Novità): Avvio Rapido Locale con `avvia.bat` (Senza compilare il `.exe`)
+Se vuoi utilizzare l'applicazione sul tuo PC in modalità offline collegandoti direttamente all'hard disk locale senza passare dalla schermata di login e senza necessità di un utente online:
+1. Assicurati di aver installato **Node.js** e **Docker Desktop**.
+2. Fai doppio clic sul file **`avvia.bat`** presente nella cartella principale del progetto.
+3. Lo script verificherà se Docker è attivo (o lo avvierà in automatico se spento), lancerà i contenitori locali e aprirà subito l'applicazione in modalità standalone locale, collegata direttamente ai file del tuo dispositivo.
 
 #### Modalità 1: Compilare l'App (.exe) connessa al Cloud Online (Per provare l'app come utente)
 Se l'autore del progetto ha già pubblicato il server sul Cloud (es. su Render.com) e vuoi generare un `.exe` che funzioni subito sul tuo PC senza dover avviare un server locale:

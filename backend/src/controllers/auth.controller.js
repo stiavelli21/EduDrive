@@ -174,29 +174,68 @@ export async function calculateUserStorageUsage(userId, storageQuotaBytes) {
 
 export async function getMe(req, res, next) {
   try {
-    const [user] = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        storageQuotaBytes: users.storageQuotaBytes,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.id, req.user.id))
-      .limit(1);
+    const isLocalUser =
+      req.user?.id === '00000000-0000-0000-0000-000000000001' ||
+      req.headers.authorization === 'Bearer LOCAL_MODE_TOKEN' ||
+      process.env.LOCAL_MODE === 'true';
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    let user = null;
+    try {
+      const [dbUser] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          username: users.username,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+          storageQuotaBytes: users.storageQuotaBytes,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      user = dbUser;
+    } catch (dbErr) {
+      if (isLocalUser) {
+        user = {
+          id: '00000000-0000-0000-0000-000000000001',
+          email: 'local@edudrive.local',
+          username: 'dispositivo_locale',
+          displayName: 'Dispositivo Locale (Offline)',
+          storageQuotaBytes: 1099511627776,
+          createdAt: new Date(),
+        };
+      } else {
+        throw dbErr;
+      }
     }
 
-    const storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes);
+    if (!user) {
+      if (isLocalUser) {
+        user = {
+          id: '00000000-0000-0000-0000-000000000001',
+          email: 'local@edudrive.local',
+          username: 'dispositivo_locale',
+          displayName: 'Dispositivo Locale (Offline)',
+          storageQuotaBytes: 1099511627776,
+          createdAt: new Date(),
+        };
+      } else {
+        return res.status(404).json({ error: 'User not found' });
+      }
+    }
+
+    let storageUsage = { usedBytes: 0, quotaBytes: user.storageQuotaBytes || 1099511627776, percentage: 0 };
+    try {
+      storageUsage = await calculateUserStorageUsage(user.id, user.storageQuotaBytes || 1099511627776);
+    } catch {
+      // Ignore storage calculation errors when db is unreachable or offline
+    }
 
     res.json({
       user: {
         ...user,
+        isLocalMode: isLocalUser || user.id === '00000000-0000-0000-0000-000000000001',
         storageUsage,
       },
     });
@@ -773,3 +812,84 @@ export function pollDesktopToken(req, res) {
   res.json({ status: 'complete', idToken: session.idToken });
 }
 
+/**
+ * POST /api/auth/local-login
+ * Accesso rapido per dispositivo locale / offline senza credenziali o Google Auth.
+ */
+export async function localLogin(req, res, next) {
+  try {
+    const localId = '00000000-0000-0000-0000-000000000001';
+    let localUser = null;
+    try {
+      let [existing] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, localId))
+        .limit(1);
+
+      if (!existing) {
+        const passwordHash = await bcrypt.hash('LOCAL_NO_PASSWORD', SALT_ROUNDS);
+        [existing] = await db
+          .insert(users)
+          .values({
+            id: localId,
+            email: 'local@edudrive.local',
+            username: 'dispositivo_locale',
+            passwordHash,
+            displayName: 'Dispositivo Locale (Offline)',
+            storageQuotaBytes: 1099511627776,
+          })
+          .returning();
+      }
+      localUser = existing;
+    } catch {
+      // If database is starting up or unreachable offline, use memory profile
+    }
+
+    if (!localUser) {
+      localUser = {
+        id: localId,
+        email: 'local@edudrive.local',
+        username: 'dispositivo_locale',
+        displayName: 'Dispositivo Locale (Offline)',
+        storageQuotaBytes: 1099511627776,
+      };
+    }
+
+    let accessToken = 'LOCAL_MODE_TOKEN';
+    try {
+      accessToken = generateAccessToken(localUser);
+    } catch {
+      accessToken = 'LOCAL_MODE_TOKEN';
+    }
+
+    const { passwordHash: _, ...safeUser } = localUser;
+    let storageUsage = { usedBytes: 0, quotaBytes: 1099511627776, percentage: 0 };
+    try {
+      storageUsage = await calculateUserStorageUsage(localUser.id, localUser.storageQuotaBytes || 1099511627776);
+    } catch {
+      storageUsage = { usedBytes: 0, quotaBytes: 1099511627776, percentage: 0 };
+    }
+
+    res.json({
+      user: {
+        ...safeUser,
+        isLocalMode: true,
+        storageUsage,
+      },
+      accessToken,
+    });
+  } catch {
+    res.json({
+      user: {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'local@edudrive.local',
+        username: 'dispositivo_locale',
+        displayName: 'Dispositivo Locale (Offline)',
+        isLocalMode: true,
+        storageUsage: { usedBytes: 0, quotaBytes: 1099511627776, percentage: 0 },
+      },
+      accessToken: 'LOCAL_MODE_TOKEN',
+    });
+  }
+}

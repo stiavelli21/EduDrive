@@ -84,6 +84,7 @@ export const nodes = pgTable('nodes', {
   mimeType: varchar('mime_type', { length: 100 }),
   sizeBytes: bigint('size_bytes', { mode: 'number' }),
   storageKey: text('storage_key'),
+  storageLocation: varchar('storage_location', { length: 50 }).notNull().default('cloud'),
 
   // QuickLink-specific
   url: text('url'),

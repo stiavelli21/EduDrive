@@ -60,6 +60,16 @@ pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS storage_quota_bytes BIGIN
 pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100);')
   .catch((err) => console.warn('[Auto-migration] Avviso verifica colonna username:', err.message));
 
+pool.query("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS storage_location VARCHAR(50) NOT NULL DEFAULT 'cloud';")
+  .catch((err) => console.warn('[Auto-migration] Avviso verifica colonna storage_location:', err.message));
+
+// Assicura che esista l'utente di sistema per la modalità locale offline
+pool.query(`
+  INSERT INTO users (id, email, username, password_hash, display_name, storage_quota_bytes)
+  VALUES ('00000000-0000-0000-0000-000000000001', 'local@edudrive.local', 'dispositivo_locale', 'LOCAL_NO_PASSWORD', 'Dispositivo Locale (Offline)', 1099511627776)
+  ON CONFLICT (id) DO NOTHING;
+`).catch((err) => console.warn('[Auto-migration] Avviso verifica utente locale offline:', err.message));
+
 // =============================================================================
 // Express App Configuration
 // =============================================================================

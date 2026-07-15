@@ -120,33 +120,42 @@ export default function DashboardPage() {
     }
   }
 
+  function resolveDownloadUrl(url) {
+    if (!url) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = api.defaults.baseURL || '/api';
+    if (base.startsWith('http://') || base.startsWith('https://')) {
+      const cleanBase = base.replace(/\/api\/?$/, '');
+      return `${cleanBase}${url.startsWith('/') ? url : '/' + url}`;
+    }
+    return url;
+  }
+
   function handleNodeClick(node) {
     if (node.type === 'folder') {
       navigate(`/folder/${node.id}`);
     } else if (node.type === 'link') {
-      // ⭐ QuickLink: open URL in external browser / new tab
       if (window.__TAURI_INTERNALS__) {
         import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(node.url)).catch(console.error);
       } else {
         window.open(node.url, '_blank', 'noopener,noreferrer');
       }
     } else if (node.type === 'file') {
-      // ⭐ If it is a Markdown file (.md), open the built-in reader!
       if (node.name?.toLowerCase().endsWith('.md') || node.mimeType?.includes('markdown')) {
         setMarkdownTargetNode(node);
         setShowMarkdownModal(true);
         return;
       }
 
-      // For other files, fetch download URL and open
       api
         .get(`/nodes/${node.id}`)
         .then(({ data }) => {
           if (data.node.downloadUrl) {
+            const finalUrl = resolveDownloadUrl(data.node.downloadUrl);
             if (window.__TAURI_INTERNALS__) {
-              import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(data.node.downloadUrl)).catch(console.error);
+              import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(finalUrl)).catch(console.error);
             } else {
-              window.open(data.node.downloadUrl, '_blank');
+              window.open(finalUrl, '_blank');
             }
           }
         })
@@ -170,12 +179,22 @@ export default function DashboardPage() {
       setShowDownloadModal(true);
       return;
     }
-    if (node.downloadUrl) {
-      if (window.__TAURI_INTERNALS__) {
-        import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(node.downloadUrl)).catch(console.error);
-      } else {
-        window.open(node.downloadUrl, '_blank');
-      }
+    const targetUrl = node.downloadUrl || `/api/nodes/${node.id}/export`;
+    const finalUrl = resolveDownloadUrl(targetUrl);
+    if (window.__TAURI_INTERNALS__) {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(finalUrl)).catch(console.error);
+    } else {
+      window.open(finalUrl, '_blank');
+    }
+  }
+
+  async function handleMoveStorage(node, targetLocation) {
+    try {
+      await api.put(`/nodes/${node.id}/storage-location`, { storageLocation: targetLocation });
+      await fetchNodes();
+    } catch (err) {
+      console.error('Errore durante lo spostamento del file:', err);
+      alert('Impossibile spostare il file: ' + (err.response?.data?.error || err.message));
     }
   }
 
@@ -315,6 +334,7 @@ export default function DashboardPage() {
           onShare={handleShare}
           onRename={handleRename}
           onDownload={handleDownload}
+          onMoveStorage={handleMoveStorage}
         />
       </main>
 

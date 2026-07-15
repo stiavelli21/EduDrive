@@ -3,14 +3,16 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 
-const url = 'http://localhost:5173';
+const isLocalMode = process.argv.includes('--local') || process.env.LOCAL_MODE === 'true';
+const url = isLocalMode ? 'http://localhost:5173/?local=true' : 'http://localhost:5173';
+const checkUrl = 'http://localhost:5173';
 const maxRetries = 30;
 let retries = 0;
 
-console.log('Attesa dell\'avvio del server frontend per aprire l\'interfaccia...');
+console.log(`Attesa dell'avvio del server frontend per aprire l'interfaccia${isLocalMode ? ' in modalità locale offline' : ''}...`);
 
 function checkServer() {
-  http.get(url, (res) => {
+  http.get(checkUrl, (res) => {
     if (res.statusCode === 200 || res.statusCode === 304 || res.statusCode === 404) {
       console.log('Server frontend pronto! Apertura di EduDrive come applicazione standalone...');
       openStandaloneApp();

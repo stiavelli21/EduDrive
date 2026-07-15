@@ -1,11 +1,12 @@
 {
   "name": "edudrive",
-  "version": "0.2.0.2",
+  "version": "0.2.0.3",
   "private": true,
   "description": "EduDrive - Cloud storage platform for students",
   "scripts": {
     "start": "docker compose up -d && npx concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "start:app": "docker compose up -d && npx concurrently --names \"BACKEND,FRONTEND,APP\" --prefix-colors \"blue,green,yellow\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"node scripts/open-app.js\"",
+    "start:local": "docker compose up -d && npx concurrently --names \"BACKEND,FRONTEND,APP\" --prefix-colors \"blue,green,yellow\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"node scripts/open-app.js --local\"",
     "start:desktop": "docker compose up -d && npx concurrently --names \"BACKEND,TAURI\" --prefix-colors \"blue,green\" \"npm run dev --prefix backend\" \"npm run tauri dev --prefix frontend\"",
     "build:desktop": "npm run tauri build --prefix frontend",
     "dev": "npx concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",

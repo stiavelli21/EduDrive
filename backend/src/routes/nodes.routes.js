@@ -30,6 +30,8 @@ import {
   updateNode,
   deleteNode,
   exportNodeHandler,
+  moveStorageLocation,
+  localDownloadHandler,
 } from '../controllers/nodes.controller.js';
 
 const router = Router();
@@ -78,6 +80,9 @@ router.use(authenticate);
 // List root nodes (query ?shared=true for shared-with-me)
 router.get('/', listRootNodes);
 
+// Local file download (must be before /:id)
+router.get('/local-download', localDownloadHandler);
+
 // Get file content (e.g. for .md viewer)
 router.get('/:id/content', getNodeContent);
 
@@ -98,6 +103,9 @@ router.post('/upload', upload.single('file'), uploadFileHandler);
 
 // ⭐ Create a QuickLink (the innovative feature!)
 router.post('/quicklink', validate(createQuickLinkSchema), createQuickLink);
+
+// Move physical storage location between cloud and local
+router.put('/:id/storage-location', moveStorageLocation);
 
 // Rename or move a node
 router.put('/:id', validate(updateNodeSchema), updateNode);

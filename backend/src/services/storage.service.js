@@ -12,6 +12,8 @@
 // =============================================================================
 
 import path from 'node:path';
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
 import {
   S3Client,
   PutObjectCommand,
@@ -34,22 +36,33 @@ const s3Client = new S3Client({
 });
 
 const BUCKET = process.env.S3_BUCKET || 'edudrive-files';
+const LOCAL_STORAGE_DIR = path.resolve(process.cwd(), 'local_storage');
 
 // --- Public API --------------------------------------------------------------
 
 /**
- * Upload a file to S3-compatible storage.
+ * Upload a file to S3-compatible storage or local device disk.
  *
  * @param {Buffer} fileBuffer - The file contents
  * @param {string} originalName - Original filename (for extension extraction)
  * @param {string} mimeType - MIME type of the file
  * @param {string} ownerId - UUID of the file owner (used in storage path)
+ * @param {string} [storageLocation='cloud'] - 'cloud' or 'local'
  * @returns {Promise<{storageKey: string, size: number}>} Storage key and file size
  */
-export async function uploadFile(fileBuffer, originalName, mimeType, ownerId) {
-  // Generate a unique storage key: owner_id/uuid.extension
+export async function uploadFile(fileBuffer, originalName, mimeType, ownerId, storageLocation = 'cloud') {
   const ext = path.extname(originalName).slice(1) || 'bin';
   const storageKey = `${ownerId}/${uuidv4()}.${ext}`;
+
+  if (storageLocation === 'local') {
+    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
+    await fsPromises.mkdir(path.dirname(fullPath), { recursive: true });
+    await fsPromises.writeFile(fullPath, fileBuffer);
+    return {
+      storageKey,
+      size: fileBuffer.length,
+    };
+  }
 
   const command = new PutObjectCommand({
     Bucket: BUCKET,
@@ -67,14 +80,22 @@ export async function uploadFile(fileBuffer, originalName, mimeType, ownerId) {
 }
 
 /**
- * Generate a pre-signed download URL for a file.
- * The URL is valid for 1 hour by default.
+ * Generate a pre-signed download URL or local endpoint path for a file.
  *
- * @param {string} storageKey - The S3 key of the file
- * @param {number} [expiresIn=3600] - URL expiry in seconds (default: 1 hour)
- * @returns {Promise<string>} Pre-signed download URL
+ * @param {string} storageKey - The key of the file
+ * @param {number} [expiresIn=3600] - URL expiry in seconds
+ * @param {string} [storageLocation='cloud'] - 'cloud' or 'local'
+ * @param {string} [nodeId] - Optional node UUID for local content route
+ * @returns {Promise<string>} Pre-signed or local download URL
  */
-export async function getDownloadUrl(storageKey, expiresIn = 3600) {
+export async function getDownloadUrl(storageKey, expiresIn = 3600, storageLocation = 'cloud', nodeId = null) {
+  if (storageLocation === 'local') {
+    if (nodeId) {
+      return `/api/nodes/${nodeId}/content`;
+    }
+    return `/api/nodes/local-download?key=${encodeURIComponent(storageKey)}`;
+  }
+
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: storageKey,
@@ -84,12 +105,21 @@ export async function getDownloadUrl(storageKey, expiresIn = 3600) {
 }
 
 /**
- * Get a readable stream for a file from S3-compatible storage.
+ * Get a readable stream for a file from S3 or local disk.
  *
- * @param {string} storageKey - The S3 key of the file
- * @returns {Promise<ReadableStream>} File body stream
+ * @param {string} storageKey - The key of the file
+ * @param {string} [storageLocation='cloud'] - 'cloud' or 'local'
+ * @returns {Promise<ReadableStream|fs.ReadStream>} File body stream
  */
-export async function getFileStream(storageKey) {
+export async function getFileStream(storageKey, storageLocation = 'cloud') {
+  if (storageLocation === 'local') {
+    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
+    if (!fs.existsSync(fullPath)) {
+      throw new Error('Local file not found on device disk: ' + storageKey);
+    }
+    return fs.createReadStream(fullPath);
+  }
+
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: storageKey,
@@ -100,12 +130,25 @@ export async function getFileStream(storageKey) {
 }
 
 /**
- * Delete a file from S3-compatible storage.
+ * Delete a file from S3 or local disk.
  *
- * @param {string} storageKey - The S3 key of the file to delete
+ * @param {string} storageKey - The key of the file to delete
+ * @param {string} [storageLocation='cloud'] - 'cloud' or 'local'
  * @returns {Promise<void>}
  */
-export async function deleteFile(storageKey) {
+export async function deleteFile(storageKey, storageLocation = 'cloud') {
+  if (storageLocation === 'local') {
+    const fullPath = path.join(LOCAL_STORAGE_DIR, storageKey);
+    try {
+      await fsPromises.unlink(fullPath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.warn('Errore durante la rimozione file locale:', err.message);
+      }
+    }
+    return;
+  }
+
   const command = new DeleteObjectCommand({
     Bucket: BUCKET,
     Key: storageKey,

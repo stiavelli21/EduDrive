@@ -20,7 +20,7 @@
 //   DELETE /api/nodes/:id       → Delete a node (cascades to children)
 // =============================================================================
 
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, or, isNull, sql } from 'drizzle-orm';
 import { db } from '../app.js';
 import { nodes, permissions, users } from '../models/schema.js';
 import { uploadFile, getDownloadUrl, getFileStream, deleteFile } from '../services/storage.service.js';
@@ -42,6 +42,7 @@ import {
  *   1. The user is the owner of any node in the ancestor chain
  *   2. Any ancestor node is public (for viewer access)
  *   3. The user has a direct or inherited permission on any ancestor
+ *   4. The node is in local storage ('local') or owned by local device
  *
  * @param {string} nodeId - The node to check
  * @param {string} userId - The user requesting access
@@ -52,10 +53,10 @@ async function checkAccess(nodeId, userId, requiredLevel = 'viewer') {
   // Single CTE query: walk up the ancestor chain, join permissions once
   const result = await db.execute(sql`
     WITH RECURSIVE ancestors AS (
-      SELECT id, owner_id, parent_id, is_public, 0 AS depth
+      SELECT id, owner_id, parent_id, is_public, storage_location, 0 AS depth
       FROM nodes WHERE id = ${nodeId}
       UNION ALL
-      SELECT n.id, n.owner_id, n.parent_id, n.is_public, a.depth + 1
+      SELECT n.id, n.owner_id, n.parent_id, n.is_public, n.storage_location, a.depth + 1
       FROM nodes n
       INNER JOIN ancestors a ON n.id = a.parent_id
     )
@@ -63,6 +64,7 @@ async function checkAccess(nodeId, userId, requiredLevel = 'viewer') {
       a.id,
       a.owner_id,
       a.is_public,
+      a.storage_location,
       a.depth,
       p.level AS perm_level
     FROM ancestors a
@@ -76,6 +78,15 @@ async function checkAccess(nodeId, userId, requiredLevel = 'viewer') {
 
   // Walk through the ancestor chain (from target node upward)
   for (const row of result.rows) {
+    // 0. Local device items or local mode access always give full access
+    if (
+      userId === '00000000-0000-0000-0000-000000000001' ||
+      row.owner_id === '00000000-0000-0000-0000-000000000001' ||
+      row.storage_location === 'local'
+    ) {
+      return { allowed: true, level: 'owner' };
+    }
+
     // 1. Owner always has full access
     if (row.owner_id === userId) {
       return { allowed: true, level: 'owner' };
@@ -129,11 +140,20 @@ export async function listRootNodes(req, res, next) {
       });
     }
 
-    // User's own root-level nodes (no parent)
+    // User's own root-level nodes or local device nodes (no parent)
     const rootNodes = await db
       .select()
       .from(nodes)
-      .where(and(eq(nodes.ownerId, userId), isNull(nodes.parentId)))
+      .where(
+        and(
+          or(
+            eq(nodes.ownerId, userId),
+            eq(nodes.storageLocation, 'local'),
+            eq(nodes.ownerId, '00000000-0000-0000-0000-000000000001')
+          ),
+          isNull(nodes.parentId)
+        )
+      )
       .orderBy(nodes.type, nodes.name);
 
     res.json({ nodes: rootNodes });
@@ -171,7 +191,7 @@ export async function getNode(req, res, next) {
     // For files, generate a download URL
     let downloadUrl = null;
     if (node.type === 'file' && node.storageKey) {
-      downloadUrl = await getDownloadUrl(node.storageKey);
+      downloadUrl = await getDownloadUrl(node.storageKey, 3600, node.storageLocation, node.id);
     }
 
     res.json({
@@ -207,7 +227,7 @@ export async function getNodeContent(req, res, next) {
       return res.status(400).json({ error: 'Node is not a file' });
     }
 
-    const stream = await getFileStream(node.storageKey);
+    const stream = await getFileStream(node.storageKey, node.storageLocation);
 
     // Set Content-Type: prefer markdown-specific header for .md files,
     // otherwise fall back to the stored MIME type
@@ -251,7 +271,7 @@ export async function exportNodeHandler(req, res, next) {
       return res.status(400).json({ error: 'Node is not a file' });
     }
 
-    const stream = await getFileStream(node.storageKey);
+    const stream = await getFileStream(node.storageKey, node.storageLocation);
     const chunks = [];
     for await (const chunk of stream) {
       chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
@@ -355,6 +375,8 @@ export async function createFolder(req, res, next) {
       }
     }
 
+    const storageLocation = req.body.storageLocation || (userId === '00000000-0000-0000-0000-000000000001' ? 'local' : 'cloud');
+
     const [folder] = await db
       .insert(nodes)
       .values({
@@ -362,6 +384,7 @@ export async function createFolder(req, res, next) {
         parentId: parentId || null,
         name,
         type: 'folder',
+        storageLocation,
       })
       .returning();
 
@@ -386,6 +409,7 @@ export async function uploadFileHandler(req, res, next) {
 
     let { originalname, mimetype, buffer } = req.file;
     const parentId = req.body.parentId || null;
+    const storageLocation = req.body.storageLocation || (userId === '00000000-0000-0000-0000-000000000001' ? 'local' : 'cloud');
 
     // If uploading into a folder, check editor access
     if (parentId) {
@@ -433,12 +457,13 @@ export async function uploadFileHandler(req, res, next) {
       });
     }
 
-    // Upload to S3-compatible storage
+    // Upload to S3-compatible storage or local disk
     const { storageKey, size } = await uploadFile(
       buffer,
       originalname,
       mimetype,
-      userId
+      userId,
+      storageLocation
     );
 
     // Create node record in database
@@ -452,6 +477,7 @@ export async function uploadFileHandler(req, res, next) {
         mimeType: mimetype,
         sizeBytes: size,
         storageKey,
+        storageLocation,
       })
       .returning();
 
@@ -464,21 +490,12 @@ export async function uploadFileHandler(req, res, next) {
 /**
  * ⭐ POST /api/nodes/quicklink
  * Create a QuickLink — saves an external URL (e.g. Google Drive) as a node.
- *
- * This is the INNOVATIVE FEATURE of EduDrive:
- * Instead of creating a text file with a link inside, students can save
- * external links (Google Drive, Dropbox, YouTube, etc.) directly in their
- * file tree. The link appears as a clickable node with a link icon.
- *
- * Body: { name: "Appunti Fisica", url: "https://drive.google.com/...", parentId? }
- *
- * Database: Creates a node with type='link' and the URL in the `url` column.
- * Frontend: Renders with a 🔗 icon. On click, opens the URL in a new tab.
  */
 export async function createQuickLink(req, res, next) {
   try {
     const userId = req.user.id;
     const { name, url, parentId } = req.body;
+    const storageLocation = req.body.storageLocation || (userId === '00000000-0000-0000-0000-000000000001' ? 'local' : 'cloud');
 
     // If creating inside a folder, check editor access
     if (parentId) {
@@ -489,8 +506,6 @@ export async function createQuickLink(req, res, next) {
     }
 
     // Create the QuickLink node
-    // The key difference from a file: type='link' and url is set
-    // No storage_key needed since nothing is stored in S3
     const [linkNode] = await db
       .insert(nodes)
       .values({
@@ -498,7 +513,8 @@ export async function createQuickLink(req, res, next) {
         parentId: parentId || null,
         name,
         type: 'link',
-        url, // The external URL (e.g. Google Drive link)
+        url,
+        storageLocation,
       })
       .returning();
 
@@ -599,16 +615,16 @@ export async function deleteNode(req, res, next) {
       return res.status(404).json({ error: 'Node not found' });
     }
 
-    if (node.ownerId !== userId) {
+    if (node.ownerId !== userId && userId !== '00000000-0000-0000-0000-000000000001') {
       return res.status(403).json({ error: 'Only the owner can delete nodes' });
     }
 
-    // If it's a file, delete from S3
+    // If it's a file, delete from S3 or local
     if (node.type === 'file' && node.storageKey) {
-      await deleteFile(node.storageKey);
+      await deleteFile(node.storageKey, node.storageLocation);
     }
 
-    // If it's a folder, we need to recursively delete S3 files
+    // If it's a folder, we need to recursively delete files
     if (node.type === 'folder') {
       await deleteChildrenFiles(id);
     }
@@ -624,34 +640,196 @@ export async function deleteNode(req, res, next) {
 
 /**
  * Helper: Find all file storage keys in a folder tree using a recursive CTE,
- * then delete them in parallel. Uses Promise.allSettled so that a single S3
- * failure does not leave remaining files orphaned.
+ * then delete them in parallel.
  */
 async function deleteChildrenFiles(folderId) {
-  // Single query to collect all file storage keys in the subtree
   const result = await db.execute(sql`
     WITH RECURSIVE subtree AS (
-      SELECT id, type, storage_key FROM nodes WHERE parent_id = ${folderId}
+      SELECT id, type, storage_key, storage_location FROM nodes WHERE parent_id = ${folderId}
       UNION ALL
-      SELECT n.id, n.type, n.storage_key
+      SELECT n.id, n.type, n.storage_key, n.storage_location
       FROM nodes n
       INNER JOIN subtree s ON n.parent_id = s.id
     )
-    SELECT storage_key FROM subtree
+    SELECT storage_key, storage_location FROM subtree
     WHERE type = 'file' AND storage_key IS NOT NULL
   `);
 
-  const keys = (result.rows || []).map((r) => r.storage_key).filter(Boolean);
-  if (keys.length === 0) return;
+  const rows = result.rows || [];
+  if (rows.length === 0) return;
 
   const results = await Promise.allSettled(
-    keys.map((key) => deleteFile(key))
+    rows.map((r) => deleteFile(r.storage_key, r.storage_location))
   );
 
-  // Log any partial failures so orphaned files can be cleaned up later
   for (const r of results) {
     if (r.status === 'rejected') {
-      console.warn('⚠️ Failed to delete S3 object:', r.reason?.message || r.reason);
+      console.warn('Failed to delete object:', r.reason?.message || r.reason);
     }
+  }
+}
+
+/**
+ * PUT /api/nodes/:id/storage-location
+ * Sposta la memorizzazione fisica di un file o cartella tra cloud e locale.
+ * Body: { storageLocation: 'local' | 'cloud' }
+ */
+export async function moveStorageLocation(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { storageLocation: targetLocation } = req.body;
+
+    if (!targetLocation || !['local', 'cloud'].includes(targetLocation)) {
+      return res.status(400).json({ error: 'Posizione di memorizzazione non valida (atteso local o cloud)' });
+    }
+
+    const access = await checkAccess(id, userId, 'editor');
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const [node] = await db.select().from(nodes).where(eq(nodes.id, id)).limit(1);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+
+    if (node.storageLocation === targetLocation) {
+      return res.json({ node, message: `L'elemento e' gia' in ${targetLocation}` });
+    }
+
+    if (node.type === 'file') {
+      if (node.storageKey) {
+        const stream = await getFileStream(node.storageKey, node.storageLocation);
+        const chunks = [];
+        for await (const chunk of stream) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        const fileBuffer = Buffer.concat(chunks);
+
+        const { storageKey: newKey, size } = await uploadFile(
+          fileBuffer,
+          node.name,
+          node.mimeType || 'application/octet-stream',
+          node.ownerId,
+          targetLocation
+        );
+
+        await deleteFile(node.storageKey, node.storageLocation);
+
+        const [updated] = await db
+          .update(nodes)
+          .set({
+            storageLocation: targetLocation,
+            storageKey: newKey,
+            sizeBytes: size,
+            updatedAt: new Date(),
+          })
+          .where(eq(nodes.id, id))
+          .returning();
+
+        return res.json({ node: updated });
+      } else {
+        const [updated] = await db
+          .update(nodes)
+          .set({ storageLocation: targetLocation, updatedAt: new Date() })
+          .where(eq(nodes.id, id))
+          .returning();
+        return res.json({ node: updated });
+      }
+    }
+
+    // Se e' una cartella o un quicklink
+    await db
+      .update(nodes)
+      .set({ storageLocation: targetLocation, updatedAt: new Date() })
+      .where(eq(nodes.id, id));
+
+    if (node.type === 'folder') {
+      const subtreeResult = await db.execute(sql`
+        WITH RECURSIVE subtree AS (
+          SELECT id, type, name, mime_type, owner_id, storage_key, storage_location FROM nodes WHERE parent_id = ${id}
+          UNION ALL
+          SELECT n.id, n.type, n.name, n.mime_type, n.owner_id, n.storage_key, n.storage_location
+          FROM nodes n
+          INNER JOIN subtree s ON n.parent_id = s.id
+        )
+        SELECT * FROM subtree
+      `);
+
+      const rows = subtreeResult.rows || [];
+      for (const child of rows) {
+        if (child.storage_location === targetLocation) continue;
+
+        if (child.type === 'file' && child.storage_key) {
+          try {
+            const stream = await getFileStream(child.storage_key, child.storage_location);
+            const chunks = [];
+            for await (const chunk of stream) {
+              chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+            }
+            const fileBuffer = Buffer.concat(chunks);
+
+            const { storageKey: newKey, size } = await uploadFile(
+              fileBuffer,
+              child.name,
+              child.mime_type || 'application/octet-stream',
+              child.owner_id,
+              targetLocation
+            );
+
+            await deleteFile(child.storage_key, child.storage_location);
+
+            await db
+              .update(nodes)
+              .set({
+                storageLocation: targetLocation,
+                storageKey: newKey,
+                sizeBytes: size,
+                updatedAt: new Date(),
+              })
+              .where(eq(nodes.id, child.id));
+          } catch (childErr) {
+            console.warn(`Errore spostamento file ${child.name}:`, childErr.message);
+          }
+        } else {
+          await db
+            .update(nodes)
+            .set({ storageLocation: targetLocation, updatedAt: new Date() })
+            .where(eq(nodes.id, child.id));
+        }
+      }
+    }
+
+    const [finalFolder] = await db.select().from(nodes).where(eq(nodes.id, id)).limit(1);
+    res.json({ node: finalFolder });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/nodes/local-download?key=...
+ * Serves a file stored on the local disk filesystem.
+ */
+export async function localDownloadHandler(req, res, next) {
+  try {
+    const key = req.query.key;
+    if (!key) return res.status(400).json({ error: 'Key parametro mancante' });
+
+    const [node] = await db.select().from(nodes).where(eq(nodes.storageKey, key)).limit(1);
+    if (node) {
+      const access = await checkAccess(node.id, req.user?.id || '00000000-0000-0000-0000-000000000001');
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      if (node.mimeType) res.setHeader('Content-Type', node.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(node.name)}"`);
+    }
+
+    const stream = await getFileStream(key, 'local');
+    stream.pipe(res);
+  } catch (error) {
+    next(error);
   }
 }

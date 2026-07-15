@@ -80,6 +80,43 @@ export function AuthProvider({ children }) {
           ),
         ]);
 
+      const isLocalModeActive =
+        window.location.search.includes('local=true') ||
+        localStorage.getItem('edudrive_local_mode') === 'true' ||
+        import.meta.env.VITE_LOCAL_MODE === 'true';
+
+      if (isLocalModeActive) {
+        localStorage.setItem('edudrive_local_mode', 'true');
+        try {
+          const { data } = await withTimeout(api.post('/auth/local-login'), 3000);
+          if (isMounted) {
+            setAccessToken(data?.accessToken || 'LOCAL_MODE_TOKEN');
+            setUser({
+              ...data.user,
+              isLocalMode: true,
+            });
+            hasAuthenticatedRef.current = true;
+            setLoading(false);
+          }
+          return;
+        } catch {
+          if (isMounted) {
+            setUser({
+              id: '00000000-0000-0000-0000-000000000001',
+              email: 'local@edudrive.local',
+              username: 'dispositivo_locale',
+              displayName: 'Dispositivo Locale (Offline)',
+              isLocalMode: true,
+              storageUsage: { usedBytes: 0, quotaBytes: 1099511627776, percentage: 0 },
+            });
+            setAccessToken('LOCAL_MODE_TOKEN');
+            hasAuthenticatedRef.current = true;
+            setLoading(false);
+          }
+          return;
+        }
+      }
+
       try {
         // --- Phase 1: Handle Google redirect results or existing Firebase sessions ---
         if (isFirebaseConfigured && auth) {
@@ -379,7 +416,11 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get('/auth/me');
       if (data?.user) {
-        setUser(data.user);
+        const isLocal = data.user.id === '00000000-0000-0000-0000-000000000001' || localStorage.getItem('edudrive_local_mode') === 'true';
+        setUser((prev) => ({
+          ...data.user,
+          isLocalMode: prev?.isLocalMode || isLocal || data.user.isLocalMode,
+        }));
         return data.user;
       }
     } catch {
@@ -393,8 +434,46 @@ export function AuthProvider({ children }) {
   const updateProfile = useCallback(async (data) => {
     const { data: responseData } = await api.put('/auth/profile', data);
     if (responseData?.user) {
-      setUser(responseData.user);
+      const isLocal = responseData.user.id === '00000000-0000-0000-0000-000000000001' || localStorage.getItem('edudrive_local_mode') === 'true';
+      setUser((prev) => ({
+        ...responseData.user,
+        isLocalMode: prev?.isLocalMode || isLocal || responseData.user.isLocalMode,
+      }));
       return responseData.user;
+    }
+  }, []);
+
+  /**
+   * Log in in Local mode (offline/device server).
+   */
+  const loginAsLocal = useCallback(async () => {
+    localStorage.setItem('edudrive_local_mode', 'true');
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/local-login');
+      const localProfile = {
+        ...data.user,
+        isLocalMode: true,
+      };
+      setAccessToken(data?.accessToken || 'LOCAL_MODE_TOKEN');
+      setUser(localProfile);
+      hasAuthenticatedRef.current = true;
+      return localProfile;
+    } catch {
+      const localProfile = {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'local@edudrive.local',
+        username: 'dispositivo_locale',
+        displayName: 'Dispositivo Locale (Offline)',
+        isLocalMode: true,
+        storageUsage: { usedBytes: 0, quotaBytes: 1099511627776, percentage: 0 },
+      };
+      setAccessToken('LOCAL_MODE_TOKEN');
+      setUser(localProfile);
+      hasAuthenticatedRef.current = true;
+      return localProfile;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -402,6 +481,13 @@ export function AuthProvider({ children }) {
    * Log out -- clear state and server-side cookie.
    */
   const logout = useCallback(async () => {
+    localStorage.removeItem('edudrive_local_mode');
+    if (user?.isLocalMode) {
+      hasAuthenticatedRef.current = false;
+      setUser(null);
+      setAccessToken(null);
+      return;
+    }
     try {
       // Sign out of Firebase as well to prevent onAuthStateChanged from restoring session
       if (auth) {
@@ -415,12 +501,13 @@ export function AuthProvider({ children }) {
     hasAuthenticatedRef.current = false;
     setUser(null);
     setAccessToken(null);
-  }, []);
+  }, [user]);
 
   const value = {
     user,
     loading,
     login,
+    loginAsLocal,
     register,
     logout,
     loginWithGoogle,

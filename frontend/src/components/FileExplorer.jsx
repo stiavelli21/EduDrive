@@ -23,6 +23,7 @@ export default function FileExplorer({
   onShare,
   onRename,
   onDownload,
+  onMoveStorage,
 }) {
   // Loading skeleton
   if (loading) {
@@ -64,6 +65,7 @@ export default function FileExplorer({
           onShare={() => onShare && onShare(node)}
           onRename={() => onRename && onRename(node)}
           onDownload={() => onDownload && onDownload(node)}
+          onMoveStorage={(targetLocation) => onMoveStorage && onMoveStorage(node, targetLocation)}
         />
       ))}
     </div>
