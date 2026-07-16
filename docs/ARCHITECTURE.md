@@ -1,4 +1,4 @@
-# ARCHITECTURE.md - Mappa Architetturale e Riferimento Rapido (EduDrive)
+# docs/ARCHITECTURE.md - Mappa Architetturale e Riferimento Rapido (EduDrive)
 
 ## 1. Stack Tecnologico e Flusso Dati
 - **Frontend**: React 18 + Vite (`frontend/src/`), stili in `index.css`, chiamate HTTP centralizzate in `services/api.js`.
@@ -62,4 +62,4 @@
 - `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`EduDrive.exe` / installer NSIS).
 
 ## 4. Regola di Manutenzione Architetturale
-- Ad ogni modifica strutturale (nuovi file, endpoint o servizi), **aggiorna tempestivamente questo file (`ARCHITECTURE.md`)** prima di chiudere il turno per mantenere la codebase sincronizzata.
+- Ad ogni modifica strutturale (nuovi file, endpoint o servizi), **aggiorna tempestivamente questo file (`docs/ARCHITECTURE.md`)** prima di chiudere il turno per mantenere la codebase sincronizzata.

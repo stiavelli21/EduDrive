@@ -40,5 +40,5 @@
 ## Come Proporre e Sviluppare una Nuova Idea
 
 1. **Scegli o Proponi**: Aggiungi una nuova idea a questo file o scegline una esistente.
-2. **Crea il Backend**: Segui le istruzioni nel [README.md](./README.md#%EF%B8%8F-sviluppa-il-tuo-primo-plugin) per creare rotta e controller nel backend.
+2. **Crea il Backend**: Segui le istruzioni nel [README.md](../README.md#%EF%B8%8F-sviluppa-il-tuo-primo-plugin) per creare rotta e controller nel backend.
 3. **Collega il Frontend**: Aggiungi il nuovo componente o pulsante nella UI di React per rendere la tua idea realtà!

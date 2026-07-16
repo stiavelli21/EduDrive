@@ -168,15 +168,15 @@ EduDrive è progettato per essere espanso facilmente dagli studenti. Per aggiung
    app.use('/api/tuo-plugin', pluginRoutes);
    ```
 
-**Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./IDEE.md) per scoprire proposte pronte per essere sviluppate!
+**Cerchi ispirazione per un plugin?** Leggi [IDEE.md](./docs/IDEE.md) per scoprire proposte pronte per essere sviluppate!
 
 ---
 
 ## Documentazione & Linee Guida AI
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Mappa strutturale e flusso dei dati dell'applicazione.
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)**: Mappa strutturale e flusso dei dati dell'applicazione.
 - **[.agents/AGENTS.md](./.agents/AGENTS.md)**: Regole per assistenti AI, convenzioni sullo stile del codice e filosofia UI (Design system `index.css` ed estetica intuitiva essenziale).
-- **Divieto Assoluto di Emoji (Zero Emoji Policy)**: È rigorosamente vietato agli assistenti AI inserire emoji all'interno del codice sorgente, dei commenti, dei messaggi di commit e di **qualsiasi file di documentazione `.md`** (`README.md`, `ARCHITECTURE.md`, `IDEE.md`, ecc.), salvo esplicita richiesta contraria dell'utente.
+- **Divieto Assoluto di Emoji (Zero Emoji Policy)**: È rigorosamente vietato agli assistenti AI inserire emoji all'interno del codice sorgente, dei commenti, dei messaggi di commit e di **qualsiasi file di documentazione `.md`** (`README.md`, `docs/ARCHITECTURE.md`, `docs/IDEE.md`, ecc.), salvo esplicita richiesta contraria dell'utente.
 
 ---
 

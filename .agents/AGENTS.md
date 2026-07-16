@@ -5,7 +5,7 @@
 1. **Divieto Totale su Codice, Documentazione (.md) e Git**:
    - È **rigorosamente vietato** inserire emoji o simboli grafici speciali all'interno di:
      - **Codice sorgente**: file `.js`, `.jsx`, `.rs`, `.sql`, `.json`, ecc. (inclusi commenti, stringhe, costanti e log `console.log`).
-     - **File di documentazione Markdown**: `README.md`, `ARCHITECTURE.md`, `IDEE.md`, `.agents/AGENTS.md` e qualsiasi altro file `.md`.
+     - **File di documentazione Markdown**: `README.md`, `docs/ARCHITECTURE.md`, `docs/IDEE.md`, `.agents/AGENTS.md` e qualsiasi altro file `.md`.
      - **Messaggi di commit Git** e risposte testuali o artefatti di documentazione.
    - **Unica Eccezione**: Solo ed esclusivamente qualora l'utente lo richieda *esplicitamente* nel prompt per una specifica necessità funzionale dell'interfaccia utente.
 
@@ -16,11 +16,11 @@
 2. **Espressione del Dubbio e Offerta di Alternative**:
    - Se una richiesta esplicita compromette coerenza estetica (palette fuori standard), leggibilità o best practice, **soddisfa la richiesta ma esprimi chiaramente il tuo dubbio tecnico/estetico**, proponendo alternative ottimizzate e lasciando all'utente la decisione finale.
 
-## 2. Aggiornamento Documentazione (`ARCHITECTURE.md` e `README.md`)
+## 2. Aggiornamento Documentazione (`docs/ARCHITECTURE.md` e `README.md`)
 
-1. **Mantenimento Continuo di `ARCHITECTURE.md`**:
-   - Ad ogni modifica strutturale (nuovi endpoint, controller, componenti, servizi o cambi al flusso dati), **DEVI verificare e aggiornare `ARCHITECTURE.md`** prima di concludere il turno.
-   - **Orientamento Pre-Modifica**: Consulta prima `ARCHITECTURE.md` per individuare i file target prima di lanciare ricerche generiche (`list_dir` / `grep_search`).
+1. **Mantenimento Continuo di `docs/ARCHITECTURE.md`**:
+   - Ad ogni modifica strutturale (nuovi endpoint, controller, componenti, servizi o cambi al flusso dati), **DEVI verificare e aggiornare `docs/ARCHITECTURE.md`** prima di concludere il turno.
+   - **Orientamento Pre-Modifica**: Consulta prima `docs/ARCHITECTURE.md` per individuare i file target prima di lanciare ricerche generiche (`list_dir` / `grep_search`).
 2. **Allineamento di `README.md`**:
    - Aggiorna tempestivamente `README.md` se aggiungi nuove funzionalità principali, modifichi lo stack o se le istruzioni di avvio/configurazione cambiano. Rispettando sempre il Divieto di Emoji.
 
