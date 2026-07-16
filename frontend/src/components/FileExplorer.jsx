@@ -65,7 +65,14 @@ export default function FileExplorer({
           onShare={() => onShare && onShare(node)}
           onRename={() => onRename && onRename(node)}
           onDownload={() => onDownload && onDownload(node)}
-          onMoveStorage={(targetLocation) => onMoveStorage && onMoveStorage(node, targetLocation)}
+          onMoveStorage={(arg1, arg2) => {
+            if (!onMoveStorage) return;
+            if (typeof arg1 === 'string') {
+              onMoveStorage(node, arg1);
+            } else {
+              onMoveStorage(arg1 || node, arg2);
+            }
+          }}
         />
       ))}
     </div>

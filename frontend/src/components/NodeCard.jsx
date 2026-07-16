@@ -189,67 +189,105 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
       className="glass-card p-4 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-visible transition-all hover:scale-[1.02]"
       onClick={onClick}
     >
-      {/* Public / Info badges */}
-      <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20">
-        {node.isPublic && (
+      {/* Public badge */}
+      {node.isPublic && (
+        <div className="absolute top-2 left-9 z-20">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm"
             title="Pubblico -- Accessibile a tutti"
           >
             <Globe className="w-3 h-3" />
             <span>Pubblico</span>
           </span>
-        )}
+        </div>
+      )}
 
-        {hasInfoContent && (
-          <div
-            className="relative inline-flex items-center"
-            onMouseEnter={handleInfoMouseEnter}
-            onMouseLeave={handleInfoMouseLeave}
-          >
-            <button
-              type="button"
-              className={`p-1 rounded-md transition-all ${showInfo || hasDescription ? 'opacity-100 text-brand-600 bg-surface-300/80' : 'opacity-0 group-hover:opacity-100 text-text-muted hover:bg-surface-300'
-                }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
-                setShowInfo(!showInfo);
-              }}
-            >
-              <Info className="w-4 h-4" />
-            </button>
+      {/* Local / Server symbol (always fixed in top-left) */}
+      <div
+        className={`absolute left-2 z-20 transition-all duration-200 ease-in-out ${
+          hasDescription
+            ? 'top-[34px]'
+            : hasInfoContent
+            ? 'top-2 group-hover:top-[34px]'
+            : 'top-2'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onMoveStorage) onMoveStorage(node, isLocal ? 'cloud' : 'local');
+          }}
+          title={isLocal ? 'Salvato in locale' : 'Salvato sul server'}
+          className="group/loc relative p-1 rounded-md transition-all text-text-muted hover:bg-surface-300 hover:text-text-primary"
+        >
+          {isLocal ? (
+            <HardDrive className="w-4 h-4" />
+          ) : (
+            <Cloud className="w-4 h-4" />
+          )}
 
-            {/* Description Popover */}
-            {showInfo && (
-              <div
-                className="absolute top-7 left-0 bg-surface-100/95 backdrop-blur-md border border-surface-300 rounded-xl p-3 shadow-2xl z-30 text-left w-[200px] max-w-[80vw] animate-fadeIn cursor-default pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-                onMouseEnter={handleInfoMouseEnter}
-                onMouseLeave={handleInfoMouseLeave}
-              >
-                {hasDescription && (
-                  <>
-                    <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                      <Info className="w-3 h-3 text-brand-500" />
-                      <span>Descrizione</span>
-                    </div>
-                    <p className="text-xs text-text-secondary leading-relaxed break-words font-normal">
-                      {node.description}
-                    </p>
-                  </>
-                )}
-                {hasSize && (
-                  <div className={`${hasDescription ? 'mt-2 pt-2 border-t border-surface-300' : ''} flex items-center justify-between text-xs gap-2`}>
-                    <span className="text-text-muted font-medium">Dimensione:</span>
-                    <span className="text-text-primary font-semibold">{formatSize(node.sizeBytes)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+          {/* Tooltip on hover */}
+          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-surface-100/95 border border-surface-300 text-xs font-medium text-text-primary shadow-xl whitespace-nowrap opacity-0 group-hover/loc:opacity-100 transition-opacity z-40">
+            {isLocal ? 'Salvato in locale' : 'Salvato sul server'}
+          </span>
+        </button>
       </div>
+
+      {/* Info ("i") button (in top-left when present/hovered) */}
+      {hasInfoContent && (
+        <div
+          className="absolute top-2 left-2 z-20 inline-flex items-center"
+          onMouseEnter={handleInfoMouseEnter}
+          onMouseLeave={handleInfoMouseLeave}
+        >
+          <button
+            type="button"
+            className={`p-1 rounded-md transition-all ${
+              showInfo
+                ? 'opacity-100 text-brand-600 bg-surface-300/80'
+                : hasDescription
+                ? 'opacity-100 text-text-muted hover:bg-surface-300 hover:text-text-primary'
+                : 'opacity-0 group-hover:opacity-100 text-text-muted hover:bg-surface-300 hover:text-text-primary'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+              setShowInfo(!showInfo);
+            }}
+          >
+            <Info className="w-4 h-4" />
+          </button>
+
+          {/* Description Popover */}
+          {showInfo && (
+            <div
+              className="absolute top-7 left-0 bg-surface-100/95 backdrop-blur-md border border-surface-300 rounded-xl p-3 shadow-2xl z-30 text-left w-[200px] max-w-[80vw] animate-fadeIn cursor-default pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={handleInfoMouseEnter}
+              onMouseLeave={handleInfoMouseLeave}
+            >
+              {hasDescription && (
+                <>
+                  <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                    <Info className="w-3 h-3 text-brand-500" />
+                    <span>Descrizione</span>
+                  </div>
+                  <p className="text-xs text-text-secondary leading-relaxed break-words font-normal">
+                    {node.description}
+                  </p>
+                </>
+              )}
+              {hasSize && (
+                <div className={`${hasDescription ? 'mt-2 pt-2 border-t border-surface-300' : ''} flex items-center justify-between text-xs gap-2`}>
+                  <span className="text-text-muted font-medium">Dimensione:</span>
+                  <span className="text-text-primary font-semibold">{formatSize(node.sizeBytes)}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Context Menu Button */}
       <button
@@ -346,42 +384,14 @@ export default function NodeCard({ node, onClick, onDelete, onShare, onRename, o
         {node.name}
       </p>
 
-      {/* Storage location & permission badges */}
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-        {isLocal ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onMoveStorage) onMoveStorage(node, 'cloud');
-            }}
-            title="Clicca per spostare sul server"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors cursor-pointer"
-          >
-            <HardDrive className="w-3 h-3" />
-            Locale
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onMoveStorage) onMoveStorage(node, 'local');
-            }}
-            title="Clicca per spostare in locale"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 transition-colors cursor-pointer"
-          >
-            <Cloud className="w-3 h-3" />
-            Server
-          </button>
-        )}
-
-        {node.permissionLevel && (
+      {/* Permission badge */}
+      {node.permissionLevel && (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand-50 text-brand-700 border border-brand-200">
             {node.permissionLevel}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

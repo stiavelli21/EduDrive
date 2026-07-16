@@ -3,9 +3,7 @@
 > **Il cloud storage open source fatto dagli studenti, per gli studenti.**
 > Condividi appunti, organizza documenti e salva risorse esterne in un unico spazio di studio collaborativo.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-Active-success.svg)
-![Theme](https://img.shields.io/badge/UI-Light_%26_Blue-2563eb.svg)
+![Anteprima Interfaccia EduDrive](docs/images/dashboard.png)
 
 ---
 

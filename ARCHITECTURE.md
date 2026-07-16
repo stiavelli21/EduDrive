@@ -22,7 +22,7 @@
 | Funzionalità / Dominio | Moduli Backend Competenti | Moduli Frontend Competenti |
 | :--- | :--- | :--- |
 | **Autenticazione & Google Auth (Esclusivo / Locale)** | `routes/auth.routes.js` (`POST /google`, `POST /local-login`, `PUT /profile`, `/google/desktop`)<br>`controllers/auth.controller.js` (`googleLogin`, `localLogin` per accesso offline, `updateProfile`)<br>`utils/jwt.js`<br>`middleware/auth.middleware.js` (`LOCAL_MODE_TOKEN`) | `services/firebase.js`<br>`context/AuthContext.jsx` (`loginWithGoogle`, `loginAsLocal`, check `isLocalModeActive`)<br>`pages/LoginPage.jsx` (Opzione Google e Locale Offline) |
-| **CRUD File, Upload & Download (Cloud / Locale)** | `routes/nodes.routes.js` (`/local-download`, `/:id/storage-location`)<br>`controllers/nodes.controller.js` (`localDownloadHandler`, `moveStorageLocation`) | `components/FileExplorer.jsx`<br>`components/NodeCard.jsx` (Badge e spostamento 1-clic Locale/Server)<br>`components/UploadButton.jsx` |
+| **CRUD File, Upload & Download (Cloud / Locale)** | `routes/nodes.routes.js` (`/local-download`, `/:id/storage-location`)<br>`controllers/nodes.controller.js` (`localDownloadHandler`, `moveStorageLocation`) | `components/FileExplorer.jsx`<br>`components/NodeCard.jsx` (Icone in alto a sinistra per info descrizione e storage Locale/Server con tooltip integrati e spostamento 1-clic)<br>`components/UploadButton.jsx` |
 | **Gestione Quota e Profilo Utente (Nome visualizzato)** | `routes/auth.routes.js` (`/storage-usage`, `/profile`)<br>`controllers/auth.controller.js` | `components/StorageProfileModal.jsx` (Modifica nome visualizzato) |
 | **Conversione Markdown (.md/docx/txt)** | `services/conversion.service.js`<br>*(mammoth + turndown / docx)* | `components/MarkdownViewerModal.jsx`<br>`components/DownloadFormatModal.jsx` |
 | **Storage S3 / Cloudflare R2 / Disco Locale** | `services/storage.service.js` (Supporto ibrido S3 `s3Client` e filesystem locale `node:fs` in `local_storage/`) | `services/api.js`<br>`pages/DashboardPage.jsx` (`handleMoveStorage`) |
@@ -56,7 +56,7 @@
 - `services/api.js`: Client HTTP centralizzato verso il backend.
 - `services/firebase.js`: Google Auth (`signInWithPopup` e fallback nativo `signInWithRedirect` per Tauri).
 - `context/AuthContext.jsx`: Stato utente globale (`user`, `token`, `loginWithGoogle`, `loginAsLocal`, check avvio automatico con `isLocalModeActive`).
-- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal` con fetch autenticata resiliente e tentativi multipli su chiavi normalizzate via ID, `local-download` o URL diretta per file locali preesistenti e offline, `StorageProfileModal`, `NodeCard` con indicatori e spostamento rapido tra storage locale e server).
+- `components/`: Componenti modulari (`ShareModal`, `RenameModal`, `DownloadFormatModal`, `MarkdownViewerModal` con fetch autenticata resiliente e tentativi multipli su chiavi normalizzate via ID, `local-download` o URL diretta per file locali preesistenti e offline, `StorageProfileModal`, `NodeCard` con indicatori in alto a sinistra per info e storage Locale/Server e spostamento rapido).
 - `pages/DashboardPage.jsx`: Navigazione nel filesystem e gestione cartelle ottimizzata (disaccoppiamento tra ricaricamento nodi `fetchNodes` e ricaricamento profilo utente `refreshProfile`).
 - `index.css`: Variabili di tema (`--color-brand-*`, `--color-surface-*`, `--color-text-*`).
 - `src-tauri/tauri.conf.json`: Configurazione app nativa Windows (`EduDrive.exe` / installer NSIS).
