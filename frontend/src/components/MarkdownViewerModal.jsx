@@ -64,7 +64,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
         try {
           const res = await api.get(`/nodes/${node.id}/content?inline=true`, { responseType: 'text' });
           const text = typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
-          if (typeof res.data !== 'string' || (!res.data.trim().startsWith('<!DOCTYPE html>') && !res.data.trim().startsWith('<html'))) {
+          if (typeof res.data === 'string' && (!res.data.trim().startsWith('<!DOCTYPE html>') && !res.data.trim().startsWith('<html'))) {
             if (isMounted) {
               setContent(text);
               setLoading(false);
@@ -76,8 +76,8 @@ export default function MarkdownViewerModal({ node, onClose }) {
         }
       }
 
-      // 2. Prova tramite local-download se e' disponibile una storageKey o key (file locale su disco)
-      const storageOrKey = node?.storageKey || node?.key;
+      // 2. Prova tramite local-download se e' disponibile una storageKey o key o url locale
+      const storageOrKey = node?.storageKey || node?.key || node?.url;
       if (storageOrKey) {
         const keysToTry = [...new Set([
           storageOrKey,
@@ -90,7 +90,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
           try {
             const resContent = await api.get(`/nodes/local-download?key=${encodeURIComponent(k)}&inline=true`, { responseType: 'text' });
             const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
-            if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
+            if (typeof resContent.data === 'string' && (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
               if (isMounted) {
                 setContent(text);
                 setLoading(false);
@@ -118,7 +118,7 @@ export default function MarkdownViewerModal({ node, onClose }) {
             const cleanPath = dlUrl.replace(/^\/api\/?/, '/');
             const resContent = await api.get(`${cleanPath}${cleanPath.includes('?') ? '&' : '?'}inline=true`, { responseType: 'text' });
             const text = typeof resContent.data === 'string' ? resContent.data : JSON.stringify(resContent.data, null, 2);
-            if (typeof resContent.data !== 'string' || (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
+            if (typeof resContent.data === 'string' && (!resContent.data.trim().startsWith('<!DOCTYPE html>') && !resContent.data.trim().startsWith('<html'))) {
               if (isMounted) {
                 setContent(text);
                 setLoading(false);

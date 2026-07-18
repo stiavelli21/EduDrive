@@ -135,6 +135,11 @@ export default function DashboardPage() {
     if (node.type === 'folder') {
       navigate(`/folder/${node.id}`);
     } else if (node.type === 'link') {
+      if (node.name?.toLowerCase().endsWith('.md') || node.url?.toLowerCase().endsWith('.md')) {
+        setMarkdownTargetNode(node);
+        setShowMarkdownModal(true);
+        return;
+      }
       if (window.__TAURI_INTERNALS__) {
         import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(node.url)).catch(console.error);
       } else {

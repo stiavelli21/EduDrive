@@ -50,11 +50,28 @@ const LOCAL_STORAGE_DIRS = [
 
 function getNormalizedKeys(storageKey) {
   if (!storageKey) return [];
-  const cleanKey = storageKey.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '');
+  // Strip file:/// prefix if present
+  let cleanKey = storageKey;
+  if (cleanKey.startsWith('file:///')) {
+    cleanKey = cleanKey.replace(/^file:\/\/\//i, '');
+    // On Windows, if the path doesn't start with a drive letter after file:///, we might need to handle it.
+    // But usually file:///C:/... becomes C:/... which is an absolute path.
+  }
+  
+  cleanKey = cleanKey.replace(/^(\.[/\\])?(backend[/\\])?(local_storage[/\\])?/, '').replace(/^[/\\]+/, '');
   const normalizedSlash = cleanKey.replace(/\\/g, '/');
   const normalizedBackslash = cleanKey.replace(/\//g, '\\');
   const baseName = path.basename(normalizedSlash);
-  return [...new Set([storageKey, cleanKey, normalizedSlash, normalizedBackslash, baseName])].filter(Boolean);
+  
+  // Se la stringa originale aveva file:///, aggiungiamo anche la versione decodificata con decodeURI
+  let decodedUri = storageKey;
+  try {
+    if (storageKey.startsWith('file:///')) {
+      decodedUri = decodeURI(storageKey.replace(/^file:\/\/\//i, ''));
+    }
+  } catch(e) {}
+  
+  return [...new Set([storageKey, cleanKey, normalizedSlash, normalizedBackslash, baseName, decodedUri])].filter(Boolean);
 }
 
 function searchFileRecursively(dir, filename, maxDepth) {
@@ -189,6 +206,12 @@ export async function getFileStream(storageKey, storageLocation = 'cloud') {
   const localFile = findLocalFile(storageKey);
   if (localFile) {
     return fs.createReadStream(localFile);
+  }
+
+  // Fast-fail per file locali: se la locazione è locale (o siamo in LOCAL_MODE)
+  // e il file non è stato trovato sul disco, non ha senso provare a scaricarlo da S3.
+  if (storageLocation === 'local' || process.env.LOCAL_MODE === 'true') {
+    throw new Error(`File locale non trovato sul dispositivo: ${storageKey}`);
   }
 
   try {
