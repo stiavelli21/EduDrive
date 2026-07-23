@@ -15,3 +15,6 @@ Thumbs.db
 *.deb
 *.AppImage
 *.apk
+
+# Local storage ignorato
+backend/local_storage/
