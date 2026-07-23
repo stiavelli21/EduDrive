@@ -29,8 +29,8 @@
 | **Frontend** | React 18 + Vite + Tailwind CSS v4 (Tema Light & Blue) + Firebase Auth |
 | **Desktop App & Standalone** | Tauri v2 (Rust + WebView2) e Launcher Standalone (`open-app.js`) |
 | **Backend** | Node.js + Express (REST API modulari con verifica Google ID, JWT e supporto Offline) |
-| **Database** | PostgreSQL locale (Docker) o Cloud Serverless (**Neon.tech**) + Drizzle ORM |
-| **Storage** | Object Storage S3 compatibile (**Cloudflare R2** / MinIO locale) + Hard Disk Locale |
+| **Database** | PostgreSQL locale (Docker) o Cloud Serverless + Drizzle ORM |
+| **Storage** | Object Storage S3 compatibile (es. MinIO locale) + Hard Disk Locale |
 
 ---
 
@@ -108,42 +108,13 @@ Al termine della compilazione troverai due tipi di file:
 
 ---
 
-### 5. Configurazione Cloud & Database (Gratis & Scalabile)
-EduDrive è predisposto per far girare l'intero stack online su servizi cloud ad alte prestazioni:
-- **Backend Node.js**: [Render.com](https://render.com) (Deploy automatico e immediato tramite il blueprint `render.yaml` incluso nella root del progetto)
-- **Database PostgreSQL**: [Neon.tech](https://neon.tech) (Serverless PostgreSQL gratuito)
-- **Storage File S3**: **Cloudflare R2** (10 GB gratis al mese e banda download **illimitata** €0/GB), [Supabase Storage](https://supabase.com) (1 GB gratis per sempre senza carta) o [Backblaze B2](https://www.backblaze.com).
-
-#### A. Setup del Database Cloud (Neon.tech):
-1. Copia la stringa di connessione di Neon.tech in `backend/.env` (es. `DATABASE_URL=postgres://user:pass@ep-xxxx.neon.tech/neondb?sslmode=require`).
-2. Verifica la connessione e il supporto SSL con il comando di diagnostica:
-   ```bash
-   npm run db:test
-   ```
-3. Genera e sincronizza automaticamente tutte le tabelle (`users`, `nodes`, `permissions`) su Neon tramite Drizzle ORM:
-   ```bash
-   npm run db:push
-   ```
-
-#### B. Setup dello Storage Cloud (Cloudflare R2):
-1. Crea un bucket su **Cloudflare R2** chiamato `edudrive-files`.
-2. Genera un Token API R2 (*Oggetto in lettura e scrittura*) per ottenere **Endpoint S3**, **Access Key ID** e **Secret Access Key**.
-3. Configurali nel `backend/.env` (oppure direttamente su Render.com in produzione).
-
-#### C. Deploy Istantaneo del Backend su Render.com:
-1. Carica il progetto su una tua repository GitHub.
-2. Vai su **Render.com** -> **New** -> **Blueprint** e seleziona il tuo repository.
-3. Render leggerà automaticamente il file `render.yaml` creando all'istante il servizio backend e chiedendoti solo di incollare l'URL del database Neon e le chiavi di Cloudflare R2!
-
----
-
-### 6. Autenticazione Esclusiva con Google Auth & Nome Utente
+### 5. Autenticazione Esclusiva con Google Auth & Nome Utente
 EduDrive offre agli studenti l'accesso istantaneo, protetto e moderno ad un clic tramite il pulsante **"Accedi con Google / Continua con Google"**, alimentato da **Firebase Authentication**:
 - **Zero Password Classiche**: Per garantire la massima sicurezza e semplicità, la classica modalità di registrazione ed accesso con email/password è stata rimossa, adottando un flusso 100% Google-driven.
 - **Nome Utente Personalizzato (@username)**: Oltre al Nome Visualizzato e alla foto profilo estratti dall'account Google, ogni studente può definire dalla modale del profilo il proprio **Nome Utente (@username)** univoco (da 3 a 50 caratteri), utile per farsi identificare facilmente nel workspace e nelle condivisioni cartelle.
 - **Su Web Browser**: Utilizza il popup nativo e immediato (`signInWithPopup`) per completare l'accesso in frazioni di secondo senza ricaricare la pagina.
 - **Su App Desktop Windows (`.exe` Tauri WebView2)**: Se il popup viene bloccato dalle protezioni del sistema operativo o della WebView, l'app attiva il **fallback automatico al reindirizzamento (`signInWithRedirect`)**, avvalendosi di un listener in tempo reale (`onAuthStateChanged`) per ripristinare e loggare l'utente nel cloud al momento del rientro nell'applicazione.
-- **Sicurezza Backend**: I token JWT di Google vengono validati crittograficamente sul backend Node.js (`POST /api/auth/google`), associando automaticamente la sessione e lo username alla tabella `users` di PostgreSQL su Neon.tech.
+- **Sicurezza Backend**: I token JWT di Google vengono validati crittograficamente sul backend Node.js (`POST /api/auth/google`), associando automaticamente la sessione e lo username alla tabella `users` di PostgreSQL.
 
 ---
 

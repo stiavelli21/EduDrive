@@ -24,17 +24,7 @@
 2. **Allineamento di `README.md`**:
    - Aggiorna tempestivamente `README.md` se aggiungi nuove funzionalità principali, modifichi lo stack o se le istruzioni di avvio/configurazione cambiano. Rispettando sempre il Divieto di Emoji.
 
-## 3. Stack Cloud Ufficiale (`Neon.tech`, `Cloudflare R2`, `Render.com`)
-
-1. **Stack Tecnologico di Produzione Vincolante**:
-   - **Database**: [Neon.tech](https://neon.tech) (PostgreSQL Serverless, SSL obbligatorio, Drizzle ORM).
-   - **Storage File S3**: **Cloudflare R2** (SDK `@aws-sdk/client-s3`, bucket `edudrive-files`).
-   - **Backend API**: [Render.com](https://render.com) (blueprint IaC `render.yaml`).
-2. **Sincronizzazione Proattiva**:
-   - Verifica che ogni modifica al codice (schema DB, storage, `.env`, deploy) sia 100% compatibile con questo stack.
-   - **Avvisa sempre l'utente** se occorre compiere passi cloud manuali (`npm run db:push` su Neon, variabili su Render, policy su R2).
-
-## 4. Stile del Codice e Linee Guida di Sviluppo
+## 3. Stile del Codice e Linee Guida di Sviluppo
 
 1. **Naming e Convenzioni**:
    - Codice in inglese, espressivo e pulito. Usa `camelCase` per funzioni/metodi, `PascalCase` per componenti React (`ShareModal.jsx`), `UPPER_SNAKE_CASE` per costanti e variabili d'ambiente.
@@ -48,7 +38,7 @@
    - **Frontend**: Gestisci sempre i 3 stati asincroni (`loading`, `success`, `error`) con feedback visivo chiaro e immediato.
    - Rimuovi `console.log` di debug temporanei e codice commentato obsoleto. Preserva i commenti documentativi esistenti.
 
-## 5. Stile della UI e Design System (Filosofia ed Estetica)
+## 4. Stile della UI e Design System (Filosofia ed Estetica)
 
 1. **Design Tokens (`index.css`)**:
    - Utilizza **esclusivamente** le variabili globali di `frontend/src/index.css`. Non introdurre colori esadecimali arbitrari (`#xyz`) o utility non a palette salvo override utente.
@@ -61,18 +51,19 @@
    - **Gerarchia e Spaziatura Naturale**: Padding proporzionati (`--radius-md`, `--radius-xl`), font `Inter` e contrasti netti.
    - **Estetica Premium (Glassmorphism & Micro-interazioni)**: Sfrutta `.glass-card` e `.btn-primary` per superfici morbide, ombreggiature sottili e transizioni fluide (`transition-all`).
 
-## 6. Gestione Versioning e Caricamento su GitHub (`git push`)
+## 5. Gestione Versioning e Caricamento su GitHub (`git push`)
 
 1. **Flusso Predefinito di Versionamento Automatico**:
    - Repository remoto: `https://github.com/stiavelli21/EduDrive.git`.
    - Su ordini di salvataggio/push generici (*"carica su github"*, *"fai push"* senza specificare versione), l'assistente AI **DEVE**:
      1. Leggere `"version"` da `/package.json` principale nella root.
      2. **Incrementare automaticamente l'ultimo numero** (es. da `0.1.5.5` a `0.1.5.6`; se si raggiungono le due cifre sull'ultimo numero, si azzera e si incrementa il numero precedente, es: `0.1.6.9` diventa `0.1.7.0`).
-     3. Aggiornare `"version"` in `/package.json`.
+     3. Aggiornare `"version"` in `/package.json` e `/package-lock.json`.
      4. Eseguire `git add .`.
      5. Creare il commit con il messaggio della versione preceduta da `v` (es. `git commit -m "v0.1.5.6"`).
      6. Eseguire il push sul repository remoto (`git push origin main`).
 2. **Gestione Esplicita (Override Utente)**:
    - Se l'utente specifica una versione o messaggio personalizzato (es. *"commit v0.2.0"*), segui esattamente le istruzioni esplicite.
 3. **Aggiornamento Proattivo e Automatico (Quando Necessario)**:
-   - Quando l'assistente rileva o l'utente indica che c'è bisogno di sincronizzare il sistema per far funzionare i servizi online (Render, Cloudflare R2, database Neon), l'assistente AI **DEVE** aggiornare in automatico e proattivamente la repository GitHub eseguendo l'intero flusso predefinito di versionamento automatico.
+   - Quando l'assistente rileva o l'utente indica che c'è bisogno di sincronizzare il sistema per far funzionare i servizi online, l'assistente AI **DEVE** aggiornare in automatico e proattivamente la repository GitHub eseguendo l'intero flusso predefinito di versionamento automatico.
+
