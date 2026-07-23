@@ -27,7 +27,7 @@
 | **Ridenominazione, Colori & Descrizioni** | `controllers/nodes.controller.js` | `components/RenameModal.jsx`<br>`components/NodeCard.jsx` (Colori e icone Markdown)<br>`components/MarkdownViewerModal.jsx`<br>`utils/colors.js` (`MARKDOWN_COLORS`) |
 | **Design System & Stili UI** | N/A | `index.css` (Design tokens `--color-*`)<br>`components/QuickLinkModal.jsx` |
 | **Database & Schema ORM** | `models/schema.js` (`schema.sql`, colonna `username` e `storage_location` per archiviazione locale o cloud)<br>`utils/test-db.js` | N/A |
-| **Configurazione Cloud / Env / Deploy / Avvio Locale** | `render.yaml`<br>`backend/.env`<br>`avvia.bat` (Avvio Docker e app standalone senza login) | `frontend/.env.example` (`VITE_API_URL`)<br>`scripts/open-app.js` (flag `--local`)<br>`build.bat` |
+| **Configurazione Cloud / Env / Deploy / Avvio Locale** | `backend/.env`<br>`avvia.bat` (Avvio Docker e app standalone senza login) | `frontend/.env.example` (`VITE_API_URL`)<br>`scripts/open-app.js` (flag `--local`)<br>`build.bat` |
 
 ## 3. Struttura Dettagliata dei File Principali
 
@@ -35,7 +35,6 @@
 - `package.json`: Script e concurrency (`start:desktop`, `start:local`, `build:desktop`, `dev`, `db:push`).
 - `avvia.bat`: Script di avvio per il dispositivo locale (controlla/avvia Docker Desktop, imposta `LOCAL_MODE=true` e lancia l'app standalone direttamente sui file locali offline senza schermata di login).
 - `scripts/open-app.js`: Apre l'interfaccia in modalità applicazione standalone Chromium/WebKit con supporto al flag `--local`.
-- `render.yaml`: Blueprint IaC per il deploy su Render.com.
 - `docker-compose.yml`: Servizi locali containerizzati (PostgreSQL, MinIO).
 - `.agents/AGENTS.md`: Regole AI (Zero Emoji Policy, stile MVC, design tokens, versioning git automatico).
 

@@ -34,7 +34,7 @@ Autenticazione, autorizzazione, gestione token, superficie di attacco.
 
 ### [Critical] Bypass totale della verifica firma JWT — impersonificazione di qualsiasi utente
 - **File/Riferimento:** `auth.controller.js:382`
-- **Dettagli:** Il percorso primario `verifyIdToken` fallisce quasi sempre per i token Firebase reali (audience/issuer diversi da quelli attesi da `OAuth2Client`), e `GOOGLE_CLIENT_ID` non è nemmeno configurato in `.env.example` / `render.yaml`. Il fallback nel catch decodifica il payload JWT con `Buffer.from(base64)` e si fida di issuer, scadenza ed email — tutti campi controllati dall'attaccante — senza mai verificare la firma crittografica. In produzione questo è il percorso di default, non un caso limite.
+- **Dettagli:** Il percorso primario `verifyIdToken` fallisce quasi sempre per i token Firebase reali (audience/issuer diversi da quelli attesi da `OAuth2Client`), e `GOOGLE_CLIENT_ID` non è nemmeno configurato in `.env.example`. Il fallback nel catch decodifica il payload JWT con `Buffer.from(base64)` e si fida di issuer, scadenza ed email — tutti campi controllati dall'attaccante — senza mai verificare la firma crittografica. In produzione questo è il percorso di default, non un caso limite.
 - **Scenario di fallimento:** Un attaccante costruisce a mano un JWT con payload `{"iss":"...","email":"vittima@scuola.it","exp":<futuro>}` e una firma qualsiasi, lo invia a `POST /api/auth/google`. Il backend lo accetta ed emette token EduDrive validi per l'account della vittima. Impersonificazione completa, zero interazione della vittima.
 - **Correzione:** Verificare sempre la firma: Firebase Admin SDK `verifyIdToken()` per i token Firebase, `OAuth2Client.verifyIdToken` con audience obbligatorio per Google OAuth puro. Rimuovere completamente il ramo che decodifica il payload senza verifica.
 
@@ -73,10 +73,7 @@ Autenticazione, autorizzazione, gestione token, superficie di attacco.
 ## 2. Performance & Colli di Bottiglia (8 finding)
 Cosa rallenta davvero l'app — dal server all'infrastruttura di hosting.
 
-### [High] Render free tier: cold start di 30-60s dopo 15 minuti di inattività
-- **File/Riferimento:** `render.yaml:13`
-- **Dettagli:** Il servizio va in spin-down su inattività; la prima richiesta dopo la pausa (login, apertura app) attende decine di secondi. È probabilmente la causa più diffusa di "lentezza percepita" in assoluto per questo prodotto, e nessun meccanismo di keep-alive è collegato: esiste già `/api/health` ma nulla lo chiama periodicamente.
-- **Correzione:** Ping esterno gratuito ogni 10-14 minuti (GitHub Actions schedulato, UptimeRobot, cron-job.org) verso `/api/health`; oppure piano a pagamento (~7$/mese, always-on). In ogni caso, mostrare in UI "il server si sta risvegliando" durante l'attesa invece di uno spinner muto.
+
 
 ### [High] Upload interi bufferizzati in RAM invece di andare direttamente a R2
 - **File/Riferimento:** `storage.service.js` / `nodes.routes.js:40`
