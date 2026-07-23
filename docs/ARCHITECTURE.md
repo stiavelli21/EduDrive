@@ -4,9 +4,6 @@
 - **Frontend**: React 18 + Vite (`frontend/src/`), stili in `index.css`, chiamate HTTP centralizzate in `services/api.js`.
 - **Desktop App**: Tauri v2 (`frontend/src-tauri/`) con Rust + WebView2.
 - **Backend**: Node.js + Express (`backend/src/`), architettura RESTful a 3 strati (Routes -> Controllers -> Services).
-- **Database & Storage Cloud**: PostgreSQL su **Neon.tech** (Drizzle ORM), Object Storage su **Cloudflare R2** (`storage.service.js`).
-- **Deploy**: Backend su **Render.com** (via `render.yaml`), avvio multiprocesso con `concurrently` (`package.json`).
-
 ```
 [Frontend React / Tauri] 
    └─► `services/api.js` (REST API JSON) 
