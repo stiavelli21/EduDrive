@@ -4,7 +4,7 @@
 
 ---
 
-*Nessuna idea attualmente in lista. Ripartiamo da zero! Aggiungi qui le tue proposte per espandere EduDrive.*
+*Nessuna idea attualmente in lista. Aggiungi qui le tue proposte per espandere EduDrive.*
 
 ---
 

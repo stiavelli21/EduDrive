@@ -26,7 +26,7 @@ Hai diverse opzioni per utilizzare EduDrive sul tuo computer. Assicurati di aver
 Il modo più veloce per usare EduDrive senza internet e senza account:
 - Fai doppio clic su `avvia.bat` nella cartella principale. Questo script farà partire tutto automaticamente.
 
-### 2. Creare l'App Desktop (Connessa al Cloud)
+### 2. Creare l'App Desktop 
 Se hai già configurato un server online e vuoi solo creare l'eseguibile per il tuo PC:
 1. Copia `frontend/.env.example` in `frontend/.env` e inserisci l'URL del tuo server.
 2. Esegui `build.bat` su Windows (o `npm run build:desktop`).
