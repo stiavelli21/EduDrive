@@ -13,7 +13,7 @@ project/
   frontend/       # React + Vite frontend and Tauri desktop app (src-tauri)
   backend/        # Node.js + Express backend, Drizzle ORM, routes/controllers/services
   scripts/        # Helper scripts (open-app.js)
-  .ai/            # this folder
+  .agents/        # this folder
 
 ## Key modules
 - `backend/src/server.js` — responsibility: Express entry point, DB pool initialization. Dependencies: express, pg, drizzle-orm.
