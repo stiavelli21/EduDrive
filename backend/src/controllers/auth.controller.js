@@ -397,69 +397,60 @@ export async function googleLogin(req, res, next) {
   try {
     const { idToken } = req.body;
     if (!idToken) {
-      console.warn('⚠️ [googleLogin] idToken mancante nella richiesta body');
+      console.warn('[googleLogin] idToken mancante nella richiesta body');
       return res.status(400).json({ error: 'ID token di Google mancante' });
     }
 
-    // Decode and verify ID Token
-    // Firebase ID tokens have the Firebase project ID as their audience,
-    // NOT the Firebase App ID. We support both standard Google OAuth tokens
-    // and Firebase Auth tokens (issued by securetoken.google.com).
-    let email, displayName, avatarUrl;
-    try {
-      // Try standard Google OAuth verification with the correct audience.
-      // For Firebase tokens, the audience is the Firebase project ID.
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID || undefined,
+    // Require at least one of GOOGLE_CLIENT_ID or FIREBASE_PROJECT_ID to be set.
+    // Without these, we cannot verify the token signature and must reject.
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
+
+    if (!googleClientId && !firebaseProjectId) {
+      console.error('[googleLogin] Neither GOOGLE_CLIENT_ID nor FIREBASE_PROJECT_ID is configured. Cannot verify token signature.');
+      return res.status(501).json({
+        error: 'Google authentication not configured',
+        message: 'Set GOOGLE_CLIENT_ID and/or FIREBASE_PROJECT_ID in the backend .env to enable Google login. See .env.example for details.',
       });
-      const payload = ticket.getPayload();
-      email = payload?.email;
-      displayName = payload?.name || payload?.given_name || email?.split('@')[0];
-      avatarUrl = payload?.picture;
-      console.log(`✅ [googleLogin] Token verificato con successo via Google OAuth Client: ${email}`);
-    } catch (errPrimary) {
-      // Fallback: verify Firebase ID Token (issued by securetoken.google.com)
-      // The primary verifyIdToken may fail because:
-      //   - GOOGLE_CLIENT_ID is not set (common in dev)
-      //   - The token is a Firebase Auth token, not a standard Google OAuth token
-      const parts = idToken.split('.');
-      if (parts.length !== 3) {
-        console.warn(`⚠️ [googleLogin] Errore verifica primaria (${errPrimary.message}). Il token non ha 3 parti.`);
-        return res.status(401).json({ error: 'Formato ID token non valido.' });
+    }
+
+    // Verify ID Token with cryptographic signature check.
+    // Supports both standard Google OAuth tokens and Firebase Auth tokens.
+    // The audience must match either GOOGLE_CLIENT_ID (for Google OAuth tokens)
+    // or FIREBASE_PROJECT_ID (for Firebase Auth tokens).
+    let email, displayName, avatarUrl;
+
+    // Build the list of accepted audiences
+    const acceptedAudiences = [
+      ...(googleClientId ? [googleClientId] : []),
+      ...(firebaseProjectId ? [firebaseProjectId] : []),
+    ];
+
+    // Try verification with each accepted audience until one succeeds
+    let verified = false;
+    let lastError = null;
+
+    for (const audience of acceptedAudiences) {
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken,
+          audience,
+        });
+        const payload = ticket.getPayload();
+        email = payload?.email;
+        displayName = payload?.name || payload?.given_name || email?.split('@')[0];
+        avatarUrl = payload?.picture;
+        verified = true;
+        console.log(`[googleLogin] Token verified (audience: ${audience}, email: ${email})`);
+        break;
+      } catch (err) {
+        lastError = err;
       }
+    }
 
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-
-      // Validate issuer (must be Firebase securetoken or Google accounts)
-      const validIssuers = [
-        `https://securetoken.google.com/${process.env.FIREBASE_PROJECT_ID || ''}`,
-        'https://accounts.google.com',
-      ];
-      const isValidIssuer = validIssuers.some(
-        (issuer) => issuer && payload.iss && payload.iss === issuer
-      ) || (payload.iss && payload.iss.startsWith('https://securetoken.google.com/'));
-
-      if (!isValidIssuer) {
-        console.warn(`⚠️ [googleLogin] Emittente token non valido. iss ricevuto: "${payload.iss}", attesi o ammessi: ${JSON.stringify(validIssuers)}`);
-        return res.status(401).json({ error: 'Token emittente non riconosciuto.' });
-      }
-
-      // Validate expiration
-      if (!payload.exp || payload.exp * 1000 < Date.now()) {
-        console.warn(`⚠️ [googleLogin] Token scaduto. exp: ${payload.exp}`);
-        return res.status(401).json({ error: 'Token Google/Firebase scaduto.' });
-      }
-
-      if (!payload.email) {
-        console.warn('⚠️ [googleLogin] Token valido ma senza email.');
-        return res.status(401).json({ error: 'Token non contiene un indirizzo email.' });
-      }
-
-      email = payload.email;
-      displayName = payload.name || payload.email.split('@')[0];
-      avatarUrl = payload.picture;
-      console.log(`✅ [googleLogin] Token verificato con successo via Firebase ID Token: ${email}`);
+    if (!verified) {
+      console.warn(`[googleLogin] Token signature verification failed: ${lastError?.message}`);
+      return res.status(401).json({ error: 'Invalid or expired Google/Firebase ID token.' });
     }
 
     if (!email) {

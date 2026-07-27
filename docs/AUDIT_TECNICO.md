@@ -10,7 +10,7 @@
 
 | Gravità | Quantità |
 | :--- | :--- |
-| **Critical** | 2 |
+| **Critical** | ~~2~~ 0 (risolti in v0.2.17) |
 | **High** | 21 |
 | **Medium** | 27 |
 | **Low** | 9 |
@@ -21,8 +21,8 @@
 #### I problemi più critici (Top 5)
 Se puoi risolvere solo cinque cose, sono queste:
 
-1. **Bypass autenticazione Google/Firebase**: Chiunque può impersonare qualsiasi utente. Il fallback di verifica del token Google/Firebase decodifica il JWT senza mai controllarne la firma crittografica — ed è il percorso sempre attivo in produzione, non un caso limite (`auth.controller.js:382-424`).
-2. **CORS eccessivamente permissivo**: La configurazione CORS non protegge nulla. Accetta qualsiasi origin con `credentials:true`: un sito esterno può rubare un access token valido alla semplice visita di una pagina dalla vittima loggata. Trovato indipendentemente da 4 revisori diversi (`app.js:76-97`).
+1. ~~**Bypass autenticazione Google/Firebase**~~ **[Resolved v0.2.17]**: Rimosso il fallback che decodificava il JWT senza verifica firma. Ora tutti i token Google/Firebase vengono verificati crittograficamente tramite `OAuth2Client.verifyIdToken()` con audience obbligatorio (`GOOGLE_CLIENT_ID` e/o `FIREBASE_PROJECT_ID`). Se nessuno dei due e' configurato, il login Google rifiuta con errore 501 esplicativo.
+2. ~~**CORS eccessivamente permissivo**~~ **[Resolved v0.2.17]**: Rimosso il `callback(null, true)` finale che accettava qualsiasi origin. In produzione, solo origin esplicitamente in whitelist sono accettate (Tauri, localhost, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`). Origin sconosciute vengono rifiutate con errore.
 3. **Race condition nella navigazione**: Navigare tra cartelle velocemente mostra i file sbagliati. Nessuna cancellazione delle richieste: una risposta lenta relativa alla cartella precedente può sovrascrivere la vista della cartella corrente, con rischio di azioni (elimina/condividi) sul contenuto sbagliato (`DashboardPage.jsx:62-92`).
 4. **Upload bufferizzati in RAM sul server**: Gli upload passano interi dalla RAM del server invece di andare direttamente a Cloudflare R2 via presigned URL — su un'istanza Render da 512MB, file da 50MB e utenti concorrenti sono una ricetta per OOM.
 5. **Feature assenti o incomplete rispetto al README**: Due feature promesse nel README non esistono affatto: condividere per `@username` (solo email è implementato) e modificare lo username dalla modale profilo (il campo non c'è).
@@ -32,14 +32,14 @@ Se puoi risolvere solo cinque cose, sono queste:
 ## 1. Sicurezza (11 finding)
 Autenticazione, autorizzazione, gestione token, superficie di attacco.
 
-### [Critical] Bypass totale della verifica firma JWT — impersonificazione di qualsiasi utente
-- **File/Riferimento:** `auth.controller.js:382`
-- **Dettagli:** Il percorso primario `verifyIdToken` fallisce quasi sempre per i token Firebase reali (audience/issuer diversi da quelli attesi da `OAuth2Client`), e `GOOGLE_CLIENT_ID` non è nemmeno configurato in `.env.example`. Il fallback nel catch decodifica il payload JWT con `Buffer.from(base64)` e si fida di issuer, scadenza ed email — tutti campi controllati dall'attaccante — senza mai verificare la firma crittografica. In produzione questo è il percorso di default, non un caso limite.
-- **Scenario di fallimento:** Un attaccante costruisce a mano un JWT con payload `{"iss":"...","email":"vittima@scuola.it","exp":<futuro>}` e una firma qualsiasi, lo invia a `POST /api/auth/google`. Il backend lo accetta ed emette token EduDrive validi per l'account della vittima. Impersonificazione completa, zero interazione della vittima.
-- **Correzione:** Verificare sempre la firma: Firebase Admin SDK `verifyIdToken()` per i token Firebase, `OAuth2Client.verifyIdToken` con audience obbligatorio per Google OAuth puro. Rimuovere completamente il ramo che decodifica il payload senza verifica.
+### ~~[Critical]~~ [Resolved v0.2.17] Bypass totale della verifica firma JWT — impersonificazione di qualsiasi utente
+- **File/Riferimento:** `auth.controller.js:396-456`
+- **Dettagli:** Il fallback che decodificava il payload JWT senza verificare la firma crittografica e' stato rimosso completamente. Ora `googleLogin` verifica sempre la firma tramite `OAuth2Client.verifyIdToken()` con audience obbligatorio (`GOOGLE_CLIENT_ID` e/o `FIREBASE_PROJECT_ID`). Se nessuno dei due e' configurato, l'endpoint ritorna 501 con messaggio esplicativo.
+- **Fix applicato:** Rimosso il ramo `Buffer.from(base64url)` che decodificava senza verifica. Introdotto ciclo su `acceptedAudiences` che prova ciascun audience configurato. Se nessuna verifica crittografica ha successo, ritorna 401.
 
-### [Critical] CORS riflette qualsiasi origin con credenziali — furto di token cross-site
-- **File/Riferimento:** `app.js:76-97`
+### ~~[Critical]~~ [Resolved v0.2.17] CORS riflette qualsiasi origin con credenziali — furto di token cross-site
+- **File/Riferimento:** `app.js:85-119`
+- **Fix applicato:** Rimosso il `callback(null, true)` finale. In produzione, solo origin in whitelist esplicita sono accettate. Aggiunta variabile `CORS_ALLOWED_ORIGINS` per origin aggiuntive configurabili via `.env`.
 
 ### [High] Secret JWT di default senza fail-fast in produzione
 - **File/Riferimento:** `jwt.js:12`
@@ -273,6 +273,9 @@ Ricerca web attiva sulle pratiche correnti per lo stack di EduDrive, confrontate
 
 EduDrive non è un prototipo abbandonato a metà: le feature core funzionano davvero, l'architettura backend rispetta la separazione a strati che il team stesso si è imposto, il calcolo dei breadcrumb è più elegante di quanto ci si aspetterebbe da un progetto di questa scala, e alcune scelte di sicurezza (token in memoria, refresh in cookie `httpOnly`, OAuth desktop via browser di sistema) sono già corrette. È un progetto scritto da chi capisce cosa sta facendo.
 
-Ma oggi, con utenti reali, il rischio più grande non è la lentezza percepita del cold-start — è che chiunque può impersonare qualsiasi account con una richiesta HTTP forgiata a mano, e la configurazione CORS che dovrebbe essere la seconda linea di difesa non blocca letteralmente nulla. Sono due bug, non due mesi di lavoro: si sistemano entrambi nel giro di un pomeriggio, e vanno sistemati prima di qualunque altra cosa in questa lista, inclusi i miglioramenti di performance e le feature mancanti.
+**Aggiornamento v0.2.17 (27 luglio 2026):** I due problemi critici identificati nell'audit sono stati risolti:
+- Il bypass della verifica firma JWT è stato eliminato: ora tutti i token Google/Firebase vengono verificati crittograficamente tramite `OAuth2Client.verifyIdToken()` con audience obbligatorio.
+- La configurazione CORS è stata blindata: in produzione, solo origin esplicitamente in whitelist vengono accettate. Una nuova variabile `CORS_ALLOWED_ORIGINS` permette configurazione flessibile senza toccare il codice.
+- L'autenticazione Google/Firebase è ora completamente pluggabile: altri utenti possono collegare il proprio progetto Firebase configurando le variabili `.env` senza modificare il codice sorgente.
 
-Con quei due fix e i quattro-cinque interventi "breve termine" più urgenti (rotation dei token, upload via presigned URL, rate limiting, cache lato client), EduDrive passa da "demo convincente con una porta sul retro spalancata" a "prodotto usabile in produzione da un gruppo di studenti reali". Il resto — codice morto, duplicazioni, mancanza di test — è debito tecnico normale per un progetto a questo stadio, non un'emergenza.
+Con questi fix e i quattro-cinque interventi "breve termine" più urgenti (rotation dei token, upload via presigned URL, rate limiting, cache lato client), EduDrive passa da "demo convincente" a "prodotto usabile in produzione da un gruppo di studenti reali". Il resto — codice morto, duplicazioni, mancanza di test — è debito tecnico normale per un progetto a questo stadio, non un'emergenza.

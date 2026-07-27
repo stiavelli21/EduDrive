@@ -83,24 +83,36 @@ app.set('trust proxy', 1);
 // --- Global Middleware -------------------------------------------------------
 
 // CORS — allow the frontend origin (Web and native Tauri Desktop .exe)
+// In production, only explicitly whitelisted origins are accepted.
+// Set CORS_ALLOWED_ORIGINS in .env for additional origins (comma-separated).
+const extraCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests without origin header (mobile apps, Tauri native fetch, curl)
       if (!origin) return callback(null, true);
 
+      // In development, allow everything for convenience
+      if (process.env.NODE_ENV !== 'production') return callback(null, true);
+
       // Check against allowed local and Tauri schemes
       if (
         origin.startsWith('tauri://') ||
-        origin.startsWith('http://localhost:') ||
         origin.startsWith('https://tauri.localhost') ||
+        origin.startsWith('http://localhost:') ||
         origin === process.env.FRONTEND_URL ||
         (process.env.FRONTEND_URL && origin.startsWith(process.env.FRONTEND_URL)) ||
-        process.env.NODE_ENV !== 'production'
+        extraCorsOrigins.includes(origin)
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Allow across standard student deployments
+
+      // Reject all other origins in production
+      return callback(new Error(`CORS: origin '${origin}' not allowed`), false);
     },
     credentials: true, // Required for httpOnly cookies (refresh token)
   })
