@@ -10,6 +10,7 @@ import {
   Trash2,
   PieChart,
   Trash,
+  Globe,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onNewFolder: () => void;
   onUploadFiles: () => void;
+  onNewLink: () => void;
   onEmptyTrash: () => void;
   onOpenStorageModal: () => void;
   stats: StorageStats | null;
@@ -27,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onViewModeChange,
   onNewFolder,
   onUploadFiles,
+  onNewLink,
   onEmptyTrash,
   onOpenStorageModal,
   stats,
@@ -88,6 +91,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <Upload className="w-4 h-4 text-blue-600" />
                 <span>Carica file...</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onNewLink();
+                }}
+                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-cyan-600"
+              >
+                <Globe className="w-4 h-4 text-cyan-600" />
+                <span>Nuovo link web</span>
               </button>
             </div>
           </div>

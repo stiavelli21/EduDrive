@@ -1,7 +1,7 @@
 import React from 'react';
 import { DriveItem } from '../../types';
 import { formatBytes, formatDate, getFileTypeInfo } from '../../utils/formatters';
-import { Info, X, HardDrive, Calendar, Clock, Tag } from 'lucide-react';
+import { Info, X, HardDrive, Calendar, Clock, Tag, Globe, ExternalLink } from 'lucide-react';
 
 interface DetailsModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export const DetailsModal: React.FC<DetailsModalProps> = ({
   if (!isOpen || !item) return null;
 
   const typeInfo = getFileTypeInfo(item.name, item.isFolder, item.mimeType);
+  const isWebLink = item.mimeType === 'url';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fade-in">
@@ -52,14 +53,30 @@ export const DetailsModal: React.FC<DetailsModalProps> = ({
           </div>
 
           <div className="space-y-2.5 text-sm">
-            {!item.isFolder && (
+            {isWebLink ? (
+              <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                <span className="text-gray-500 flex items-center gap-2">
+                  <Globe className="w-4 h-4" /> Indirizzo Web
+                </span>
+                <a
+                  href={item.storagePath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-cyan-600 hover:underline max-w-[200px] truncate flex items-center gap-1"
+                  title={item.storagePath}
+                >
+                  <span className="truncate">{item.storagePath}</span>
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                </a>
+              </div>
+            ) : !item.isFolder ? (
               <div className="flex items-center justify-between py-2 border-b border-gray-100">
                 <span className="text-gray-500 flex items-center gap-2">
                   <HardDrive className="w-4 h-4" /> Dimensione
                 </span>
                 <span className="font-medium text-gray-800">{formatBytes(item.sizeBytes)}</span>
               </div>
-            )}
+            ) : null}
 
             <div className="flex items-center justify-between py-2 border-b border-gray-100">
               <span className="text-gray-500 flex items-center gap-2">

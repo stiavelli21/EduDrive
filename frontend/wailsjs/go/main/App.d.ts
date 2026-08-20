@@ -4,6 +4,8 @@ import {models} from '../models';
 
 export function CreateFolder(arg1:string,arg2:string):Promise<models.Item>;
 
+export function CreateWebLink(arg1:string,arg2:string,arg3:string):Promise<models.Item>;
+
 export function DeleteItem(arg1:string,arg2:boolean):Promise<void>;
 
 export function EmptyTrash():Promise<void>;

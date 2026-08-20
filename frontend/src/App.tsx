@@ -12,6 +12,7 @@ import {
   ListItems,
   GetBreadcrumbs,
   CreateFolder,
+  CreateWebLink,
   ImportFiles,
   ImportFileByPath,
   SaveFileFromBase64,
@@ -36,6 +37,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { DropOverlay } from './components/DropOverlay';
 
 import { NewFolderModal } from './components/Modals/NewFolderModal';
+import { NewLinkModal } from './components/Modals/NewLinkModal';
 import { RenameModal } from './components/Modals/RenameModal';
 import { ConfirmModal } from './components/Modals/ConfirmModal';
 import { DetailsModal } from './components/Modals/DetailsModal';
@@ -88,6 +90,7 @@ export const App: React.FC = () => {
 
   // Modal States
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
+  const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
   const [renameModalItem, setRenameModalItem] = useState<DriveItem | null>(null);
   const [detailsModalItem, setDetailsModalItem] = useState<DriveItem | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
@@ -154,7 +157,7 @@ export const App: React.FC = () => {
     setSelectedItem(null);
   };
 
-  // Navigate into Folder
+  // Navigate into Folder or Open File / Link
   const handleOpenItem = async (item: DriveItem) => {
     if (item.isFolder) {
       setSearchQuery('');
@@ -162,10 +165,13 @@ export const App: React.FC = () => {
       setViewMode('drive');
       setSelectedItem(null);
     } else {
-      // Open file with default OS application
       try {
         await OpenFileLocally(item.id);
-        addToast('info', 'Apertura in corso...', `Apertura di "${item.name}" con l'applicazione di sistema.`);
+        if (item.mimeType === 'url') {
+          addToast('info', 'Apertura link...', `Apertura di "${item.name}" nel browser predefinito.`);
+        } else {
+          addToast('info', 'Apertura in corso...', `Apertura di "${item.name}" con l'applicazione di sistema.`);
+        }
       } catch (err: any) {
         addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il file.');
       }
@@ -197,6 +203,17 @@ export const App: React.FC = () => {
       loadData();
     } catch (err: any) {
       addToast('error', 'Errore nella creazione', err?.toString() || 'Impossibile creare la cartella.');
+    }
+  };
+
+  // Create Web Link
+  const handleCreateWebLink = async (name: string, url: string) => {
+    try {
+      await CreateWebLink(name, url, currentFolderId);
+      addToast('success', 'Collegamento creato', `Il collegamento "${name}" è stato aggiunto con successo.`);
+      loadData();
+    } catch (err: any) {
+      addToast('error', 'Errore nella creazione', err?.toString() || 'Impossibile creare il collegamento web.');
     }
   };
 
@@ -434,6 +451,7 @@ export const App: React.FC = () => {
           onViewModeChange={handleViewModeChange}
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onUploadFiles={handleUploadFiles}
+          onNewLink={() => setIsNewLinkModalOpen(true)}
           onEmptyTrash={handleEmptyTrash}
           onOpenStorageModal={() => setIsStorageModalOpen(true)}
           stats={storageStats}
@@ -510,6 +528,12 @@ export const App: React.FC = () => {
         isOpen={isNewFolderModalOpen}
         onClose={() => setIsNewFolderModalOpen(false)}
         onCreate={handleCreateFolder}
+      />
+
+      <NewLinkModal
+        isOpen={isNewLinkModalOpen}
+        onClose={() => setIsNewLinkModalOpen(false)}
+        onCreate={handleCreateWebLink}
       />
 
       <RenameModal

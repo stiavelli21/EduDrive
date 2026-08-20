@@ -6,6 +6,10 @@ export function CreateFolder(arg1, arg2) {
   return window['go']['main']['App']['CreateFolder'](arg1, arg2);
 }
 
+export function CreateWebLink(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateWebLink'](arg1, arg2, arg3);
+}
+
 export function DeleteItem(arg1, arg2) {
   return window['go']['main']['App']['DeleteItem'](arg1, arg2);
 }

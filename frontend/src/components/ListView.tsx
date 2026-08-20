@@ -104,7 +104,7 @@ export const ListView: React.FC<ListViewProps> = ({
                   </td>
 
                   <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                    {item.isFolder ? '-' : formatBytes(item.sizeBytes)}
+                    {item.isFolder || item.mimeType === 'url' ? '-' : formatBytes(item.sizeBytes)}
                   </td>
 
                   <td className="px-4 py-3 text-gray-500 text-xs">

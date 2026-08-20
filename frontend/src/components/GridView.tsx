@@ -165,7 +165,13 @@ export const GridView: React.FC<GridViewProps> = ({
 
                   {/* Footer with size and date */}
                   <div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                    <span>{formatBytes(file.sizeBytes)}</span>
+                    {file.mimeType === 'url' ? (
+                      <span className="text-cyan-600 font-medium truncate max-w-[100px]" title={file.storagePath}>
+                        Link Web
+                      </span>
+                    ) : (
+                      <span>{formatBytes(file.sizeBytes)}</span>
+                    )}
                     <span>{formatDate(file.updatedAt)}</span>
                   </div>
                 </div>

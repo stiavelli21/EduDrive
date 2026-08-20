@@ -130,4 +130,26 @@ func TestDatabaseOperations(t *testing.T) {
 	if len(trashItemsAfterRestore) != 0 {
 		t.Fatalf("Expected 0 trash items after restore, got %d", len(trashItemsAfterRestore))
 	}
+
+	// 11. Insert and verify Web Link
+	webLink := &models.Item{
+		ID:          "link-1",
+		Name:        "Google",
+		ParentID:    nil,
+		IsFolder:    false,
+		SizeBytes:   int64(len("https://google.com")),
+		MimeType:    "url",
+		StoragePath: "https://google.com",
+		IsTrash:     false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := database.InsertItem(webLink); err != nil {
+		t.Fatalf("InsertItem webLink failed: %v", err)
+	}
+
+	fetchedLink, err := database.GetItemByID("link-1")
+	if err != nil || fetchedLink == nil || fetchedLink.MimeType != "url" || fetchedLink.StoragePath != "https://google.com" {
+		t.Fatalf("Failed to retrieve valid web link item: %+v", fetchedLink)
+	}
 }

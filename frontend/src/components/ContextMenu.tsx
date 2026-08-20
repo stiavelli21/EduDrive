@@ -8,6 +8,7 @@ import {
   RotateCcw,
   Info,
   FolderOpen,
+  Globe,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -63,12 +64,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const adjustedY = Math.min(y, window.innerHeight - 260);
 
   const isInTrash = item.isTrash || viewMode === 'trash';
+  const isWebLink = item.mimeType === 'url';
 
   return (
     <div
       ref={menuRef}
       style={{ top: `${adjustedY}px`, left: `${adjustedX}px` }}
-      className="fixed z-50 w-52 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 text-sm text-gray-700 animate-fade-in divide-y divide-gray-100 select-none"
+      className="fixed z-50 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 text-sm text-gray-700 animate-fade-in divide-y divide-gray-100 select-none"
     >
       <div className="py-1">
         <button
@@ -80,10 +82,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         >
           {item.isFolder ? (
             <FolderOpen className="w-4 h-4 text-amber-500" />
+          ) : isWebLink ? (
+            <Globe className="w-4 h-4 text-cyan-600" />
           ) : (
             <ExternalLink className="w-4 h-4 text-blue-600" />
           )}
-          <span>{item.isFolder ? 'Apri cartella' : 'Apri con app di sistema'}</span>
+          <span>
+            {item.isFolder
+              ? 'Apri cartella'
+              : isWebLink
+              ? 'Apri nel browser'
+              : 'Apri con app di sistema'}
+          </span>
         </button>
 
         {!item.isFolder && !isInTrash && (
@@ -95,7 +105,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-gray-100 text-left transition-colors"
           >
             <Download className="w-4 h-4 text-emerald-600" />
-            <span>Salva copia con nome...</span>
+            <span>{isWebLink ? 'Esporta collegamento (.url)...' : 'Salva copia con nome...'}</span>
           </button>
         )}
       </div>

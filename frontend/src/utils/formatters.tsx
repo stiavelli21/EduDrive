@@ -11,6 +11,7 @@ import {
   Presentation,
   FileQuestion,
   FileCheck,
+  Globe,
 } from 'lucide-react';
 
 export function formatBytes(bytes: number, decimals = 1): string {
@@ -66,6 +67,16 @@ export function getFileTypeInfo(name: string, isFolder: boolean, mimeType?: stri
   }
 
   const ext = name.split('.').pop()?.toLowerCase() || '';
+
+  // Web Links
+  if (mimeType === 'url' || ext === 'url') {
+    return {
+      icon: <Globe className="w-5 h-5 text-cyan-600" />,
+      colorClass: 'text-cyan-600',
+      badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      label: 'Collegamento Web',
+    };
+  }
 
   // Images
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext) || mimeType?.startsWith('image/')) {

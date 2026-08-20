@@ -128,6 +128,50 @@ func (a *App) CreateFolder(name string, parentID string) (*models.Item, error) {
 	return item, nil
 }
 
+// CreateWebLink creates a new web link / bookmark item
+func (a *App) CreateWebLink(name string, targetURL string, parentID string) (*models.Item, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+
+	trimmedURL := strings.TrimSpace(targetURL)
+	if trimmedURL == "" {
+		return nil, fmt.Errorf("URL cannot be empty")
+	}
+
+	// Normalize URL: prepend https:// if protocol is missing
+	if !strings.HasPrefix(strings.ToLower(trimmedURL), "http://") && !strings.HasPrefix(strings.ToLower(trimmedURL), "https://") {
+		trimmedURL = "https://" + trimmedURL
+	}
+
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		trimmedName = trimmedURL
+	}
+
+	item := &models.Item{
+		ID:          uuid.New().String(),
+		Name:        trimmedName,
+		IsFolder:    false,
+		SizeBytes:   int64(len(trimmedURL)),
+		MimeType:    "url",
+		StoragePath: trimmedURL,
+		IsTrash:     false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if parentID != "" {
+		item.ParentID = &parentID
+	}
+
+	if err := a.database.InsertItem(item); err != nil {
+		return nil, fmt.Errorf("failed to create web link: %w", err)
+	}
+
+	return item, nil
+}
+
 // ImportFiles opens native file dialog to import one or multiple files
 func (a *App) ImportFiles(parentID string) ([]models.Item, error) {
 	if a.database == nil || a.storage == nil {
@@ -255,7 +299,7 @@ func (a *App) SaveFileFromBase64(name string, base64Data string, parentID string
 	return item, nil
 }
 
-// ExportFile lets the user choose a destination and saves a copy of the stored file
+// ExportFile lets the user choose a destination and saves a copy of the stored file or .url shortcut
 func (a *App) ExportFile(id string) error {
 	if a.database == nil || a.storage == nil {
 		return fmt.Errorf("services not initialized")
@@ -268,6 +312,26 @@ func (a *App) ExportFile(id string) error {
 
 	if item.IsFolder {
 		return fmt.Errorf("cannot export folder directly")
+	}
+
+	// If the item is a web link, export as a Windows Internet Shortcut (.url)
+	if item.MimeType == "url" || strings.HasPrefix(item.StoragePath, "http://") || strings.HasPrefix(item.StoragePath, "https://") {
+		defaultFilename := item.Name
+		if !strings.HasSuffix(strings.ToLower(defaultFilename), ".url") {
+			defaultFilename += ".url"
+		}
+		destinationPath, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
+			Title:           "Esporta collegamento web",
+			DefaultFilename: defaultFilename,
+		})
+		if err != nil {
+			return err
+		}
+		if destinationPath == "" {
+			return nil // User cancelled
+		}
+		shortcutContent := fmt.Sprintf("[InternetShortcut]\r\nURL=%s\r\n", item.StoragePath)
+		return os.WriteFile(destinationPath, []byte(shortcutContent), 0644)
 	}
 
 	destinationPath, err := wailsRuntime.SaveFileDialog(a.ctx, wailsRuntime.SaveDialogOptions{
@@ -285,7 +349,7 @@ func (a *App) ExportFile(id string) error {
 	return a.storage.ExportFile(item.StoragePath, destinationPath)
 }
 
-// OpenFileLocally opens the file using the default OS application
+// OpenFileLocally opens the file using the default OS application or default browser for web links
 func (a *App) OpenFileLocally(id string) error {
 	if a.database == nil || a.storage == nil {
 		return fmt.Errorf("services not initialized")
@@ -297,6 +361,12 @@ func (a *App) OpenFileLocally(id string) error {
 	}
 
 	if item.IsFolder {
+		return nil
+	}
+
+	// Check if this item is a web link
+	if item.MimeType == "url" || strings.HasPrefix(item.StoragePath, "http://") || strings.HasPrefix(item.StoragePath, "https://") {
+		wailsRuntime.BrowserOpenURL(a.ctx, item.StoragePath)
 		return nil
 	}
 
@@ -349,7 +419,7 @@ func (a *App) DeleteItem(id string, permanent bool) error {
 		}
 		// Clean up physical disk files
 		for _, item := range deletedItems {
-			if !item.IsFolder && item.StoragePath != "" {
+			if !item.IsFolder && item.StoragePath != "" && item.MimeType != "url" {
 				_ = a.storage.DeleteFile(item.StoragePath)
 			}
 		}
@@ -379,7 +449,7 @@ func (a *App) EmptyTrash() error {
 	}
 
 	for _, item := range deletedItems {
-		if !item.IsFolder && item.StoragePath != "" {
+		if !item.IsFolder && item.StoragePath != "" && item.MimeType != "url" {
 			_ = a.storage.DeleteFile(item.StoragePath)
 		}
 	}
