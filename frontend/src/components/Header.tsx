@@ -7,7 +7,7 @@ import {
   List,
   RotateCw,
   HardDrive,
-  FolderSync,
+  GraduationCap,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -31,10 +31,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-4 flex items-center justify-between gap-4 shrink-0 z-30">
-      {/* Brand & Logo */}
+      {/* Brand & Minimalist Graduation Logo */}
       <div className="flex items-center gap-3 w-56 shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-blue-600 via-indigo-500 to-amber-400 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-black text-lg">
-          <FolderSync className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-blue-600 to-blue-500 flex items-center justify-center shadow-md shadow-blue-500/25 text-white transition-transform hover:scale-105">
+          <GraduationCap className="w-5 h-5 text-white" strokeWidth={2.2} />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">

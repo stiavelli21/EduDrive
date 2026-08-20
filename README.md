@@ -1,7 +1,5 @@
 # EduDrive
 
-Repository GitHub: [https://github.com/stiavelli21/EduDrive.git](https://github.com/stiavelli21/EduDrive.git)
-
 EduDrive e un'applicazione desktop locale per la gestione dei file, progettata come clone di Google Drive. Permette di organizzare, archiviare, visualizzare e cercare file e cartelle in locale e offline, con archiviazione fisica su disco e database SQLite.
 
 ---
