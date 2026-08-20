@@ -1,0 +1,26 @@
+# Binaries and build output
+build/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Frontend artifacts & dependencies
+frontend/dist/
+frontend/node_modules/
+node_modules/
+frontend/package.json.md5
+
+# Local SQLite databases & test storage
+storage_data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
