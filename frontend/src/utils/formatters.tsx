@@ -175,3 +175,57 @@ export function getFileTypeInfo(name: string, isFolder: boolean, mimeType?: stri
     label: 'File ' + ext.toUpperCase(),
   };
 }
+
+export interface ExamUrgencyInfo {
+  daysRemaining: number;
+  statusLabel: string;
+  urgencyLevel: 'green' | 'yellow' | 'red';
+  barColorClass: string;
+  badgeClass: string;
+  textClass: string;
+}
+
+export function getExamUrgencyInfo(examDateVal: any): ExamUrgencyInfo {
+  const target = new Date(examDateVal);
+  const now = new Date();
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+
+  const diffTime = target.getTime() - now.getTime();
+  const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (daysRemaining > 30) {
+    return {
+      daysRemaining,
+      statusLabel: `+${daysRemaining} giorni`,
+      urgencyLevel: 'green',
+      barColorClass: 'bg-emerald-500',
+      badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      textClass: 'text-emerald-600',
+    };
+  } else if (daysRemaining > 10) {
+    return {
+      daysRemaining,
+      statusLabel: `${daysRemaining} giorni`,
+      urgencyLevel: 'yellow',
+      barColorClass: 'bg-amber-500',
+      badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      textClass: 'text-amber-600',
+    };
+  } else {
+    let label = `${daysRemaining} giorni`;
+    if (daysRemaining === 1) label = 'Domani!';
+    else if (daysRemaining === 0) label = 'Oggi!';
+    else if (daysRemaining < 0) label = `Scaduto (${Math.abs(daysRemaining)} gg fa)`;
+
+    return {
+      daysRemaining,
+      statusLabel: label,
+      urgencyLevel: 'red',
+      barColorClass: 'bg-rose-500',
+      badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
+      textClass: 'text-rose-600',
+    };
+  }
+}
+

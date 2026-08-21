@@ -67,6 +67,16 @@ func (d *Database) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_items_is_trash ON items(is_trash);
 	CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);
 	CREATE INDEX IF NOT EXISTS idx_items_updated_at ON items(updated_at);
+
+	CREATE TABLE IF NOT EXISTS exam_dates (
+		id TEXT PRIMARY KEY,
+		subject TEXT NOT NULL,
+		exam_date DATETIME NOT NULL,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_exam_dates_date ON exam_dates(exam_date);
 	`
 	_, err := d.conn.Exec(query)
 	return err
@@ -544,4 +554,72 @@ func (d *Database) GetStorageStats() (*models.StorageStats, error) {
 	}
 
 	return &stats, nil
+}
+
+// InsertExamDate adds a new exam deadline to the database
+func (d *Database) InsertExamDate(exam *models.ExamDate) error {
+	query := `
+	INSERT INTO exam_dates (id, subject, exam_date, created_at, updated_at)
+	VALUES (?, ?, ?, ?, ?)
+	`
+	now := time.Now()
+	if exam.CreatedAt.IsZero() {
+		exam.CreatedAt = now
+	}
+	exam.UpdatedAt = now
+
+	_, err := d.conn.Exec(query,
+		exam.ID,
+		exam.Subject,
+		exam.ExamDate,
+		exam.CreatedAt,
+		exam.UpdatedAt,
+	)
+	return err
+}
+
+// GetExamDates retrieves all active exam deadlines ordered chronologically and removes expired exams
+func (d *Database) GetExamDates() ([]models.ExamDate, error) {
+	now := time.Now()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// Automatically remove expired exams (passed before today) so they disappear without trace
+	_, _ = d.conn.Exec(`DELETE FROM exam_dates WHERE exam_date < ?`, startOfToday)
+
+	query := `
+	SELECT id, subject, exam_date, created_at, updated_at
+	FROM exam_dates
+	WHERE exam_date >= ?
+	ORDER BY exam_date ASC, subject COLLATE NOCASE ASC
+	`
+	rows, err := d.conn.Query(query, startOfToday)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	exams := make([]models.ExamDate, 0)
+	for rows.Next() {
+		var exam models.ExamDate
+		err := rows.Scan(
+			&exam.ID,
+			&exam.Subject,
+			&exam.ExamDate,
+			&exam.CreatedAt,
+			&exam.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		exams = append(exams, exam)
+	}
+
+	return exams, nil
+}
+
+// DeleteExamDate removes an exam deadline from the database
+func (d *Database) DeleteExamDate(id string) error {
+	query := `DELETE FROM exam_dates WHERE id = ?`
+	_, err := d.conn.Exec(query, id)
+	return err
 }

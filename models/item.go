@@ -22,6 +22,15 @@ type Breadcrumb struct {
 	Name string `json:"name"`
 }
 
+// ExamDate represents an upcoming exam deadline in EduDrive
+type ExamDate struct {
+	ID        string    `json:"id"`
+	Subject   string    `json:"subject"`
+	ExamDate  time.Time `json:"examDate"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 // StorageStats contains overall storage usage statistics
 type StorageStats struct {
 	TotalSizeBytes int64 `json:"totalSizeBytes"`

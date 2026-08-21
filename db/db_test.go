@@ -152,4 +152,71 @@ func TestDatabaseOperations(t *testing.T) {
 	if err != nil || fetchedLink == nil || fetchedLink.MimeType != "url" || fetchedLink.StoragePath != "https://google.com" {
 		t.Fatalf("Failed to retrieve valid web link item: %+v", fetchedLink)
 	}
+
+	// 12. Exam Dates CRUD
+	exam1 := &models.ExamDate{
+		ID:        "exam-1",
+		Subject:   "Fisica Generale",
+		ExamDate:  time.Now().AddDate(0, 1, 10), // ~40 days later
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	exam2 := &models.ExamDate{
+		ID:        "exam-2",
+		Subject:   "Analisi Matematica",
+		ExamDate:  time.Now().AddDate(0, 0, 5), // 5 days later
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := database.InsertExamDate(exam1); err != nil {
+		t.Fatalf("InsertExamDate 1 failed: %v", err)
+	}
+	if err := database.InsertExamDate(exam2); err != nil {
+		t.Fatalf("InsertExamDate 2 failed: %v", err)
+	}
+
+	// Retrieve exam dates - should be ordered with soonest first (exam2 then exam1)
+	exams, err := database.GetExamDates()
+	if err != nil {
+		t.Fatalf("GetExamDates failed: %v", err)
+	}
+	if len(exams) != 2 {
+		t.Fatalf("Expected 2 exam dates, got %d", len(exams))
+	}
+	if exams[0].ID != "exam-2" || exams[1].ID != "exam-1" {
+		t.Fatalf("Expected exam-2 first (soonest date), got order: %+v", exams)
+	}
+
+	// Delete exam-2
+	if err := database.DeleteExamDate("exam-2"); err != nil {
+		t.Fatalf("DeleteExamDate failed: %v", err)
+	}
+	examsAfterDelete, _ := database.GetExamDates()
+	if len(examsAfterDelete) != 1 || examsAfterDelete[0].ID != "exam-1" {
+		t.Fatalf("Expected 1 exam remaining (exam-1), got: %+v", examsAfterDelete)
+	}
+
+	// 13. Expired Exam Auto-Pruning
+	expiredExam := &models.ExamDate{
+		ID:        "exam-expired",
+		Subject:   "Storia Moderna",
+		ExamDate:  time.Now().AddDate(0, 0, -2), // 2 days in the past
+		CreatedAt: time.Now().AddDate(0, 0, -10),
+		UpdatedAt: time.Now().AddDate(0, 0, -10),
+	}
+	if err := database.InsertExamDate(expiredExam); err != nil {
+		t.Fatalf("InsertExamDate expired failed: %v", err)
+	}
+
+	// Calling GetExamDates should auto-prune the expired exam
+	activeExams, err := database.GetExamDates()
+	if err != nil {
+		t.Fatalf("GetExamDates after expired insert failed: %v", err)
+	}
+	for _, e := range activeExams {
+		if e.ID == "exam-expired" {
+			t.Fatalf("Expired exam was not pruned and is still visible: %+v", e)
+		}
+	}
 }

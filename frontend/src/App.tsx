@@ -3,6 +3,7 @@ import {
   DriveItem,
   BreadcrumbItem,
   StorageStats,
+  ExamDateItem,
   ViewMode,
   LayoutMode,
   ToastMessage,
@@ -13,6 +14,9 @@ import {
   GetBreadcrumbs,
   CreateFolder,
   CreateWebLink,
+  CreateExamDate,
+  ListExamDates,
+  DeleteExamDate,
   ImportFiles,
   ImportFileByPath,
   SaveFileFromBase64,
@@ -38,6 +42,7 @@ import { DropOverlay } from './components/DropOverlay';
 
 import { NewFolderModal } from './components/Modals/NewFolderModal';
 import { NewLinkModal } from './components/Modals/NewLinkModal';
+import { NewExamModal } from './components/Modals/NewExamModal';
 import { RenameModal } from './components/Modals/RenameModal';
 import { ConfirmModal } from './components/Modals/ConfirmModal';
 import { DetailsModal } from './components/Modals/DetailsModal';
@@ -88,6 +93,10 @@ export const App: React.FC = () => {
     item: null,
   });
 
+  // Exam Dates State
+  const [examDates, setExamDates] = useState<ExamDateItem[]>([]);
+  const [isNewExamModalOpen, setIsNewExamModalOpen] = useState(false);
+
   // Modal States
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
@@ -108,6 +117,16 @@ export const App: React.FC = () => {
     isDangerous: false,
     onConfirm: () => {},
   });
+
+  // Fetch Exam Dates
+  const loadExamDates = useCallback(async () => {
+    try {
+      const dates = await ListExamDates();
+      setExamDates(dates || []);
+    } catch (err: any) {
+      console.error('Failed to load exam dates:', err);
+    }
+  }, []);
 
   // Fetch Storage Stats
   const refreshStorageStats = useCallback(async () => {
@@ -138,14 +157,17 @@ export const App: React.FC = () => {
           setBreadcrumbs(fetchedCrumbs || []);
         }
       }
-      await refreshStorageStats();
+      await Promise.all([
+        refreshStorageStats(),
+        loadExamDates(),
+      ]);
     } catch (err: any) {
       console.error('Error loading data:', err);
       addToast('error', 'Errore nel caricamento', err?.toString() || 'Impossibile caricare i file');
     } finally {
       setIsLoading(false);
     }
-  }, [currentFolderId, viewMode, searchQuery, refreshStorageStats, addToast]);
+  }, [currentFolderId, viewMode, searchQuery, refreshStorageStats, loadExamDates, addToast]);
 
   useEffect(() => {
     loadData();
@@ -214,6 +236,28 @@ export const App: React.FC = () => {
       loadData();
     } catch (err: any) {
       addToast('error', 'Errore nella creazione', err?.toString() || 'Impossibile creare il collegamento web.');
+    }
+  };
+
+  // Create Exam Date
+  const handleCreateExamDate = async (subject: string, examDate: string) => {
+    try {
+      await CreateExamDate(subject, examDate);
+      addToast('success', 'Data esame creata', `L'esame per "${subject}" è stato aggiunto ai promemoria.`);
+      loadExamDates();
+    } catch (err: any) {
+      addToast('error', 'Errore nel salvataggio', err?.toString() || 'Impossibile salvare la data esame.');
+    }
+  };
+
+  // Delete Exam Date
+  const handleDeleteExamDate = async (id: string) => {
+    try {
+      await DeleteExamDate(id);
+      addToast('info', 'Data esame rimossa', 'La data d\'esame è stata rimossa.');
+      loadExamDates();
+    } catch (err: any) {
+      addToast('error', 'Errore nella cancellazione', err?.toString() || 'Impossibile eliminare la data esame.');
     }
   };
 
@@ -452,9 +496,12 @@ export const App: React.FC = () => {
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onUploadFiles={handleUploadFiles}
           onNewLink={() => setIsNewLinkModalOpen(true)}
+          onNewExamDate={() => setIsNewExamModalOpen(true)}
+          onDeleteExamDate={handleDeleteExamDate}
           onEmptyTrash={handleEmptyTrash}
           onOpenStorageModal={() => setIsStorageModalOpen(true)}
           stats={storageStats}
+          examDates={examDates}
         />
 
         {/* Center Content Workspace */}
@@ -534,6 +581,12 @@ export const App: React.FC = () => {
         isOpen={isNewLinkModalOpen}
         onClose={() => setIsNewLinkModalOpen(false)}
         onCreate={handleCreateWebLink}
+      />
+
+      <NewExamModal
+        isOpen={isNewExamModalOpen}
+        onClose={() => setIsNewExamModalOpen(false)}
+        onCreate={handleCreateExamDate}
       />
 
       <RenameModal

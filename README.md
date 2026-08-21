@@ -31,20 +31,23 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
 3. **Apertura ed Esportazione**:
    - Apertura con doppio clic tramite l'applicazione predefinita del sistema operativo.
    - Esportazione e salvataggio di copie dei file in percorsi personalizzati.
-   - Gestione collegamenti web con esportazione nativa in formato `.url` di Windows.
 
-4. **Collegamenti Web (URL)**:
-   - Creazione di collegamenti rapidi a siti web con titolo personalizzato.
-   - Apertura automatica del link nel browser predefinito di sistema con doppio clic.
-   - Icona dedicata con badge identificativo e preview nei dettagli elemento.
-
-5. **Cestino e Ripristino**:
+4. **Cestino e Ripristino**:
    - Soft-delete degli elementi con vista dedicata Cestino.
    - Funzioni di ripristino o eliminazione definitiva.
    - Svuotamento completo del cestino con cancellazione fisica dei file da disco.
 
+5. **Gestione Date Esami e Scadenze**:
+   - Creazione rapida di date d'esame e materie dal menu "+ Nuovo".
+   - Visualizzazione nella barra laterale sinistra ordinata per imminenza (esami piu vicini in cima).
+   - Calcolo automatico dei giorni rimanenti con indicatore a linea colorata:
+     - Linea verde: tempo abbondante (> 30 giorni).
+     - Linea gialla: tempo che stringe (tra 10 e 30 giorni).
+     - Linea rossa: urgenza elevata (<= 10 giorni).
+   - Possibilita di eliminare gli esami conclusi.
+
 6. **Ricerca Globale**:
-   - Ricerca istantanea in tempo reale per nome file, cartella o collegamento web.
+   - Ricerca istantanea in tempo reale per nome file o cartella.
 
 7. **Interfaccia e Layout**:
    - Viste commutabili: Griglia ed Elenco tabellare.
@@ -108,10 +111,22 @@ EduDrive/
 wails dev
 ```
 
-### Compilazione Produzione
+### Compilazione e Creazione del File .exe
+Per compilare l'applicazione ed esportare l'eseguibile per Windows:
 ```bash
 wails build
 ```
+
+### Posizione dell'Eseguibile e Avvio
+Dopo la compilazione, il file binario verra generato nel percorso:
+- `build/bin/EduDrive.exe`
+
+Per avviare l'applicazione:
+- **Da terminale (PowerShell/CMD)**:
+  ```powershell
+  .\build\bin\EduDrive.exe
+  ```
+- **Da interfaccia grafica**: aprire la cartella `build/bin/` ed eseguire con doppio clic `EduDrive.exe`.
 
 ### Esecuzione Test Unitari
 ```bash

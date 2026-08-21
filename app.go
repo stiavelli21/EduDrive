@@ -483,3 +483,73 @@ func (a *App) GetStorageStats() (*models.StorageStats, error) {
 func (a *App) GetAppStoragePath() string {
 	return a.dataDir
 }
+
+// CreateExamDate creates and stores a new exam deadline
+func (a *App) CreateExamDate(subject string, examDateStr string) (*models.ExamDate, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+
+	trimmedSubject := strings.TrimSpace(subject)
+	if trimmedSubject == "" {
+		return nil, fmt.Errorf("subject name cannot be empty")
+	}
+
+	trimmedDateStr := strings.TrimSpace(examDateStr)
+	if trimmedDateStr == "" {
+		return nil, fmt.Errorf("exam date cannot be empty")
+	}
+
+	// Support standard HTML date picker (YYYY-MM-DD) and RFC3339 formats
+	var parsedDate time.Time
+	var parseErr error
+
+	formats := []string{
+		"2006-01-02",
+		time.RFC3339,
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, layout := range formats {
+		parsedDate, parseErr = time.ParseInLocation(layout, trimmedDateStr, time.Local)
+		if parseErr == nil {
+			break
+		}
+	}
+
+	if parseErr != nil {
+		return nil, fmt.Errorf("invalid date format: %w", parseErr)
+	}
+
+	exam := &models.ExamDate{
+		ID:        uuid.New().String(),
+		Subject:   trimmedSubject,
+		ExamDate:  parsedDate,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := a.database.InsertExamDate(exam); err != nil {
+		return nil, fmt.Errorf("failed to save exam date: %w", err)
+	}
+
+	return exam, nil
+}
+
+// ListExamDates returns all registered exam deadlines
+func (a *App) ListExamDates() ([]models.ExamDate, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.database.GetExamDates()
+}
+
+// DeleteExamDate removes an exam deadline by its ID
+func (a *App) DeleteExamDate(id string) error {
+	if a.database == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return a.database.DeleteExamDate(id)
+}
+

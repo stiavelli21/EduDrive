@@ -44,7 +44,7 @@ export const StorageModal: React.FC<StorageModalProps> = ({
 
         <div className="p-6 space-y-5">
           {/* Main Space Usage Card */}
-          <div className="p-4 rounded-xl bg-linear-to-br from-blue-50/70 to-indigo-50/40 border border-blue-100 flex items-center gap-4">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-100 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-200">
               <HardDrive className="w-6 h-6" />
             </div>

@@ -3,6 +3,7 @@ import { models } from '../../wailsjs/go/models';
 export type DriveItem = models.Item;
 export type BreadcrumbItem = models.Breadcrumb;
 export type StorageStats = models.StorageStats;
+export type ExamDateItem = models.ExamDate;
 
 export type ViewMode = 'drive' | 'recent' | 'trash';
 export type LayoutMode = 'grid' | 'list';
