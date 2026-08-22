@@ -34,10 +34,20 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
 
 4. **Cestino e Ripristino**:
    - Soft-delete degli elementi con vista dedicata Cestino.
+   - I file nel cestino non hanno scadenza automatica e rimangono archiviati a tempo indeterminato finche non si svuota il cestino o si eliminano singolarmente.
    - Funzioni di ripristino o eliminazione definitiva.
    - Svuotamento completo del cestino con cancellazione fisica dei file da disco.
 
-5. **Gestione Date Esami e Scadenze**:
+5. **Libretto Universitario e Calcolo Media Ponderata**:
+   - Sezione dedicata "Libretto" posizionata nella barra laterale sinistra sotto al cestino.
+   - Calcolo istantaneo e automatico della **media ponderata** in base ai CFU degli esami superati.
+   - Stima automatica del **voto base di partenza per la laurea** su 110.
+   - Barra di avanzamento CFU rispetto all'obiettivo di laurea (Triennale 180 CFU, Magistrale 120 CFU, Ciclo Unico 300/360 CFU).
+   - Inserimento, modifica ed eliminazione rapida degli esami superati (materia, voto 18-30, lode 30L, CFU).
+   - Simulatore dinamico "What-If" per calcolare in tempo reale come un futuro voto influenzera la media e la base di laurea.
+   - Configurazione personalizzabile del peso della lode (30, 31 o 33).
+
+6. **Gestione Date Esami e Scadenze**:
    - Creazione rapida di date d'esame e materie dal menu "+ Nuovo".
    - Visualizzazione nella barra laterale sinistra ordinata per imminenza (esami piu vicini in cima).
    - Calcolo automatico dei giorni rimanenti con indicatore a linea colorata:
@@ -46,10 +56,10 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
      - Linea rossa: urgenza elevata (<= 10 giorni).
    - Possibilita di eliminare gli esami conclusi.
 
-6. **Ricerca Globale**:
+7. **Ricerca Globale**:
    - Ricerca istantanea in tempo reale per nome file o cartella.
 
-7. **Interfaccia e Layout**:
+8. **Interfaccia e Layout**:
    - Viste commutabili: Griglia ed Elenco tabellare.
    - Icone e badge dedicati in base al tipo MIME ed estensione.
    - Menu contestuale col tasto destro per tutte le operazioni rapide.

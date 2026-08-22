@@ -6,11 +6,15 @@ export function CreateExamDate(arg1:string,arg2:string):Promise<models.ExamDate>
 
 export function CreateFolder(arg1:string,arg2:string):Promise<models.Item>;
 
+export function CreatePassedExam(arg1:string,arg2:number,arg3:boolean,arg4:number,arg5:string):Promise<models.PassedExam>;
+
 export function CreateWebLink(arg1:string,arg2:string,arg3:string):Promise<models.Item>;
 
 export function DeleteExamDate(arg1:string):Promise<void>;
 
 export function DeleteItem(arg1:string,arg2:boolean):Promise<void>;
+
+export function DeletePassedExam(arg1:string):Promise<void>;
 
 export function EmptyTrash():Promise<void>;
 
@@ -30,6 +34,8 @@ export function ListExamDates():Promise<Array<models.ExamDate>>;
 
 export function ListItems(arg1:string,arg2:string):Promise<Array<models.Item>>;
 
+export function ListPassedExams():Promise<Array<models.PassedExam>>;
+
 export function OpenFileLocally(arg1:string):Promise<void>;
 
 export function RenameItem(arg1:string,arg2:string):Promise<void>;
@@ -39,3 +45,5 @@ export function RestoreItem(arg1:string):Promise<void>;
 export function SaveFileFromBase64(arg1:string,arg2:string,arg3:string):Promise<models.Item>;
 
 export function SearchItems(arg1:string):Promise<Array<models.Item>>;
+
+export function UpdatePassedExam(arg1:string,arg2:string,arg3:number,arg4:boolean,arg5:number,arg6:string):Promise<models.PassedExam>;

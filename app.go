@@ -553,3 +553,101 @@ func (a *App) DeleteExamDate(id string) error {
 	return a.database.DeleteExamDate(id)
 }
 
+// ListPassedExams retrieves all passed exams recorded in the student booklet
+func (a *App) ListPassedExams() ([]models.PassedExam, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.database.GetPassedExams()
+}
+
+// CreatePassedExam adds a new passed exam to the booklet with subject, grade, honors, and CFU
+func (a *App) CreatePassedExam(subject string, grade int, isHonors bool, cfu int, examDate string) (*models.PassedExam, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+
+	trimmedSubject := strings.TrimSpace(subject)
+	if trimmedSubject == "" {
+		return nil, fmt.Errorf("subject name cannot be empty")
+	}
+
+	if grade < 18 || grade > 30 {
+		return nil, fmt.Errorf("grade must be between 18 and 30")
+	}
+
+	if isHonors && grade != 30 {
+		grade = 30
+	}
+
+	if cfu < 1 || cfu > 60 {
+		return nil, fmt.Errorf("CFU must be between 1 and 60")
+	}
+
+	exam := &models.PassedExam{
+		ID:        uuid.New().String(),
+		Subject:   trimmedSubject,
+		Grade:     grade,
+		IsHonors:  isHonors,
+		CFU:       cfu,
+		ExamDate:  strings.TrimSpace(examDate),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := a.database.InsertPassedExam(exam); err != nil {
+		return nil, fmt.Errorf("failed to save passed exam: %w", err)
+	}
+
+	return exam, nil
+}
+
+// UpdatePassedExam updates an existing passed exam record
+func (a *App) UpdatePassedExam(id string, subject string, grade int, isHonors bool, cfu int, examDate string) (*models.PassedExam, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+
+	trimmedSubject := strings.TrimSpace(subject)
+	if trimmedSubject == "" {
+		return nil, fmt.Errorf("subject name cannot be empty")
+	}
+
+	if grade < 18 || grade > 30 {
+		return nil, fmt.Errorf("grade must be between 18 and 30")
+	}
+
+	if isHonors && grade != 30 {
+		grade = 30
+	}
+
+	if cfu < 1 || cfu > 60 {
+		return nil, fmt.Errorf("CFU must be between 1 and 60")
+	}
+
+	exam := &models.PassedExam{
+		ID:        id,
+		Subject:   trimmedSubject,
+		Grade:     grade,
+		IsHonors:  isHonors,
+		CFU:       cfu,
+		ExamDate:  strings.TrimSpace(examDate),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := a.database.UpdatePassedExam(exam); err != nil {
+		return nil, fmt.Errorf("failed to update passed exam: %w", err)
+	}
+
+	return exam, nil
+}
+
+// DeletePassedExam removes a passed exam record by its ID
+func (a *App) DeletePassedExam(id string) error {
+	if a.database == nil {
+		return fmt.Errorf("database not initialized")
+	}
+	return a.database.DeletePassedExam(id)
+}
+
+

@@ -39,3 +39,16 @@ type StorageStats struct {
 	TrashSizeBytes int64 `json:"trashSizeBytes"`
 	TrashItems     int64 `json:"trashItems"`
 }
+
+// PassedExam represents a passed exam in the student booklet with subject, grade, honors, and CFU
+type PassedExam struct {
+	ID        string    `json:"id"`
+	Subject   string    `json:"subject"`
+	Grade     int       `json:"grade"`
+	IsHonors  bool      `json:"isHonors"`
+	CFU       int       `json:"cfu"`
+	ExamDate  string    `json:"examDate"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+

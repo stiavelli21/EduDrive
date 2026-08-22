@@ -77,6 +77,19 @@ func (d *Database) migrate() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_exam_dates_date ON exam_dates(exam_date);
+
+	CREATE TABLE IF NOT EXISTS passed_exams (
+		id TEXT PRIMARY KEY,
+		subject TEXT NOT NULL,
+		grade INTEGER NOT NULL,
+		is_honors INTEGER NOT NULL DEFAULT 0,
+		cfu INTEGER NOT NULL,
+		exam_date TEXT NOT NULL DEFAULT '',
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_passed_exams_date ON passed_exams(exam_date);
 	`
 	_, err := d.conn.Exec(query)
 	return err
@@ -623,3 +636,105 @@ func (d *Database) DeleteExamDate(id string) error {
 	_, err := d.conn.Exec(query, id)
 	return err
 }
+
+// InsertPassedExam records a passed university exam into the student booklet
+func (d *Database) InsertPassedExam(exam *models.PassedExam) error {
+	query := `
+	INSERT INTO passed_exams (id, subject, grade, is_honors, cfu, exam_date, created_at, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	now := time.Now()
+	if exam.CreatedAt.IsZero() {
+		exam.CreatedAt = now
+	}
+	exam.UpdatedAt = now
+
+	honorsInt := 0
+	if exam.IsHonors {
+		honorsInt = 1
+	}
+
+	_, err := d.conn.Exec(query,
+		exam.ID,
+		exam.Subject,
+		exam.Grade,
+		honorsInt,
+		exam.CFU,
+		exam.ExamDate,
+		exam.CreatedAt,
+		exam.UpdatedAt,
+	)
+	return err
+}
+
+// GetPassedExams retrieves all passed exams from the booklet ordered by exam date and subject
+func (d *Database) GetPassedExams() ([]models.PassedExam, error) {
+	query := `
+	SELECT id, subject, grade, is_honors, cfu, exam_date, created_at, updated_at
+	FROM passed_exams
+	ORDER BY exam_date DESC, created_at DESC
+	`
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	exams := make([]models.PassedExam, 0)
+	for rows.Next() {
+		var exam models.PassedExam
+		var honorsInt int
+		err := rows.Scan(
+			&exam.ID,
+			&exam.Subject,
+			&exam.Grade,
+			&honorsInt,
+			&exam.CFU,
+			&exam.ExamDate,
+			&exam.CreatedAt,
+			&exam.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		exam.IsHonors = (honorsInt == 1)
+		exams = append(exams, exam)
+	}
+
+	return exams, nil
+}
+
+// UpdatePassedExam updates an existing passed exam record
+func (d *Database) UpdatePassedExam(exam *models.PassedExam) error {
+	query := `
+	UPDATE passed_exams
+	SET subject = ?, grade = ?, is_honors = ?, cfu = ?, exam_date = ?, updated_at = ?
+	WHERE id = ?
+	`
+	now := time.Now()
+	exam.UpdatedAt = now
+
+	honorsInt := 0
+	if exam.IsHonors {
+		honorsInt = 1
+	}
+
+	_, err := d.conn.Exec(query,
+		exam.Subject,
+		exam.Grade,
+		honorsInt,
+		exam.CFU,
+		exam.ExamDate,
+		exam.UpdatedAt,
+		exam.ID,
+	)
+	return err
+}
+
+// DeletePassedExam removes a passed exam record from the booklet
+func (d *Database) DeletePassedExam(id string) error {
+	query := `DELETE FROM passed_exams WHERE id = ?`
+	_, err := d.conn.Exec(query, id)
+	return err
+}
+

@@ -4,8 +4,9 @@ export type DriveItem = models.Item;
 export type BreadcrumbItem = models.Breadcrumb;
 export type StorageStats = models.StorageStats;
 export type ExamDateItem = models.ExamDate;
+export type PassedExamItem = models.PassedExam;
 
-export type ViewMode = 'drive' | 'recent' | 'trash';
+export type ViewMode = 'drive' | 'recent' | 'trash' | 'career';
 export type LayoutMode = 'grid' | 'list';
 
 export interface ToastMessage {

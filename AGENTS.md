@@ -37,26 +37,27 @@ graph TD
 | File | Responsabilita |
 | :--- | :--- |
 | [`main.go`](main.go) | Inizializzazione finestra desktop, backdrop Mica, montaggio asset e hook di ciclo di vita (`OnStartup`, `OnShutdown`). |
-| [`app.go`](app.go) | Controller centrale esposto a Wails. Metodi esposti: `ListItems`, `GetBreadcrumbs`, `CreateFolder`, `CreateWebLink`, `CreateExamDate`, `ListExamDates`, `DeleteExamDate`, `ImportFiles`, `ImportFileByPath`, `SaveFileFromBase64`, `ExportFile`, `OpenFileLocally`, `RenameItem`, `DeleteItem`, `RestoreItem`, `EmptyTrash`, `SearchItems`, `GetStorageStats`, `GetAppStoragePath`. |
-| [`models/item.go`](models/item.go) | Strutture dati: `Item` (file, cartelle, link web), `Breadcrumb`, `StorageStats`, `ExamDate`. |
-| [`db/db.go`](db/db.go) | Data access layer SQLite con `modernc.org/sqlite` (Pure Go, no CGO). Gestisce migrazioni schema (`items`, `exam_dates`), query ricorsive per gerarchia cartelle, soft-delete (`is_trash`), ricerca, scadenze esami e transazioni sicure. |
+| [`app.go`](app.go) | Controller centrale esposto a Wails. Metodi esposti: `ListItems`, `GetBreadcrumbs`, `CreateFolder`, `CreateWebLink`, `CreateExamDate`, `ListExamDates`, `DeleteExamDate`, `ListPassedExams`, `CreatePassedExam`, `UpdatePassedExam`, `DeletePassedExam`, `ImportFiles`, `ImportFileByPath`, `SaveFileFromBase64`, `ExportFile`, `OpenFileLocally`, `RenameItem`, `DeleteItem`, `RestoreItem`, `EmptyTrash`, `SearchItems`, `GetStorageStats`, `GetAppStoragePath`. |
+| [`models/item.go`](models/item.go) | Strutture dati: `Item` (file, cartelle, link web), `Breadcrumb`, `StorageStats`, `ExamDate`, `PassedExam`. |
+| [`db/db.go`](db/db.go) | Data access layer SQLite con `modernc.org/sqlite` (Pure Go, no CGO). Gestisce migrazioni schema (`items`, `exam_dates`, `passed_exams`), query ricorsive per gerarchia cartelle, soft-delete (`is_trash`), ricerca, scadenze esami, libretto esami superati e transazioni sicure. |
 | [`storage/storage.go`](storage/storage.go) | Gestore dello storage fisico. Salva file con nomi UUID univoci (`uuid.ext`) in `%APPDATA%/EduDrive/storage_data/`, rileva tipi MIME, effettua copia sicura, esportazione e cancellazione fisica da disco. |
 
 ### 2. Frontend React + TypeScript
 | Directory / File | Responsabilita |
 | :--- | :--- |
-| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Coordinatore di stato principale (navigazione cartelle, viste attive, ricerca, notifiche toast, drag-and-drop, gestione modali e date esami). |
-| [`frontend/src/types/index.ts`](frontend/src/types/index.ts) | Definizioni di tipo (`DriveItem`, `BreadcrumbItem`, `StorageStats`, `ExamDateItem`, `ViewMode`, `LayoutMode`, `ToastMessage`). |
+| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Coordinatore di stato principale (navigazione cartelle, viste attive, libretto esami, ricerca, notifiche toast, drag-and-drop, gestione modali e date esami). |
+| [`frontend/src/types/index.ts`](frontend/src/types/index.ts) | Definizioni di tipo (`DriveItem`, `BreadcrumbItem`, `StorageStats`, `ExamDateItem`, `PassedExamItem`, `ViewMode`, `LayoutMode`, `ToastMessage`). |
 | [`frontend/src/utils/formatters.tsx`](frontend/src/utils/formatters.tsx) | Formattazione byte (`formatBytes`), date (`formatDate`), resolver icone/colori per estensione file e tipo MIME (`getFileTypeInfo`), e calcolo urgenza esami (`getExamUrgencyInfo`). |
 | [`frontend/src/components/Header.tsx`](frontend/src/components/Header.tsx) | Barra superiore di ricerca, selettore layout (Griglia / Elenco), trigger statistiche storage e refresh. |
-| [`frontend/src/components/Sidebar.tsx`](frontend/src/components/Sidebar.tsx) | Dropdown `+ Nuovo` (upload file, nuova cartella, nuovo link web, data esame), navigazione viste (*Il mio Drive*, *Recenti*, *Cestino*), sezione scadenze esami con barre colorate e indicatore memoria. |
-| [`frontend/src/components/Breadcrumbs.tsx`](frontend/src/components/Breadcrumbs.tsx) | Percorso interattivo della gerarchia cartelle (`Il mio Drive > Cartella > Sottocartella`). |
+| [`frontend/src/components/Sidebar.tsx`](frontend/src/components/Sidebar.tsx) | Dropdown `+ Nuovo` (upload file, nuova cartella, nuovo link web, data esame, esame superato), navigazione viste (*Il mio Drive*, *Recenti*, *Cestino*, *Libretto*), sezione scadenze esami con barre colorate e indicatore memoria. |
+| [`frontend/src/components/Breadcrumbs.tsx`](frontend/src/components/Breadcrumbs.tsx) | Percorso interattivo della gerarchia cartelle (`Il mio Drive > Cartella > Sottocartella`) e indicatori viste. |
+| [`frontend/src/components/CareerView.tsx`](frontend/src/components/CareerView.tsx) | Cruscotto per il Libretto Universitario: calcolo automatico della media ponderata, stima voto base di laurea su 110, avanzamento CFU, simulatore interattivo 'What-If' e tabella esami con filtri e ordinamento. |
 | [`frontend/src/components/GridView.tsx`](frontend/src/components/GridView.tsx) | Layout a schede stile Google Drive per cartelle, file e collegamenti web. |
 | [`frontend/src/components/ListView.tsx`](frontend/src/components/ListView.tsx) | Vista tabellare per file, cartelle e collegamenti con colonne informative. |
 | [`frontend/src/components/ContextMenu.tsx`](frontend/src/components/ContextMenu.tsx) | Menu contestuale flottante tasto destro (Apri, Esporta, Rinomina, Cestino/Ripristina, Elimina definitivo, Dettagli). |
 | [`frontend/src/components/DropOverlay.tsx`](frontend/src/components/DropOverlay.tsx) | Overlay visivo per trascinamento file dal desktop di Windows. |
 | [`frontend/src/components/ToastContainer.tsx`](frontend/src/components/ToastContainer.tsx) | Stack di notifiche toast non bloccanti. |
-| [`frontend/src/components/Modals/`](frontend/src/components/Modals/) | Modali per `NewFolderModal`, `NewLinkModal`, `NewExamModal`, `RenameModal`, `ConfirmModal`, `DetailsModal`, `StorageModal`. |
+| [`frontend/src/components/Modals/`](frontend/src/components/Modals/) | Modali per `NewFolderModal`, `NewLinkModal`, `NewExamModal`, `PassedExamModal`, `RenameModal`, `ConfirmModal`, `DetailsModal`, `StorageModal`. |
 | [`frontend/wailsjs/`](frontend/wailsjs/) | Definizioni TypeScript e proxy JS autogenerati da Wails per i metodi Go. |
 
 ---

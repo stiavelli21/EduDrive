@@ -1,6 +1,6 @@
 import React from 'react';
 import { BreadcrumbItem, ViewMode } from '../types';
-import { ChevronRight, HardDrive, Clock, Trash2, Home } from 'lucide-react';
+import { ChevronRight, HardDrive, Clock, Trash2, Home, BookOpen } from 'lucide-react';
 
 interface BreadcrumbsProps {
   breadcrumbs: BreadcrumbItem[];
@@ -40,6 +40,15 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       <div className="flex items-center gap-2 text-base font-semibold text-gray-800 py-1">
         <Trash2 className="w-5 h-5 text-rose-600" />
         <span>Cestino</span>
+      </div>
+    );
+  }
+
+  if (viewMode === 'career') {
+    return (
+      <div className="flex items-center gap-2 text-base font-semibold text-gray-800 py-1">
+        <BookOpen className="w-5 h-5 text-emerald-600" />
+        <span>Libretto</span>
       </div>
     );
   }

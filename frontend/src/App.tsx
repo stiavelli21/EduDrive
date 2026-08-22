@@ -4,6 +4,7 @@ import {
   BreadcrumbItem,
   StorageStats,
   ExamDateItem,
+  PassedExamItem,
   ViewMode,
   LayoutMode,
   ToastMessage,
@@ -17,6 +18,10 @@ import {
   CreateExamDate,
   ListExamDates,
   DeleteExamDate,
+  ListPassedExams,
+  CreatePassedExam,
+  UpdatePassedExam,
+  DeletePassedExam,
   ImportFiles,
   ImportFileByPath,
   SaveFileFromBase64,
@@ -36,6 +41,7 @@ import { Sidebar } from './components/Sidebar';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { GridView } from './components/GridView';
 import { ListView } from './components/ListView';
+import { CareerView } from './components/CareerView';
 import { ContextMenu } from './components/ContextMenu';
 import { ToastContainer } from './components/ToastContainer';
 import { DropOverlay } from './components/DropOverlay';
@@ -43,6 +49,7 @@ import { DropOverlay } from './components/DropOverlay';
 import { NewFolderModal } from './components/Modals/NewFolderModal';
 import { NewLinkModal } from './components/Modals/NewLinkModal';
 import { NewExamModal } from './components/Modals/NewExamModal';
+import { PassedExamModal } from './components/Modals/PassedExamModal';
 import { RenameModal } from './components/Modals/RenameModal';
 import { ConfirmModal } from './components/Modals/ConfirmModal';
 import { DetailsModal } from './components/Modals/DetailsModal';
@@ -97,6 +104,11 @@ export const App: React.FC = () => {
   const [examDates, setExamDates] = useState<ExamDateItem[]>([]);
   const [isNewExamModalOpen, setIsNewExamModalOpen] = useState(false);
 
+  // Passed Exams (Career & Booklet) State
+  const [passedExams, setPassedExams] = useState<PassedExamItem[]>([]);
+  const [isPassedExamModalOpen, setIsPassedExamModalOpen] = useState(false);
+  const [examToEdit, setExamToEdit] = useState<PassedExamItem | null>(null);
+
   // Modal States
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
@@ -125,6 +137,16 @@ export const App: React.FC = () => {
       setExamDates(dates || []);
     } catch (err: any) {
       console.error('Failed to load exam dates:', err);
+    }
+  }, []);
+
+  // Fetch Passed Exams
+  const loadPassedExams = useCallback(async () => {
+    try {
+      const exams = await ListPassedExams();
+      setPassedExams(exams || []);
+    } catch (err: any) {
+      console.error('Failed to load passed exams:', err);
     }
   }, []);
 
@@ -160,6 +182,7 @@ export const App: React.FC = () => {
       await Promise.all([
         refreshStorageStats(),
         loadExamDates(),
+        loadPassedExams(),
       ]);
     } catch (err: any) {
       console.error('Error loading data:', err);
@@ -167,7 +190,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentFolderId, viewMode, searchQuery, refreshStorageStats, loadExamDates, addToast]);
+  }, [currentFolderId, viewMode, searchQuery, refreshStorageStats, loadExamDates, loadPassedExams, addToast]);
 
   useEffect(() => {
     loadData();
@@ -453,6 +476,62 @@ export const App: React.FC = () => {
     }
   };
 
+  // Save Passed Exam (Create or Update)
+  const handleSavePassedExam = async (data: {
+    id?: string;
+    subject: string;
+    grade: number;
+    isHonors: boolean;
+    cfu: number;
+    examDate: string;
+  }) => {
+    try {
+      if (data.id) {
+        await UpdatePassedExam(
+          data.id,
+          data.subject,
+          data.grade,
+          data.isHonors,
+          data.cfu,
+          data.examDate
+        );
+        addToast('success', 'Esame aggiornato', `"${data.subject}" è stato modificato con successo.`);
+      } else {
+        await CreatePassedExam(
+          data.subject,
+          data.grade,
+          data.isHonors,
+          data.cfu,
+          data.examDate
+        );
+        addToast('success', 'Esame aggiunto', `"${data.subject}" è stato inserito nel libretto.`);
+      }
+      loadPassedExams();
+    } catch (err: any) {
+      addToast('error', "Errore nel salvataggio dell'esame", err?.toString() || 'Operazione non riuscita.');
+    }
+  };
+
+  // Delete Passed Exam
+  const handleDeletePassedExam = (exam: PassedExamItem) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Elimina Esame dal Libretto',
+      message: `Sei sicuro di voler rimuovere "${exam.subject}" (${exam.isHonors ? '30L' : exam.grade} - ${exam.cfu} CFU) dal tuo libretto universitario?`,
+      isDangerous: true,
+      confirmText: 'Elimina esame',
+      onConfirm: async () => {
+        try {
+          await DeletePassedExam(exam.id);
+          addToast('success', 'Esame rimosso', `"${exam.subject}" è stato rimosso dal tuo libretto.`);
+          loadPassedExams();
+        } catch (err: any) {
+          addToast('error', "Errore nell'eliminazione", err?.toString() || 'Impossibile eliminare');
+        }
+      },
+    });
+  };
+
   // Keyboard Shortcuts (Delete key, Esc key, Ctrl+R)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -497,11 +576,16 @@ export const App: React.FC = () => {
           onUploadFiles={handleUploadFiles}
           onNewLink={() => setIsNewLinkModalOpen(true)}
           onNewExamDate={() => setIsNewExamModalOpen(true)}
+          onNewPassedExam={() => {
+            setExamToEdit(null);
+            setIsPassedExamModalOpen(true);
+          }}
           onDeleteExamDate={handleDeleteExamDate}
           onEmptyTrash={handleEmptyTrash}
           onOpenStorageModal={() => setIsStorageModalOpen(true)}
           stats={storageStats}
           examDates={examDates}
+          passedExamsCount={passedExams.length}
         />
 
         {/* Center Content Workspace */}
@@ -518,35 +602,52 @@ export const App: React.FC = () => {
               onNavigateFolder={handleNavigateBreadcrumb}
             />
 
-            <div className="text-xs text-gray-400 font-medium">
-              {items.length} {items.length === 1 ? 'elemento' : 'elementi'}
-            </div>
-          </div>
-
-          {/* Files / Folders List / Grid Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {layoutMode === 'grid' ? (
-              <GridView
-                items={items}
-                selectedId={selectedItem?.id || null}
-                onSelect={(item) => setSelectedItem(item)}
-                onOpen={handleOpenItem}
-                onContextMenu={handleContextMenu}
-                onUpload={handleUploadFiles}
-                onCreateFolder={() => setIsNewFolderModalOpen(true)}
-              />
-            ) : (
-              <ListView
-                items={items}
-                selectedId={selectedItem?.id || null}
-                onSelect={(item) => setSelectedItem(item)}
-                onOpen={handleOpenItem}
-                onContextMenu={handleContextMenu}
-                onUpload={handleUploadFiles}
-                onCreateFolder={() => setIsNewFolderModalOpen(true)}
-              />
+            {viewMode !== 'career' && (
+              <div className="text-xs text-gray-400 font-medium">
+                {items.length} {items.length === 1 ? 'elemento' : 'elementi'}
+              </div>
             )}
           </div>
+
+          {/* Files / Folders List / Grid Area or Career / Booklet View */}
+          {viewMode === 'career' ? (
+            <CareerView
+              passedExams={passedExams}
+              onNewPassedExam={() => {
+                setExamToEdit(null);
+                setIsPassedExamModalOpen(true);
+              }}
+              onEditPassedExam={(exam) => {
+                setExamToEdit(exam);
+                setIsPassedExamModalOpen(true);
+              }}
+              onDeletePassedExam={handleDeletePassedExam}
+            />
+          ) : (
+            <div className="flex-1 overflow-y-auto p-6">
+              {layoutMode === 'grid' ? (
+                <GridView
+                  items={items}
+                  selectedId={selectedItem?.id || null}
+                  onSelect={(item) => setSelectedItem(item)}
+                  onOpen={handleOpenItem}
+                  onContextMenu={handleContextMenu}
+                  onUpload={handleUploadFiles}
+                  onCreateFolder={() => setIsNewFolderModalOpen(true)}
+                />
+              ) : (
+                <ListView
+                  items={items}
+                  selectedId={selectedItem?.id || null}
+                  onSelect={(item) => setSelectedItem(item)}
+                  onOpen={handleOpenItem}
+                  onContextMenu={handleContextMenu}
+                  onUpload={handleUploadFiles}
+                  onCreateFolder={() => setIsNewFolderModalOpen(true)}
+                />
+              )}
+            </div>
+          )}
         </main>
       </div>
 
@@ -587,6 +688,16 @@ export const App: React.FC = () => {
         isOpen={isNewExamModalOpen}
         onClose={() => setIsNewExamModalOpen(false)}
         onCreate={handleCreateExamDate}
+      />
+
+      <PassedExamModal
+        isOpen={isPassedExamModalOpen}
+        examToEdit={examToEdit}
+        onClose={() => {
+          setIsPassedExamModalOpen(false);
+          setExamToEdit(null);
+        }}
+        onSave={handleSavePassedExam}
       />
 
       <RenameModal

@@ -219,4 +219,70 @@ func TestDatabaseOperations(t *testing.T) {
 			t.Fatalf("Expired exam was not pruned and is still visible: %+v", e)
 		}
 	}
+
+	// 14. Passed Exams (Booklet & Career) CRUD
+	passed1 := &models.PassedExam{
+		ID:        "passed-1",
+		Subject:   "Programmazione 1",
+		Grade:     28,
+		IsHonors:  false,
+		CFU:       9,
+		ExamDate:  "2026-02-15",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	passed2 := &models.PassedExam{
+		ID:        "passed-2",
+		Subject:   "Architettura degli Elaboratori",
+		Grade:     30,
+		IsHonors:  true,
+		CFU:       6,
+		ExamDate:  "2026-06-20",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := database.InsertPassedExam(passed1); err != nil {
+		t.Fatalf("InsertPassedExam 1 failed: %v", err)
+	}
+	if err := database.InsertPassedExam(passed2); err != nil {
+		t.Fatalf("InsertPassedExam 2 failed: %v", err)
+	}
+
+	// Retrieve passed exams
+	passedExams, err := database.GetPassedExams()
+	if err != nil {
+		t.Fatalf("GetPassedExams failed: %v", err)
+	}
+	if len(passedExams) != 2 {
+		t.Fatalf("Expected 2 passed exams, got %d", len(passedExams))
+	}
+
+	// Verify fields
+	if passedExams[0].ID == "passed-2" {
+		if !passedExams[0].IsHonors || passedExams[0].Grade != 30 || passedExams[0].CFU != 6 {
+			t.Fatalf("PassedExam 2 corrupted: %+v", passedExams[0])
+		}
+	}
+
+	// Update passed1 (change grade to 30)
+	passed1.Grade = 30
+	passed1.IsHonors = false
+	if err := database.UpdatePassedExam(passed1); err != nil {
+		t.Fatalf("UpdatePassedExam failed: %v", err)
+	}
+
+	// Delete passed2
+	if err := database.DeletePassedExam("passed-2"); err != nil {
+		t.Fatalf("DeletePassedExam failed: %v", err)
+	}
+
+	passedAfterDelete, err := database.GetPassedExams()
+	if err != nil {
+		t.Fatalf("GetPassedExams after delete failed: %v", err)
+	}
+	if len(passedAfterDelete) != 1 || passedAfterDelete[0].ID != "passed-1" || passedAfterDelete[0].Grade != 30 {
+		t.Fatalf("Expected 1 passed exam with updated grade 30, got: %+v", passedAfterDelete)
+	}
 }
+

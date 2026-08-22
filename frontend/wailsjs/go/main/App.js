@@ -10,6 +10,10 @@ export function CreateFolder(arg1, arg2) {
   return window['go']['main']['App']['CreateFolder'](arg1, arg2);
 }
 
+export function CreatePassedExam(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CreatePassedExam'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function CreateWebLink(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateWebLink'](arg1, arg2, arg3);
 }
@@ -20,6 +24,10 @@ export function DeleteExamDate(arg1) {
 
 export function DeleteItem(arg1, arg2) {
   return window['go']['main']['App']['DeleteItem'](arg1, arg2);
+}
+
+export function DeletePassedExam(arg1) {
+  return window['go']['main']['App']['DeletePassedExam'](arg1);
 }
 
 export function EmptyTrash() {
@@ -58,6 +66,10 @@ export function ListItems(arg1, arg2) {
   return window['go']['main']['App']['ListItems'](arg1, arg2);
 }
 
+export function ListPassedExams() {
+  return window['go']['main']['App']['ListPassedExams']();
+}
+
 export function OpenFileLocally(arg1) {
   return window['go']['main']['App']['OpenFileLocally'](arg1);
 }
@@ -76,4 +88,8 @@ export function SaveFileFromBase64(arg1, arg2, arg3) {
 
 export function SearchItems(arg1) {
   return window['go']['main']['App']['SearchItems'](arg1);
+}
+
+export function UpdatePassedExam(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['UpdatePassedExam'](arg1, arg2, arg3, arg4, arg5, arg6);
 }

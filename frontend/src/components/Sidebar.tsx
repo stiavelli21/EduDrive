@@ -13,6 +13,8 @@ import {
   GraduationCap,
   Plus,
   X,
+  Award,
+  BookOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,11 +24,13 @@ interface SidebarProps {
   onUploadFiles: () => void;
   onNewLink: () => void;
   onNewExamDate: () => void;
+  onNewPassedExam?: () => void;
   onDeleteExamDate: (id: string) => void;
   onEmptyTrash: () => void;
   onOpenStorageModal: () => void;
   stats: StorageStats | null;
   examDates: ExamDateItem[];
+  passedExamsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,11 +40,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onUploadFiles,
   onNewLink,
   onNewExamDate,
+  onNewPassedExam,
   onDeleteExamDate,
   onEmptyTrash,
   onOpenStorageModal,
   stats,
   examDates,
+  passedExamsCount = 0,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -111,6 +117,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span>Nuovo link web</span>
               </button>
             </div>
+
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  onNewExamDate();
+                }}
+                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-violet-600 cursor-pointer"
+              >
+                <GraduationCap className="w-4 h-4 text-violet-600" />
+                <span>Nuova data esame</span>
+              </button>
+              {onNewPassedExam && (
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onNewPassedExam();
+                  }}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-emerald-600 cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4 text-emerald-600" />
+                  <span>Nuovo esame</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -171,6 +202,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
         )}
+
+        {/* Career / Booklet Section - Under Cestino */}
+        <button
+          onClick={() => onViewModeChange('career')}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+            viewMode === 'career'
+              ? 'bg-emerald-50 text-emerald-700 font-semibold'
+              : 'text-gray-700 hover:bg-gray-100/80'
+          }`}
+        >
+          <BookOpen className={`w-4 h-4 ${viewMode === 'career' ? 'text-emerald-600' : 'text-gray-500'}`} />
+          <span>Libretto</span>
+        </button>
       </nav>
 
       {/* Exam Deadlines Section */}
