@@ -28,17 +28,25 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
    - Supporto Drag and Drop per trascinare file da Esplora Risorse nell'applicazione.
    - Salvataggio fisico dei file con UUID univoci nella cartella `storage_data/`.
 
-3. **Apertura ed Esportazione**:
-   - Apertura con doppio clic tramite l'applicazione predefinita del sistema operativo.
+3. **Lettore ed Editor Markdown Integrato**:
+   - Inclusione automatica del file `README.md` di benvenuto e guida al primo avvio dell'applicazione (incorporato a tempo di compilazione tramite Go embed), liberamente modificabile o eliminabile dall'utente.
+   - Apertura e lettura diretta dei file Markdown (`.md`, `.markdown`) all'interno dell'applicazione con rendering grafico formattato GFM (tabelle, checklist, blocchi di codice, citazioni, titoli e formattazione tipografica).
+   - Creazione diretta di nuovi file Markdown dal menu "+ Nuovo" della barra laterale.
+   - Editor integrato con barra degli strumenti di formattazione rapida, modalita affiancata (Split Editor + Anteprima in tempo reale) e salvataggio rapido con scorciatoia `Ctrl+S`.
+   - Conteggio in tempo reale di parole, caratteri, righe e stima del tempo di lettura.
+
+4. **Apertura ed Esportazione**:
+   - Apertura con doppio clic tramite l'applicazione predefinita del sistema operativo o tramite visualizzatore in-app per documenti Markdown.
    - Esportazione e salvataggio di copie dei file in percorsi personalizzati.
 
-4. **Cestino e Ripristino**:
+5. **Cestino e Ripristino**:
    - Soft-delete degli elementi con vista dedicata Cestino.
    - I file nel cestino non hanno scadenza automatica e rimangono archiviati a tempo indeterminato finche non si svuota il cestino o si eliminano singolarmente.
    - Funzioni di ripristino o eliminazione definitiva.
    - Svuotamento completo del cestino con cancellazione fisica dei file da disco.
 
-5. **Libretto Universitario e Calcolo Media Ponderata**:
+6. **Libretto Universitario e Calcolo Media Ponderata**:
+
    - Sezione dedicata "Libretto" posizionata nella barra laterale sinistra sotto al cestino.
    - Calcolo istantaneo e automatico della **media ponderata** in base ai CFU degli esami superati.
    - Stima automatica del **voto base di partenza per la laurea** su 110.
@@ -47,7 +55,7 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
    - Simulatore dinamico "What-If" per calcolare in tempo reale come un futuro voto influenzera la media e la base di laurea.
    - Configurazione personalizzabile del peso della lode (30, 31 o 33).
 
-6. **Gestione Date Esami e Scadenze**:
+7. **Gestione Date Esami e Scadenze**:
    - Creazione rapida di date d'esame e materie dal menu "+ Nuovo".
    - Visualizzazione nella barra laterale sinistra ordinata per imminenza (esami piu vicini in cima).
    - Calcolo automatico dei giorni rimanenti con indicatore a linea colorata:
@@ -56,28 +64,38 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
      - Linea rossa: urgenza elevata (<= 10 giorni).
    - Possibilita di eliminare gli esami conclusi.
 
-7. **Ricerca Globale**:
+8. **Ricerca Globale**:
    - Ricerca istantanea in tempo reale per nome file o cartella.
 
-8. **Interfaccia e Layout**:
+9. **Interfaccia e Layout**:
    - Viste commutabili: Griglia ed Elenco tabellare.
    - Icone e badge dedicati in base al tipo MIME ed estensione.
    - Menu contestuale col tasto destro per tutte le operazioni rapide.
    - Widget e modale con statistiche di memoria occupata.
 
+
 ---
 
 ## Struttura del Progetto
 
+```mermaid
+graph TD
+    UI[Frontend: React 19 + TypeScript + TailwindCSS] <==>|Wails IPC Bindings| AppGo[Backend: app.go]
+    AppGo <--> DB[(Database: db/db.go - SQLite Pure Go)]
+    AppGo <--> Storage[Storage: storage/storage.go - Disco Locale]
+    AppGo <--> OS[OS APIs: Dialog Nativi & Default App Launcher]
+```
+
 ```
 EduDrive/
-├── app.go                  # Controller backend ed export metodi Wails
+├── app.go                  # Controller backend, export metodi Wails e embed README.md
+├── app_test.go             # Test unitari ciclo di vita e seed iniziale
 ├── main.go                 # Entrypoint Go, configurazione finestra e Wails
 ├── wails.json              # Configurazione del progetto Wails
 ├── go.mod / go.sum         # Dipendenze Go
 │
 ├── db/                     # Layer SQLite Pure-Go
-│   ├── db.go               # Schema, query CRUD, ricerca, transazioni
+│   ├── db.go               # Schema, query CRUD, app_settings, transazioni
 │   └── db_test.go          # Test unitari database
 │
 ├── models/                 # Strutture dati condivise (Item, Breadcrumb, StorageStats)

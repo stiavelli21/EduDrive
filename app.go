@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -18,6 +19,9 @@ import (
 	"github.com/google/uuid"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+//go:embed README.md
+var defaultReadmeContent string
 
 // App struct
 type App struct {
@@ -62,6 +66,38 @@ func (a *App) startup(ctx context.Context) {
 		wailsRuntime.LogErrorf(a.ctx, "Failed to initialize storage: %v", err)
 	}
 	a.storage = storageMgr
+
+	// Seed default items on first launch
+	a.seedInitialData()
+}
+
+// seedInitialData populates initial files and documents on first app launch
+func (a *App) seedInitialData() {
+	if a.database == nil || a.storage == nil {
+		return
+	}
+
+	seeded, err := a.database.GetSetting("initial_seed_completed")
+	if err != nil {
+		wailsRuntime.LogErrorf(a.ctx, "Failed to check initial seed status: %v", err)
+		return
+	}
+
+	if seeded == "1" {
+		return
+	}
+
+	// Create default README.md in root directory if content is available
+	if strings.TrimSpace(defaultReadmeContent) != "" {
+		_, err := a.CreateMarkdownFile("README.md", defaultReadmeContent, "")
+		if err != nil {
+			wailsRuntime.LogErrorf(a.ctx, "Failed to create default README.md: %v", err)
+		}
+	}
+
+	if err := a.database.SetSetting("initial_seed_completed", "1"); err != nil {
+		wailsRuntime.LogErrorf(a.ctx, "Failed to update seed status: %v", err)
+	}
 }
 
 // shutdown is called when the app terminates
@@ -298,6 +334,113 @@ func (a *App) SaveFileFromBase64(name string, base64Data string, parentID string
 
 	return item, nil
 }
+
+// CreateMarkdownFile creates a new markdown document directly inside EduDrive
+func (a *App) CreateMarkdownFile(name string, content string, parentID string) (*models.Item, error) {
+	if a.database == nil || a.storage == nil {
+		return nil, fmt.Errorf("services not initialized")
+	}
+
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		trimmedName = "Nuovo documento.md"
+	}
+
+	// Ensure .md extension
+	if !strings.HasSuffix(strings.ToLower(trimmedName), ".md") && !strings.HasSuffix(strings.ToLower(trimmedName), ".markdown") {
+		trimmedName += ".md"
+	}
+
+	storageFilename, size, mimeType, err := a.storage.SaveTextContent(trimmedName, content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create markdown file on disk: %w", err)
+	}
+
+	if mimeType == "" || mimeType == "application/octet-stream" {
+		mimeType = "text/markdown"
+	}
+
+	item := &models.Item{
+		ID:          uuid.New().String(),
+		Name:        trimmedName,
+		IsFolder:    false,
+		SizeBytes:   size,
+		MimeType:    mimeType,
+		StoragePath: storageFilename,
+		IsTrash:     false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	if parentID != "" {
+		item.ParentID = &parentID
+	}
+
+	if err := a.database.InsertItem(item); err != nil {
+		_ = a.storage.DeleteFile(storageFilename)
+		return nil, fmt.Errorf("failed to record markdown file in database: %w", err)
+	}
+
+	return item, nil
+}
+
+// GetFileContent retrieves the text content of a stored file (for Markdown reader / editor)
+func (a *App) GetFileContent(id string) (string, error) {
+	if a.database == nil || a.storage == nil {
+		return "", fmt.Errorf("services not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return "", fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return "", fmt.Errorf("cannot read contents of a folder")
+	}
+
+	if item.MimeType == "url" {
+		return item.StoragePath, nil
+	}
+
+	if item.StoragePath == "" {
+		return "", fmt.Errorf("file has no storage path")
+	}
+
+	return a.storage.ReadTextContent(item.StoragePath)
+}
+
+// SaveMarkdownFile updates the content of an existing markdown file and synchronizes DB metadata
+func (a *App) SaveMarkdownFile(id string, content string) error {
+	if a.database == nil || a.storage == nil {
+		return fmt.Errorf("services not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return fmt.Errorf("cannot modify folder content")
+	}
+
+	if item.MimeType == "url" {
+		return fmt.Errorf("cannot edit web link as markdown")
+	}
+
+	newSize, err := a.storage.UpdateTextContent(item.StoragePath, content)
+	if err != nil {
+		return fmt.Errorf("failed to update file on disk: %w", err)
+	}
+
+	if err := a.database.UpdateItemSizeAndTimestamp(id, newSize); err != nil {
+		return fmt.Errorf("failed to update database metadata: %w", err)
+	}
+
+	return nil
+}
+
 
 // ExportFile lets the user choose a destination and saves a copy of the stored file or .url shortcut
 func (a *App) ExportFile(id string) error {

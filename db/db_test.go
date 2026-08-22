@@ -284,5 +284,46 @@ func TestDatabaseOperations(t *testing.T) {
 	if len(passedAfterDelete) != 1 || passedAfterDelete[0].ID != "passed-1" || passedAfterDelete[0].Grade != 30 {
 		t.Fatalf("Expected 1 passed exam with updated grade 30, got: %+v", passedAfterDelete)
 	}
+
+	// 15. UpdateItemSizeAndTimestamp
+	if err := database.UpdateItemSizeAndTimestamp("file-1", 1024*800); err != nil {
+		t.Fatalf("UpdateItemSizeAndTimestamp failed: %v", err)
+	}
+	updatedItem, err := database.GetItemByID("file-1")
+	if err != nil || updatedItem == nil || updatedItem.SizeBytes != 1024*800 {
+		t.Fatalf("Expected size 1024*800, got: %+v", updatedItem)
+	}
+
+	// 16. App Settings (GetSetting and SetSetting)
+	val, err := database.GetSetting("non_existent_key")
+	if err != nil {
+		t.Fatalf("GetSetting for non_existent_key failed: %v", err)
+	}
+	if val != "" {
+		t.Fatalf("Expected empty string for non-existent key, got: %s", val)
+	}
+
+	if err := database.SetSetting("initial_seed_completed", "1"); err != nil {
+		t.Fatalf("SetSetting failed: %v", err)
+	}
+
+	val, err = database.GetSetting("initial_seed_completed")
+	if err != nil {
+		t.Fatalf("GetSetting failed: %v", err)
+	}
+	if val != "1" {
+		t.Fatalf("Expected '1', got: %s", val)
+	}
+
+	// Overwrite setting
+	if err := database.SetSetting("initial_seed_completed", "2"); err != nil {
+		t.Fatalf("SetSetting overwrite failed: %v", err)
+	}
+	val, err = database.GetSetting("initial_seed_completed")
+	if err != nil || val != "2" {
+		t.Fatalf("Expected updated setting '2', got: %s", val)
+	}
 }
+
+
 

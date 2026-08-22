@@ -12,7 +12,9 @@ import {
   FileQuestion,
   FileCheck,
   Globe,
+  FileCode,
 } from 'lucide-react';
+
 
 export function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 B';
@@ -138,8 +140,18 @@ export function getFileTypeInfo(name: string, isFolder: boolean, mimeType?: stri
     };
   }
 
-  // Documents (Word, Text, Markdown)
-  if (['docx', 'doc', 'odt', 'rtf', 'txt', 'md'].includes(ext)) {
+  // Markdown Documents
+  if (['md', 'markdown'].includes(ext) || mimeType === 'text/markdown') {
+    return {
+      icon: <FileCode className="w-5 h-5 text-indigo-600" />,
+      colorClass: 'text-indigo-600',
+      badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      label: 'Markdown',
+    };
+  }
+
+  // Documents (Word, Text)
+  if (['docx', 'doc', 'odt', 'rtf', 'txt'].includes(ext)) {
     return {
       icon: <FileText className="w-5 h-5 text-blue-600" />,
       colorClass: 'text-blue-600',
@@ -147,6 +159,7 @@ export function getFileTypeInfo(name: string, isFolder: boolean, mimeType?: stri
       label: 'Documento di testo',
     };
   }
+
 
   // Archives (zip, rar, 7z)
   if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {

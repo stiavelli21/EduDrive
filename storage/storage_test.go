@@ -61,4 +61,42 @@ func TestStorageOperations(t *testing.T) {
 	if _, err := os.Stat(fullPath); !os.IsNotExist(err) {
 		t.Fatalf("File should have been deleted from disk")
 	}
+
+	// Test SaveTextContent for Markdown
+	mdContent := "# Titolo Appunti\n\n- Punto 1\n- Punto 2\n"
+	mdStorageName, mdSize, mdMime, err := sm.SaveTextContent("appunti.md", mdContent)
+	if err != nil {
+		t.Fatalf("SaveTextContent failed: %v", err)
+	}
+	if mdSize != int64(len(mdContent)) {
+		t.Fatalf("Expected mdSize %d, got %d", len(mdContent), mdSize)
+	}
+	if mdMime != "text/markdown" {
+		t.Fatalf("Expected text/markdown, got %s", mdMime)
+	}
+
+	// Test ReadTextContent
+	readContent, err := sm.ReadTextContent(mdStorageName)
+	if err != nil {
+		t.Fatalf("ReadTextContent failed: %v", err)
+	}
+	if readContent != mdContent {
+		t.Fatalf("Expected content %q, got %q", mdContent, readContent)
+	}
+
+	// Test UpdateTextContent
+	updatedMd := "# Titolo Modificato\n\n- Nuovo punto\n"
+	updatedSize, err := sm.UpdateTextContent(mdStorageName, updatedMd)
+	if err != nil {
+		t.Fatalf("UpdateTextContent failed: %v", err)
+	}
+	if updatedSize != int64(len(updatedMd)) {
+		t.Fatalf("Expected updated size %d, got %d", len(updatedMd), updatedSize)
+	}
+
+	readUpdated, err := sm.ReadTextContent(mdStorageName)
+	if err != nil || readUpdated != updatedMd {
+		t.Fatalf("Expected updated content %q, got %q", updatedMd, readUpdated)
+	}
 }
+

@@ -191,3 +191,70 @@ func (sm *StorageManager) ExportFile(storageFilename string, destinationPath str
 
 	return nil
 }
+
+// SaveTextContent saves string content directly as a file in the storage directory
+func (sm *StorageManager) SaveTextContent(filename string, content string) (storageFilename string, size int64, mimeType string, err error) {
+	ext := filepath.Ext(filename)
+	if ext == "" {
+		ext = ".md"
+	}
+
+	storageFilename = fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	destPath := filepath.Join(sm.BaseDir, storageFilename)
+
+	contentBytes := []byte(content)
+	if err := os.WriteFile(destPath, contentBytes, 0644); err != nil {
+		return "", 0, "", fmt.Errorf("failed to write text content to storage: %w", err)
+	}
+
+	headerBytes := contentBytes
+	if len(headerBytes) > 512 {
+		headerBytes = headerBytes[:512]
+	}
+
+	detectedMime := DetectMimeType(filename, headerBytes)
+	return storageFilename, int64(len(contentBytes)), detectedMime, nil
+}
+
+// ReadTextContent reads the content of a stored text file
+func (sm *StorageManager) ReadTextContent(storageFilename string) (string, error) {
+	if storageFilename == "" {
+		return "", fmt.Errorf("storage filename cannot be empty")
+	}
+
+	fullPath := sm.GetFullPath(storageFilename)
+	fileInfo, err := os.Stat(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("file not found in storage: %w", err)
+	}
+
+	// Protect against reading excessively large files into memory (e.g. limit to 10MB)
+	const maxTextSize = 10 * 1024 * 1024
+	if fileInfo.Size() > maxTextSize {
+		return "", fmt.Errorf("file size (%d bytes) exceeds maximum text read limit of 10MB", fileInfo.Size())
+	}
+
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file from storage: %w", err)
+	}
+
+	return string(data), nil
+}
+
+// UpdateTextContent overwrites an existing stored text file with new content
+func (sm *StorageManager) UpdateTextContent(storageFilename string, content string) (int64, error) {
+	if storageFilename == "" {
+		return 0, fmt.Errorf("storage filename cannot be empty")
+	}
+
+	fullPath := sm.GetFullPath(storageFilename)
+	contentBytes := []byte(content)
+
+	if err := os.WriteFile(fullPath, contentBytes, 0644); err != nil {
+		return 0, fmt.Errorf("failed to update text content: %w", err)
+	}
+
+	return int64(len(contentBytes)), nil
+}
+

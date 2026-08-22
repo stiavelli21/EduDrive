@@ -15,18 +15,18 @@ import {
   X,
   Award,
   BookOpen,
+  FileCode,
 } from 'lucide-react';
 
 interface SidebarProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   onNewFolder: () => void;
+  onNewMarkdown: () => void;
   onUploadFiles: () => void;
   onNewLink: () => void;
   onNewExamDate: () => void;
-  onNewPassedExam?: () => void;
   onDeleteExamDate: (id: string) => void;
-  onEmptyTrash: () => void;
   onOpenStorageModal: () => void;
   stats: StorageStats | null;
   examDates: ExamDateItem[];
@@ -37,12 +37,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   viewMode,
   onViewModeChange,
   onNewFolder,
+  onNewMarkdown,
   onUploadFiles,
   onNewLink,
   onNewExamDate,
-  onNewPassedExam,
   onDeleteExamDate,
-  onEmptyTrash,
   onOpenStorageModal,
   stats,
   examDates,
@@ -101,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setIsDropdownOpen(false);
                   onUploadFiles();
                 }}
-                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-blue-600 cursor-pointer"
+                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
               >
                 <Upload className="w-4 h-4 text-blue-600" />
                 <span>Carica file...</span>
@@ -109,39 +108,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
+                  onNewMarkdown();
+                }}
+                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
+              >
+                <FileCode className="w-4 h-4 text-indigo-600" />
+                <span>Nuovo File .md</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
                   onNewLink();
                 }}
-                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-cyan-600 cursor-pointer"
+                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
               >
                 <Globe className="w-4 h-4 text-cyan-600" />
                 <span>Nuovo link web</span>
               </button>
             </div>
 
-            <div className="py-1">
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  onNewExamDate();
-                }}
-                className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-violet-600 cursor-pointer"
-              >
-                <GraduationCap className="w-4 h-4 text-violet-600" />
-                <span>Nuova data esame</span>
-              </button>
-              {onNewPassedExam && (
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onNewPassedExam();
-                  }}
-                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors font-medium text-emerald-600 cursor-pointer"
-                >
-                  <BookOpen className="w-4 h-4 text-emerald-600" />
-                  <span>Nuovo esame</span>
-                </button>
-              )}
-            </div>
+
           </div>
         )}
       </div>
@@ -191,18 +177,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </button>
 
-        {viewMode === 'trash' && stats && stats.trashItems > 0 && (
-          <div className="pt-2 px-2">
-            <button
-              onClick={onEmptyTrash}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-            >
-              <Trash className="w-3.5 h-3.5 text-rose-600" />
-              <span>Svuota cestino</span>
-            </button>
-          </div>
-        )}
-
         {/* Career / Booklet Section - Under Cestino */}
         <button
           onClick={() => onViewModeChange('career')}
@@ -216,6 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Libretto</span>
         </button>
       </nav>
+
 
       {/* Exam Deadlines Section */}
       <div className="my-4 pt-3 border-t border-gray-100 flex flex-col flex-1 min-h-0">

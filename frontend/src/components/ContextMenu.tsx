@@ -9,6 +9,8 @@ import {
   Info,
   FolderOpen,
   Globe,
+  BookOpen,
+  FileCode,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -18,6 +20,7 @@ interface ContextMenuProps {
   viewMode: ViewMode;
   onClose: () => void;
   onOpen: (item: DriveItem) => void;
+  onOpenWithSystemApp?: (item: DriveItem) => void;
   onExport: (item: DriveItem) => void;
   onRename: (item: DriveItem) => void;
   onDelete: (item: DriveItem, permanent: boolean) => void;
@@ -32,6 +35,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   viewMode,
   onClose,
   onOpen,
+  onOpenWithSystemApp,
   onExport,
   onRename,
   onDelete,
@@ -65,6 +69,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   const isInTrash = item.isTrash || viewMode === 'trash';
   const isWebLink = item.mimeType === 'url';
+  const isMarkdown =
+    item.mimeType === 'text/markdown' ||
+    item.name.toLowerCase().endsWith('.md') ||
+    item.name.toLowerCase().endsWith('.markdown');
 
   return (
     <div
@@ -84,6 +92,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
             <FolderOpen className="w-4 h-4 text-amber-500" />
           ) : isWebLink ? (
             <Globe className="w-4 h-4 text-cyan-600" />
+          ) : isMarkdown ? (
+            <BookOpen className="w-4 h-4 text-indigo-600" />
           ) : (
             <ExternalLink className="w-4 h-4 text-blue-600" />
           )}
@@ -92,9 +102,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               ? 'Apri cartella'
               : isWebLink
               ? 'Apri nel browser'
+              : isMarkdown
+              ? 'Leggi / Modifica'
               : 'Apri con app di sistema'}
           </span>
         </button>
+
+        {isMarkdown && !isInTrash && onOpenWithSystemApp && (
+          <button
+            onClick={() => {
+              onClose();
+              onOpenWithSystemApp(item);
+            }}
+            className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-gray-100 text-left transition-colors text-gray-600"
+          >
+            <ExternalLink className="w-4 h-4 text-gray-500" />
+            <span>Apri con app di sistema</span>
+          </button>
+        )}
 
         {!item.isFolder && !isInTrash && (
           <button
@@ -109,6 +134,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           </button>
         )}
       </div>
+
 
       {!isInTrash && (
         <div className="py-1">

@@ -90,6 +90,11 @@ func (d *Database) migrate() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_passed_exams_date ON passed_exams(exam_date);
+
+	CREATE TABLE IF NOT EXISTS app_settings (
+		key TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	);
 	`
 	_, err := d.conn.Exec(query)
 	return err
@@ -364,6 +369,18 @@ func (d *Database) UpdateItemName(id string, newName string) error {
 	_, err := d.conn.Exec(query, newName, time.Now(), id)
 	return err
 }
+
+// UpdateItemSizeAndTimestamp updates the size and updated_at timestamp of an item
+func (d *Database) UpdateItemSizeAndTimestamp(id string, sizeBytes int64) error {
+	query := `
+	UPDATE items
+	SET size_bytes = ?, updated_at = ?
+	WHERE id = ?
+	`
+	_, err := d.conn.Exec(query, sizeBytes, time.Now(), id)
+	return err
+}
+
 
 // SetTrashStatus sets trash flag for an item and all its descendants recursively
 func (d *Database) SetTrashStatus(id string, isTrash bool) error {
@@ -737,4 +754,30 @@ func (d *Database) DeletePassedExam(id string) error {
 	_, err := d.conn.Exec(query, id)
 	return err
 }
+
+// GetSetting retrieves a setting value by key, returning empty string if not found
+func (d *Database) GetSetting(key string) (string, error) {
+	query := `SELECT value FROM app_settings WHERE key = ?`
+	var value string
+	err := d.conn.QueryRow(query, key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+// SetSetting inserts or updates a setting key-value pair
+func (d *Database) SetSetting(key string, value string) error {
+	query := `
+	INSERT INTO app_settings (key, value)
+	VALUES (?, ?)
+	ON CONFLICT(key) DO UPDATE SET value = excluded.value
+	`
+	_, err := d.conn.Exec(query, key, value)
+	return err
+}
+
 

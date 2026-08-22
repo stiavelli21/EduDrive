@@ -10,6 +10,10 @@ export function CreateFolder(arg1, arg2) {
   return window['go']['main']['App']['CreateFolder'](arg1, arg2);
 }
 
+export function CreateMarkdownFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateMarkdownFile'](arg1, arg2, arg3);
+}
+
 export function CreatePassedExam(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['CreatePassedExam'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -44,6 +48,10 @@ export function GetAppStoragePath() {
 
 export function GetBreadcrumbs(arg1) {
   return window['go']['main']['App']['GetBreadcrumbs'](arg1);
+}
+
+export function GetFileContent(arg1) {
+  return window['go']['main']['App']['GetFileContent'](arg1);
 }
 
 export function GetStorageStats() {
@@ -84,6 +92,10 @@ export function RestoreItem(arg1) {
 
 export function SaveFileFromBase64(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveFileFromBase64'](arg1, arg2, arg3);
+}
+
+export function SaveMarkdownFile(arg1, arg2) {
+  return window['go']['main']['App']['SaveMarkdownFile'](arg1, arg2);
 }
 
 export function SearchItems(arg1) {

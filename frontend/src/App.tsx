@@ -34,6 +34,9 @@ import {
   SearchItems,
   GetStorageStats,
   GetAppStoragePath,
+  CreateMarkdownFile,
+  GetFileContent,
+  SaveMarkdownFile,
 } from '../wailsjs/go/main/App';
 
 import { Header } from './components/Header';
@@ -54,6 +57,10 @@ import { RenameModal } from './components/Modals/RenameModal';
 import { ConfirmModal } from './components/Modals/ConfirmModal';
 import { DetailsModal } from './components/Modals/DetailsModal';
 import { StorageModal } from './components/Modals/StorageModal';
+import { MarkdownModal } from './components/Modals/MarkdownModal';
+import { Trash2, Info } from 'lucide-react';
+
+
 
 export const App: React.FC = () => {
   // Navigation & View State
@@ -115,6 +122,9 @@ export const App: React.FC = () => {
   const [renameModalItem, setRenameModalItem] = useState<DriveItem | null>(null);
   const [detailsModalItem, setDetailsModalItem] = useState<DriveItem | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+  const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
+  const [markdownItem, setMarkdownItem] = useState<DriveItem | null>(null);
+  const [markdownContent, setMarkdownContent] = useState<string>('');
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -202,26 +212,78 @@ export const App: React.FC = () => {
     setSelectedItem(null);
   };
 
-  // Navigate into Folder or Open File / Link
+  // Navigate into Folder or Open File / Link / Markdown Document
   const handleOpenItem = async (item: DriveItem) => {
     if (item.isFolder) {
       setSearchQuery('');
       setCurrentFolderId(item.id);
       setViewMode('drive');
       setSelectedItem(null);
+    } else if (item.mimeType === 'url') {
+      try {
+        await OpenFileLocally(item.id);
+        addToast('info', 'Apertura link...', `Apertura di "${item.name}" nel browser predefinito.`);
+      } catch (err: any) {
+        addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il link.');
+      }
+    } else if (
+      item.mimeType === 'text/markdown' ||
+      item.name.toLowerCase().endsWith('.md') ||
+      item.name.toLowerCase().endsWith('.markdown')
+    ) {
+      try {
+        const fileContent = await GetFileContent(item.id);
+        setMarkdownItem(item);
+        setMarkdownContent(fileContent || '');
+        setIsMarkdownModalOpen(true);
+      } catch (err: any) {
+        console.error('Failed to load markdown content:', err);
+        addToast('error', 'Errore nella lettura', err?.toString() || 'Impossibile leggere il file Markdown.');
+      }
     } else {
       try {
         await OpenFileLocally(item.id);
-        if (item.mimeType === 'url') {
-          addToast('info', 'Apertura link...', `Apertura di "${item.name}" nel browser predefinito.`);
-        } else {
-          addToast('info', 'Apertura in corso...', `Apertura di "${item.name}" con l'applicazione di sistema.`);
-        }
+        addToast('info', 'Apertura in corso...', `Apertura di "${item.name}" con l'applicazione di sistema.`);
       } catch (err: any) {
         addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il file.');
       }
     }
   };
+
+  // Open File with System Application (Explicit)
+  const handleOpenWithSystemApp = async (item: DriveItem) => {
+    try {
+      await OpenFileLocally(item.id);
+      addToast('info', 'Apertura con app di sistema...', `Apertura di "${item.name}".`);
+    } catch (err: any) {
+      addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il file.');
+    }
+  };
+
+  // Start New Markdown Document
+  const handleNewMarkdown = () => {
+    setMarkdownItem(null);
+    setMarkdownContent('');
+    setIsMarkdownModalOpen(true);
+  };
+
+  // Save or Create Markdown Document
+  const handleSaveMarkdown = async (name: string, content: string, id?: string) => {
+    try {
+      if (id) {
+        await SaveMarkdownFile(id, content);
+        addToast('success', 'Documento salvato', `Le modifiche a "${name}" sono state salvate.`);
+      } else {
+        await CreateMarkdownFile(name, content, currentFolderId);
+        addToast('success', 'Documento creato', `Il file "${name}" è stato creato con successo.`);
+      }
+      loadData();
+    } catch (err: any) {
+      addToast('error', 'Errore nel salvataggio', err?.toString() || 'Impossibile salvare il documento.');
+      throw err;
+    }
+  };
+
 
   // Navigate via Breadcrumb
   const handleNavigateBreadcrumb = (folderId: string) => {
@@ -573,15 +635,11 @@ export const App: React.FC = () => {
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onNewFolder={() => setIsNewFolderModalOpen(true)}
+          onNewMarkdown={handleNewMarkdown}
           onUploadFiles={handleUploadFiles}
           onNewLink={() => setIsNewLinkModalOpen(true)}
           onNewExamDate={() => setIsNewExamModalOpen(true)}
-          onNewPassedExam={() => {
-            setExamToEdit(null);
-            setIsPassedExamModalOpen(true);
-          }}
           onDeleteExamDate={handleDeleteExamDate}
-          onEmptyTrash={handleEmptyTrash}
           onOpenStorageModal={() => setIsStorageModalOpen(true)}
           stats={storageStats}
           examDates={examDates}
@@ -603,11 +661,44 @@ export const App: React.FC = () => {
             />
 
             {viewMode !== 'career' && (
-              <div className="text-xs text-gray-400 font-medium">
-                {items.length} {items.length === 1 ? 'elemento' : 'elementi'}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 font-medium">
+                  {items.length} {items.length === 1 ? 'elemento' : 'elementi'}
+                </span>
+                {viewMode === 'trash' && items.length > 0 && (
+                  <button
+                    onClick={handleEmptyTrash}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Svuota cestino</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
+
+          {/* Trash Information Banner inside Trash Section */}
+          {viewMode === 'trash' && (
+            <div className="mx-6 mt-4 p-3.5 bg-rose-50/50 border border-rose-200/70 rounded-2xl flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2.5 text-xs text-rose-900">
+                <Info className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>
+                  Gli elementi presenti nel cestino non sono visibili nel Drive finché non vengono ripristinati o eliminati definitivamente.
+                </span>
+              </div>
+              {items.length > 0 && (
+                <button
+                  onClick={handleEmptyTrash}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 text-xs font-semibold rounded-xl shadow-2xs transition-colors cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Svuota cestino</span>
+                </button>
+              )}
+            </div>
+          )}
+
 
           {/* Files / Folders List / Grid Area or Career / Booklet View */}
           {viewMode === 'career' ? (
@@ -663,6 +754,7 @@ export const App: React.FC = () => {
           viewMode={viewMode}
           onClose={() => setContextMenu((prev) => ({ ...prev, visible: false }))}
           onOpen={handleOpenItem}
+          onOpenWithSystemApp={handleOpenWithSystemApp}
           onExport={handleExportFile}
           onRename={(item) => setRenameModalItem(item)}
           onDelete={handleDelete}
@@ -672,7 +764,18 @@ export const App: React.FC = () => {
       )}
 
       {/* Modals */}
+      <MarkdownModal
+        isOpen={isMarkdownModalOpen}
+        item={markdownItem}
+        initialContent={markdownContent}
+        onClose={() => setIsMarkdownModalOpen(false)}
+        onSave={handleSaveMarkdown}
+        onExport={handleExportFile}
+        onOpenExternally={handleOpenWithSystemApp}
+      />
+
       <NewFolderModal
+
         isOpen={isNewFolderModalOpen}
         onClose={() => setIsNewFolderModalOpen(false)}
         onCreate={handleCreateFolder}
