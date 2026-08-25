@@ -46,6 +46,7 @@ import { GridView } from './components/GridView';
 import { ListView } from './components/ListView';
 import { CareerView } from './components/CareerView';
 import { ContextMenu } from './components/ContextMenu';
+import { BackgroundContextMenu } from './components/BackgroundContextMenu';
 import { ToastContainer } from './components/ToastContainer';
 import { DropOverlay } from './components/DropOverlay';
 
@@ -99,12 +100,23 @@ export const App: React.FC = () => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Context Menu State
+  // Context Menu State (Item)
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
     y: 0,
     item: null,
+  });
+
+  // Background Context Menu State (Creation widget on empty area right-click)
+  const [bgContextMenu, setBgContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
   });
 
   // Exam Dates State
@@ -454,13 +466,28 @@ export const App: React.FC = () => {
     });
   };
 
-  // Right Click Context Menu Handler
+  // Right Click Context Menu Handler for Items
   const handleContextMenu = (e: React.MouseEvent, item: DriveItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBgContextMenu({ visible: false, x: 0, y: 0 });
     setContextMenu({
       visible: true,
       x: e.clientX,
       y: e.clientY,
       item,
+    });
+  };
+
+  // Right Click Context Menu Handler for Workspace Background (Creation menu)
+  const handleBackgroundContextMenu = (e: React.MouseEvent) => {
+    if (viewMode === 'trash' || viewMode === 'career') return;
+    e.preventDefault();
+    setContextMenu({ visible: false, x: 0, y: 0, item: null });
+    setBgContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
     });
   };
 
@@ -603,11 +630,12 @@ export const App: React.FC = () => {
       if (e.key === 'Escape') {
         setSelectedItem(null);
         setContextMenu((prev) => ({ ...prev, visible: false }));
+        setBgContextMenu((prev) => ({ ...prev, visible: false }));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItem, viewMode, contextMenu.visible]);
+  }, [selectedItem, viewMode, contextMenu.visible, bgContextMenu.visible]);
 
   return (
     <div
@@ -649,7 +677,10 @@ export const App: React.FC = () => {
         {/* Center Content Workspace */}
         <main
           className="flex-1 flex flex-col bg-white rounded-tl-3xl border-t border-l border-gray-200 overflow-hidden shadow-xs"
-          onClick={() => setSelectedItem(null)}
+          onClick={() => {
+            setSelectedItem(null);
+            setBgContextMenu({ visible: false, x: 0, y: 0 });
+          }}
         >
           {/* Breadcrumb & Sub-header */}
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-xs">
@@ -715,7 +746,10 @@ export const App: React.FC = () => {
               onDeletePassedExam={handleDeletePassedExam}
             />
           ) : (
-            <div className="flex-1 overflow-y-auto p-6">
+            <div
+              className="flex-1 overflow-y-auto p-6 flex flex-col min-h-0"
+              onContextMenu={handleBackgroundContextMenu}
+            >
               {layoutMode === 'grid' ? (
                 <GridView
                   items={items}
@@ -745,7 +779,7 @@ export const App: React.FC = () => {
       {/* Drag & Drop Visual Overlay */}
       <DropOverlay isDragging={isDragging} />
 
-      {/* Context Menu */}
+      {/* Context Menu (Item) */}
       {contextMenu.visible && contextMenu.item && (
         <ContextMenu
           x={contextMenu.x}
@@ -760,6 +794,19 @@ export const App: React.FC = () => {
           onDelete={handleDelete}
           onRestore={handleRestore}
           onDetails={(item) => setDetailsModalItem(item)}
+        />
+      )}
+
+      {/* Background Context Menu (Create Items) */}
+      {bgContextMenu.visible && (
+        <BackgroundContextMenu
+          x={bgContextMenu.x}
+          y={bgContextMenu.y}
+          onClose={() => setBgContextMenu({ visible: false, x: 0, y: 0 })}
+          onNewFolder={() => setIsNewFolderModalOpen(true)}
+          onUploadFiles={handleUploadFiles}
+          onNewMarkdown={handleNewMarkdown}
+          onNewLink={() => setIsNewLinkModalOpen(true)}
         />
       )}
 

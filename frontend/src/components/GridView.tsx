@@ -56,7 +56,7 @@ export const GridView: React.FC<GridViewProps> = ({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in min-h-full">
       {/* Folders Section */}
       {folders.length > 0 && (
         <div>
@@ -73,6 +73,7 @@ export const GridView: React.FC<GridViewProps> = ({
                   onDoubleClick={() => onOpen(folder)}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     onSelect(folder);
                     onContextMenu(e, folder);
                   }}
@@ -127,6 +128,7 @@ export const GridView: React.FC<GridViewProps> = ({
                   onDoubleClick={() => onOpen(file)}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     onSelect(file);
                     onContextMenu(e, file);
                   }}

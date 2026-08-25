@@ -75,3 +75,307 @@
 .animate-slide-up {
   animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* KaTeX and Mathematical Typesetting styling */
+.katex {
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  text-indent: 0;
+  text-rendering: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  border-color: currentColor;
+}
+
+.katex * {
+  border-color: currentColor;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Allow boxed and frame elements to maintain their box-sizing */
+.katex .fbox,
+.katex .fcolorbox,
+.katex .angl {
+  box-sizing: border-box !important;
+}
+
+/* Ensure fraction vinculum, radical lines, overlines and underlines render sharply */
+.katex .mfrac .frac-line,
+.katex .sqrt-line,
+.katex .overline-line,
+.katex .underline-line,
+.katex .katex-hline,
+.katex .katex-hdashline {
+  border-bottom-style: solid !important;
+  border-bottom-color: currentColor !important;
+  min-height: 1px;
+}
+
+/* Ensure SVG square roots and large delimiters stretch properly and are positioned accurately */
+.katex svg {
+  display: block !important;
+  position: absolute !important;
+  width: 100% !important;
+  height: inherit !important;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+.katex svg path {
+  stroke: none !important;
+}
+
+/* Protect KaTeX vlist tables and rows from Tailwind typography or table resets */
+.katex .vlist-t {
+  display: inline-table !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.katex .vlist-r {
+  display: table-row !important;
+}
+
+.katex .vlist {
+  display: table-cell !important;
+  position: relative !important;
+  vertical-align: bottom !important;
+}
+
+.katex .vlist > span {
+  display: block !important;
+  height: 0 !important;
+  position: relative !important;
+}
+
+.katex .vlist > span > span {
+  display: inline-block !important;
+}
+
+.katex .vlist > span > .pstrut {
+  overflow: hidden !important;
+  width: 0 !important;
+}
+
+/* Block/Display Math Styling */
+.katex-display {
+  display: block;
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  border-radius: 0.75rem;
+  background-color: rgba(248, 250, 252, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.katex-display > .katex {
+  display: inline-block;
+  text-align: initial;
+  font-size: 1.2em;
+  line-height: 1.2;
+}
+
+/* Inline Math styling */
+p .katex,
+li .katex,
+td .katex {
+  font-size: 1.1em;
+  padding: 0 0.15em;
+  vertical-align: -0.05em;
+}
+
+.katex-display::-webkit-scrollbar {
+  height: 6px;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* Explicit KaTeX Font-Face Rules for WebView2 compatibility */
+@font-face {
+  font-family: 'KaTeX_Main';
+  src: url('/fonts/KaTeX_Main-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Main-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Main-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Main';
+  src: url('/fonts/KaTeX_Main-Bold.woff2') format('woff2'),
+       url('/fonts/KaTeX_Main-Bold.woff') format('woff'),
+       url('/fonts/KaTeX_Main-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Main';
+  src: url('/fonts/KaTeX_Main-Italic.woff2') format('woff2'),
+       url('/fonts/KaTeX_Main-Italic.woff') format('woff'),
+       url('/fonts/KaTeX_Main-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Main';
+  src: url('/fonts/KaTeX_Main-BoldItalic.woff2') format('woff2'),
+       url('/fonts/KaTeX_Main-BoldItalic.woff') format('woff'),
+       url('/fonts/KaTeX_Main-BoldItalic.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Math';
+  src: url('/fonts/KaTeX_Math-Italic.woff2') format('woff2'),
+       url('/fonts/KaTeX_Math-Italic.woff') format('woff'),
+       url('/fonts/KaTeX_Math-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Math';
+  src: url('/fonts/KaTeX_Math-BoldItalic.woff2') format('woff2'),
+       url('/fonts/KaTeX_Math-BoldItalic.woff') format('woff'),
+       url('/fonts/KaTeX_Math-BoldItalic.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_AMS';
+  src: url('/fonts/KaTeX_AMS-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_AMS-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_AMS-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Caligraphic';
+  src: url('/fonts/KaTeX_Caligraphic-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Caligraphic-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Caligraphic-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Caligraphic';
+  src: url('/fonts/KaTeX_Caligraphic-Bold.woff2') format('woff2'),
+       url('/fonts/KaTeX_Caligraphic-Bold.woff') format('woff'),
+       url('/fonts/KaTeX_Caligraphic-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Fraktur';
+  src: url('/fonts/KaTeX_Fraktur-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Fraktur-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Fraktur-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Fraktur';
+  src: url('/fonts/KaTeX_Fraktur-Bold.woff2') format('woff2'),
+       url('/fonts/KaTeX_Fraktur-Bold.woff') format('woff'),
+       url('/fonts/KaTeX_Fraktur-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_SansSerif';
+  src: url('/fonts/KaTeX_SansSerif-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_SansSerif-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_SansSerif-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_SansSerif';
+  src: url('/fonts/KaTeX_SansSerif-Bold.woff2') format('woff2'),
+       url('/fonts/KaTeX_SansSerif-Bold.woff') format('woff'),
+       url('/fonts/KaTeX_SansSerif-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_SansSerif';
+  src: url('/fonts/KaTeX_SansSerif-Italic.woff2') format('woff2'),
+       url('/fonts/KaTeX_SansSerif-Italic.woff') format('woff'),
+       url('/fonts/KaTeX_SansSerif-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Script';
+  src: url('/fonts/KaTeX_Script-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Script-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Script-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Size1';
+  src: url('/fonts/KaTeX_Size1-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Size1-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Size1-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Size2';
+  src: url('/fonts/KaTeX_Size2-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Size2-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Size2-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Size3';
+  src: url('/fonts/KaTeX_Size3-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Size3-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Size3-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Size4';
+  src: url('/fonts/KaTeX_Size4-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Size4-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Size4-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'KaTeX_Typewriter';
+  src: url('/fonts/KaTeX_Typewriter-Regular.woff2') format('woff2'),
+       url('/fonts/KaTeX_Typewriter-Regular.woff') format('woff'),
+       url('/fonts/KaTeX_Typewriter-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+
+

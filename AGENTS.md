@@ -15,7 +15,7 @@ EduDrive e un'applicazione desktop locale per la gestione di file, cartelle e co
 - **Backend**: Go (1.25+), pattern Controller-Service-Repository.
 - **Database**: SQLite Pure-Go (`modernc.org/sqlite`) - zero dipendenze CGO/GCC.
 - **Storage Fisico**: Gestore locale su disco basato su UUID in `%APPDATA%/EduDrive/storage_data/`.
-- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3, Lucide React.
+- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3, Lucide React, KaTeX (con `remark-math` e `rehype-katex`).
 - **Comunicazione IPC**: Bindings fortemente tipizzati generati da Wails (`frontend/wailsjs`).
 
 ---
@@ -119,7 +119,7 @@ graph TD
 ### 4.4 Modali (`frontend/src/components/Modals/`)
 | Modale | Scopo |
 | :--- | :--- |
-| [`MarkdownModal.tsx`](frontend/src/components/Modals/MarkdownModal.tsx) | Visualizzatore, lettore ed editor Markdown integrato con supporto anteprima live/split view, toolbar di formattazione rapida GFM, conteggio parole/tempo di lettura e salvataggio in-app. |
+| [`MarkdownModal.tsx`](frontend/src/components/Modals/MarkdownModal.tsx) | Visualizzatore, lettore ed editor Markdown integrato con supporto anteprima live/split view, rendering completo di formule matematiche LaTeX/KaTeX (inline e a blocchi), toolbar di formattazione rapida GFM/LaTeX, conteggio parole/tempo di lettura e salvataggio in-app. |
 | [`NewFolderModal.tsx`](frontend/src/components/Modals/NewFolderModal.tsx) | Creazione di nuove cartelle virtuali nella posizione corrente. |
 | [`NewLinkModal.tsx`](frontend/src/components/Modals/NewLinkModal.tsx) | Creazione di collegamenti web / segnalibri con prefisso automatico HTTPS. |
 | [`NewExamModal.tsx`](frontend/src/components/Modals/NewExamModal.tsx) | Inserimento di nuove date di appelli d'esame con data picker. |

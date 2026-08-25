@@ -31,8 +31,9 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
 3. **Lettore ed Editor Markdown Integrato**:
    - Inclusione automatica del file `README.md` di benvenuto e guida al primo avvio dell'applicazione (incorporato a tempo di compilazione tramite Go embed), liberamente modificabile o eliminabile dall'utente.
    - Apertura e lettura diretta dei file Markdown (`.md`, `.markdown`) all'interno dell'applicazione con rendering grafico formattato GFM (tabelle, checklist, blocchi di codice, citazioni, titoli e formattazione tipografica).
+   - Supporto completo a formule matematiche e simboli scientifici LaTeX/KaTeX, sia in linea (`$...$`) che in blocco dedicato (`$$...$$`).
    - Creazione diretta di nuovi file Markdown dal menu "+ Nuovo" della barra laterale.
-   - Editor integrato con barra degli strumenti di formattazione rapida, modalita affiancata (Split Editor + Anteprima in tempo reale) e salvataggio rapido con scorciatoia `Ctrl+S`.
+   - Editor integrato con barra degli strumenti di formattazione rapida (inclusi pulsanti per formule matematiche inline e blocchi LaTeX), modalita affiancata (Split Editor + Anteprima in tempo reale) e salvataggio rapido con scorciatoia `Ctrl+S`.
    - Conteggio in tempo reale di parole, caratteri, righe e stima del tempo di lettura.
 
 4. **Apertura ed Esportazione**:

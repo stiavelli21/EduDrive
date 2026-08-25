@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import {
   FileText,
   X,
@@ -30,6 +33,8 @@ import {
   Clock,
   FileCode,
   ArrowLeft,
+  Sigma,
+  SquareFunction,
 } from 'lucide-react';
 import { DriveItem } from '../../types';
 
@@ -466,6 +471,27 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
 
             <button
               type="button"
+              onClick={() => insertSnippet('$', '$', 'E = mc^2')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Formula LaTeX inline ($...$)"
+            >
+              <Sigma className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                insertSnippet('$$\n', '\n$$', '\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}')
+              }
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Blocco Formula LaTeX ($$...$$)"
+            >
+              <SquareFunction className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-gray-200 mx-1" />
+
+            <button
+              type="button"
               onClick={() => insertSnippet('[', '](https://)', 'Testo del link')}
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
               title="Inserisci Link"
@@ -502,7 +528,8 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full">
               <article className="prose prose-slate max-w-none markdown-body text-gray-800">
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
                   components={{
                     h1: ({ node, ...props }) => (
                       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 pb-2 mb-4 border-b border-gray-200 mt-2" {...props} />
@@ -628,11 +655,12 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
                   <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 pb-2 border-b border-gray-200 flex items-center justify-between">
                     <span>Anteprima in tempo reale</span>
-                    <span className="text-[11px] font-normal text-gray-500">Formattato GFM</span>
+                    <span className="text-[11px] font-normal text-gray-500">Formattato GFM + LaTeX</span>
                   </div>
                   <article className="prose prose-slate max-w-none text-gray-800">
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
                       components={{
                         h1: ({ node, ...props }) => (
                           <h1 className="text-xl md:text-2xl font-bold text-gray-900 pb-2 mb-3 border-b border-gray-200 mt-2" {...props} />

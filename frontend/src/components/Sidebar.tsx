@@ -71,9 +71,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="relative mb-5" ref={dropdownRef}>
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-2xl shadow-drive hover:shadow-drive-lg transition-all cursor-pointer group"
+          className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-2xl shadow-drive hover:shadow-drive-lg transition-all cursor-pointer group"
         >
-          <div className="w-7 h-7 flex items-center justify-center shrink-0 text-blue-600">
+          <div className="w-6 h-6 flex items-center justify-center shrink-0 text-blue-600">
             <Plus className="w-5 h-5 stroke-[2.5]" />
           </div>
           <span className="text-sm font-semibold text-gray-700">Nuovo</span>

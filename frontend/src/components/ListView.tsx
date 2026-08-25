@@ -77,6 +77,7 @@ export const ListView: React.FC<ListViewProps> = ({
                   onDoubleClick={() => onOpen(item)}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     onSelect(item);
                     onContextMenu(e, item);
                   }}
