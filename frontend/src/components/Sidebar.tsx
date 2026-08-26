@@ -16,6 +16,7 @@ import {
   Award,
   BookOpen,
   FileCode,
+  FileUp,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ interface SidebarProps {
   onNewFolder: () => void;
   onNewMarkdown: () => void;
   onUploadFiles: () => void;
+  onImportAndConvertToMarkdown?: () => void;
   onNewLink: () => void;
   onNewExamDate: () => void;
   onDeleteExamDate: (id: string) => void;
@@ -39,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewFolder,
   onNewMarkdown,
   onUploadFiles,
+  onImportAndConvertToMarkdown,
   onNewLink,
   onNewExamDate,
   onDeleteExamDate,
@@ -105,6 +108,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Upload className="w-4 h-4 text-blue-600" />
                 <span>Carica file...</span>
               </button>
+              {onImportAndConvertToMarkdown && (
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onImportAndConvertToMarkdown();
+                  }}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
+                >
+                  <FileUp className="w-4 h-4 text-teal-600" />
+                  <span>Importa in .md</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -296,4 +311,3 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
-

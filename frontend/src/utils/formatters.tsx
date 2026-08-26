@@ -10,11 +10,10 @@ import {
   FileSpreadsheet,
   Presentation,
   FileQuestion,
-  FileCheck,
   Globe,
+  FileCheck,
   FileCode,
 } from 'lucide-react';
-
 
 export function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) return '0 B';
@@ -150,16 +149,25 @@ export function getFileTypeInfo(name: string, isFolder: boolean, mimeType?: stri
     };
   }
 
-  // Documents (Word, Text)
-  if (['docx', 'doc', 'odt', 'rtf', 'txt'].includes(ext)) {
+  // Word Documents (.docx, .doc)
+  if (['docx', 'doc'].includes(ext) || mimeType?.includes('word')) {
     return {
       icon: <FileText className="w-5 h-5 text-blue-600" />,
       colorClass: 'text-blue-600',
       badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
-      label: 'Documento di testo',
+      label: 'Documento Word',
     };
   }
 
+  // Text Documents
+  if (['odt', 'rtf', 'txt'].includes(ext) || mimeType === 'text/plain') {
+    return {
+      icon: <FileText className="w-5 h-5 text-slate-600" />,
+      colorClass: 'text-slate-600',
+      badgeBg: 'bg-slate-50 text-slate-700 border-slate-200',
+      label: 'File di testo',
+    };
+  }
 
   // Archives (zip, rar, 7z)
   if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
@@ -241,4 +249,3 @@ export function getExamUrgencyInfo(examDateVal: any): ExamUrgencyInfo {
     };
   }
 }
-

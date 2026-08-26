@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { FolderPlus, Upload, FileCode, Globe } from 'lucide-react';
+import { FolderPlus, Upload, FileCode, Globe, FileUp } from 'lucide-react';
 
 interface BackgroundContextMenuProps {
   x: number;
@@ -7,6 +7,7 @@ interface BackgroundContextMenuProps {
   onClose: () => void;
   onNewFolder: () => void;
   onUploadFiles: () => void;
+  onImportAndConvertToMarkdown?: () => void;
   onNewMarkdown: () => void;
   onNewLink: () => void;
 }
@@ -17,6 +18,7 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
   onClose,
   onNewFolder,
   onUploadFiles,
+  onImportAndConvertToMarkdown,
   onNewMarkdown,
   onNewLink,
 }) => {
@@ -77,6 +79,18 @@ export const BackgroundContextMenu: React.FC<BackgroundContextMenuProps> = ({
           <Upload className="w-4 h-4 text-blue-600 shrink-0" />
           <span>Carica file...</span>
         </button>
+        {onImportAndConvertToMarkdown && (
+          <button
+            onClick={() => {
+              onClose();
+              onImportAndConvertToMarkdown();
+            }}
+            className="w-full px-3.5 py-2 flex items-center gap-3 hover:bg-gray-100 text-left transition-colors text-gray-700 cursor-pointer"
+          >
+            <FileUp className="w-4 h-4 text-teal-600 shrink-0" />
+            <span>Importa in .md</span>
+          </button>
+        )}
         <button
           onClick={() => {
             onClose();

@@ -258,3 +258,25 @@ func (sm *StorageManager) UpdateTextContent(storageFilename string, content stri
 	return int64(len(contentBytes)), nil
 }
 
+// ReadBinaryContent reads raw binary data of a stored file
+func (sm *StorageManager) ReadBinaryContent(storageFilename string) ([]byte, error) {
+	if storageFilename == "" {
+		return nil, fmt.Errorf("storage filename cannot be empty")
+	}
+
+	fullPath := sm.GetFullPath(storageFilename)
+	fileInfo, err := os.Stat(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("file not found in storage: %w", err)
+	}
+
+	// Safety check against excessively large files (e.g. limit to 100MB for in-app reader)
+	const maxBinarySize = 100 * 1024 * 1024
+	if fileInfo.Size() > maxBinarySize {
+		return nil, fmt.Errorf("file size (%d bytes) exceeds maximum read limit of 100MB", fileInfo.Size())
+	}
+
+	return os.ReadFile(fullPath)
+}
+
+

@@ -98,5 +98,15 @@ func TestStorageOperations(t *testing.T) {
 	if err != nil || readUpdated != updatedMd {
 		t.Fatalf("Expected updated content %q, got %q", updatedMd, readUpdated)
 	}
+
+	// Test ReadBinaryContent
+	binaryData, err := sm.ReadBinaryContent(mdStorageName)
+	if err != nil {
+		t.Fatalf("ReadBinaryContent failed: %v", err)
+	}
+	if string(binaryData) != updatedMd {
+		t.Fatalf("Expected binary content %q, got %q", updatedMd, string(binaryData))
+	}
 }
+
 

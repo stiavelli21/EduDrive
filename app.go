@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"EduDrive/converter"
 	"EduDrive/db"
 	"EduDrive/models"
 	"EduDrive/storage"
@@ -410,6 +411,38 @@ func (a *App) GetFileContent(id string) (string, error) {
 	return a.storage.ReadTextContent(item.StoragePath)
 }
 
+// GetFileBase64 retrieves the binary content of a stored file encoded in base64 (for document reader / preview)
+func (a *App) GetFileBase64(id string) (string, error) {
+	if a.database == nil || a.storage == nil {
+		return "", fmt.Errorf("services not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return "", fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return "", fmt.Errorf("cannot read contents of a folder")
+	}
+
+	if item.MimeType == "url" {
+		return "", fmt.Errorf("cannot read binary content of a web link")
+	}
+
+	if item.StoragePath == "" {
+		return "", fmt.Errorf("file has no storage path")
+	}
+
+	data, err := a.storage.ReadBinaryContent(item.StoragePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read binary file: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+
 // SaveMarkdownFile updates the content of an existing markdown file and synchronizes DB metadata
 func (a *App) SaveMarkdownFile(id string, content string) error {
 	if a.database == nil || a.storage == nil {
@@ -439,6 +472,132 @@ func (a *App) SaveMarkdownFile(id string, content string) error {
 	}
 
 	return nil
+}
+
+// ConvertToMarkdown converts an existing PDF or Word (.docx) document to Markdown format
+func (a *App) ConvertToMarkdown(id string) (*models.Item, error) {
+	if a.database == nil || a.storage == nil {
+		return nil, fmt.Errorf("services not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return nil, fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return nil, fmt.Errorf("cannot convert folder to markdown")
+	}
+
+	if item.MimeType == "url" {
+		return nil, fmt.Errorf("cannot convert web link to markdown")
+	}
+
+	fullPath := a.storage.GetFullPath(item.StoragePath)
+	if fullPath == "" {
+		return nil, fmt.Errorf("file storage path not found")
+	}
+
+	mdContent, err := converter.ConvertDocument(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("conversion failed: %w", err)
+	}
+
+	// Prepare new markdown file name
+	baseName := strings.TrimSuffix(item.Name, filepath.Ext(item.Name))
+	mdName := baseName + ".md"
+
+	parentID := ""
+	if item.ParentID != nil {
+		parentID = *item.ParentID
+	}
+
+	createdItem, err := a.CreateMarkdownFile(mdName, mdContent, parentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save converted markdown file: %w", err)
+	}
+
+	return createdItem, nil
+}
+
+// ConvertFileContent converts a document to markdown string without creating a new file
+func (a *App) ConvertFileContent(id string) (string, error) {
+	if a.database == nil || a.storage == nil {
+		return "", fmt.Errorf("services not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return "", fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return "", fmt.Errorf("cannot convert folder")
+	}
+
+	if item.MimeType == "url" {
+		return item.StoragePath, nil
+	}
+
+	fullPath := a.storage.GetFullPath(item.StoragePath)
+	if fullPath == "" {
+		return "", fmt.Errorf("file storage path not found")
+	}
+
+	return converter.ConvertDocument(fullPath)
+}
+
+// ImportAndConvertToMarkdown imports files converting them directly into .md format only
+func (a *App) ImportAndConvertToMarkdown(parentID string) ([]models.Item, error) {
+	if a.database == nil || a.storage == nil {
+		return nil, fmt.Errorf("services not initialized")
+	}
+
+	filePaths, err := wailsRuntime.OpenMultipleFilesDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Seleziona file da importare in formato Markdown",
+		Filters: []wailsRuntime.FileFilter{
+			{
+				DisplayName: "Documenti supportati (*.pdf, *.docx, *.doc, *.txt, *.md)",
+				Pattern:     "*.pdf;*.docx;*.doc;*.txt;*.md;*.markdown",
+			},
+			{
+				DisplayName: "Tutti i file (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("file dialog error: %w", err)
+	}
+
+	if len(filePaths) == 0 {
+		return []models.Item{}, nil
+	}
+
+	convertedItems := make([]models.Item, 0, len(filePaths))
+	for _, filePath := range filePaths {
+		mdContent, err := converter.ConvertDocument(filePath)
+		if err != nil {
+			wailsRuntime.LogWarningf(a.ctx, "Failed to convert file %s: %v", filePath, err)
+			continue
+		}
+
+		origName := filepath.Base(filePath)
+		baseName := strings.TrimSuffix(origName, filepath.Ext(origName))
+		mdName := baseName + ".md"
+
+		mdItem, err := a.CreateMarkdownFile(mdName, mdContent, parentID)
+		if err != nil {
+			wailsRuntime.LogWarningf(a.ctx, "Failed to save markdown file %s: %v", mdName, err)
+			continue
+		}
+
+		if mdItem != nil {
+			convertedItems = append(convertedItems, *mdItem)
+		}
+	}
+
+	return convertedItems, nil
 }
 
 

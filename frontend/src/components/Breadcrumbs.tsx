@@ -1,6 +1,6 @@
 import React from 'react';
 import { BreadcrumbItem, ViewMode } from '../types';
-import { ChevronRight, HardDrive, Clock, Trash2, Home, BookOpen } from 'lucide-react';
+import { ChevronRight, Clock, Trash2, Home, BookOpen, HardDrive } from 'lucide-react';
 
 interface BreadcrumbsProps {
   breadcrumbs: BreadcrumbItem[];

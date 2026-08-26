@@ -377,5 +377,44 @@ td .katex {
   font-display: block;
 }
 
+/* Document Viewer & docx-preview styling */
+.docx-render-host {
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
+.docx-render-host .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.docx-render-host .docx {
+  background: #ffffff !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+  margin-bottom: 24px !important;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.docx-render-host .docx table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.docx-render-host .docx table td,
+.docx-render-host .docx table th {
+  border: 1px solid #cbd5e1;
+  padding: 6px 10px;
+}
+
+.docx-render-host .docx img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
 
 

@@ -37,6 +37,9 @@ import {
   CreateMarkdownFile,
   GetFileContent,
   SaveMarkdownFile,
+  ConvertToMarkdown,
+  ConvertFileContent,
+  ImportAndConvertToMarkdown,
 } from '../wailsjs/go/main/App';
 
 import { Header } from './components/Header';
@@ -59,6 +62,7 @@ import { ConfirmModal } from './components/Modals/ConfirmModal';
 import { DetailsModal } from './components/Modals/DetailsModal';
 import { StorageModal } from './components/Modals/StorageModal';
 import { MarkdownModal } from './components/Modals/MarkdownModal';
+import { DocumentViewerModal } from './components/Modals/DocumentViewerModal';
 import { Trash2, Info } from 'lucide-react';
 
 
@@ -137,6 +141,8 @@ export const App: React.FC = () => {
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
   const [markdownItem, setMarkdownItem] = useState<DriveItem | null>(null);
   const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
+  const [documentViewerItem, setDocumentViewerItem] = useState<DriveItem | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -252,6 +258,15 @@ export const App: React.FC = () => {
         console.error('Failed to load markdown content:', err);
         addToast('error', 'Errore nella lettura', err?.toString() || 'Impossibile leggere il file Markdown.');
       }
+    } else if (
+      item.name.toLowerCase().endsWith('.pdf') ||
+      item.mimeType === 'application/pdf' ||
+      item.name.toLowerCase().endsWith('.docx') ||
+      item.name.toLowerCase().endsWith('.doc') ||
+      item.mimeType?.includes('word')
+    ) {
+      setDocumentViewerItem(item);
+      setIsDocumentViewerOpen(true);
     } else {
       try {
         await OpenFileLocally(item.id);
@@ -372,6 +387,63 @@ export const App: React.FC = () => {
       }
     } catch (err: any) {
       addToast('error', "Errore nell'importazione", err?.toString() || 'Impossibile importare i file.');
+    }
+  };
+
+  // Convert Document (PDF or Word) to Markdown file
+  const handleConvertToMarkdown = async (item: DriveItem) => {
+    try {
+      addToast('info', 'Conversione in corso...', `Traduzione di "${item.name}" in formato Markdown...`);
+      const convertedItem = await ConvertToMarkdown(item.id);
+      addToast('success', 'Documento tradotto', `"${item.name}" è stato convertito in Markdown.`);
+      await loadData();
+      if (convertedItem) {
+        // Open the newly converted markdown file immediately
+        const fileContent = await GetFileContent(convertedItem.id);
+        setMarkdownItem(convertedItem);
+        setMarkdownContent(fileContent || '');
+        setIsMarkdownModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Failed to convert to Markdown:', err);
+      addToast('error', 'Errore nella conversione', err?.toString() || 'Impossibile convertire il documento in Markdown.');
+    }
+  };
+
+  // Open Document as Markdown on the fly
+  const handleOpenAsMarkdown = async (item: DriveItem) => {
+    try {
+      addToast('info', 'Apertura in corso...', `Conversione e apertura di "${item.name}"...`);
+      const convertedContent = await ConvertFileContent(item.id);
+      const baseName = item.name.replace(/\.[^/.]+$/, '');
+      const virtualMdItem: DriveItem = {
+        ...item,
+        name: `${baseName}.md`,
+        mimeType: 'text/markdown',
+      } as DriveItem;
+      setMarkdownItem(virtualMdItem);
+      setMarkdownContent(convertedContent || '');
+      setIsMarkdownModalOpen(true);
+    } catch (err: any) {
+      console.error('Failed to open as Markdown:', err);
+      addToast('error', 'Errore nella lettura', err?.toString() || 'Impossibile convertire il documento.');
+    }
+  };
+
+  // Import files and convert to Markdown immediately
+  const handleImportAndConvertToMarkdown = async () => {
+    try {
+      const converted = await ImportAndConvertToMarkdown(currentFolderId);
+      if (converted && converted.length > 0) {
+        addToast(
+          'success',
+          'Documenti convertiti',
+          `${converted.length} ${converted.length === 1 ? 'file importato e tradotto' : 'file importati e tradotti'} in Markdown con successo.`
+        );
+        loadData();
+      }
+    } catch (err: any) {
+      addToast('error', "Errore nell'importazione e conversione", err?.toString() || 'Impossibile convertire i file.');
     }
   };
 
@@ -665,6 +737,7 @@ export const App: React.FC = () => {
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onNewMarkdown={handleNewMarkdown}
           onUploadFiles={handleUploadFiles}
+          onImportAndConvertToMarkdown={handleImportAndConvertToMarkdown}
           onNewLink={() => setIsNewLinkModalOpen(true)}
           onNewExamDate={() => setIsNewExamModalOpen(true)}
           onDeleteExamDate={handleDeleteExamDate}
@@ -789,6 +862,8 @@ export const App: React.FC = () => {
           onClose={() => setContextMenu((prev) => ({ ...prev, visible: false }))}
           onOpen={handleOpenItem}
           onOpenWithSystemApp={handleOpenWithSystemApp}
+          onConvertToMarkdown={handleConvertToMarkdown}
+          onOpenAsMarkdown={handleOpenAsMarkdown}
           onExport={handleExportFile}
           onRename={(item) => setRenameModalItem(item)}
           onDelete={handleDelete}
@@ -805,12 +880,26 @@ export const App: React.FC = () => {
           onClose={() => setBgContextMenu({ visible: false, x: 0, y: 0 })}
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onUploadFiles={handleUploadFiles}
+          onImportAndConvertToMarkdown={handleImportAndConvertToMarkdown}
           onNewMarkdown={handleNewMarkdown}
           onNewLink={() => setIsNewLinkModalOpen(true)}
         />
       )}
 
       {/* Modals */}
+      <DocumentViewerModal
+        isOpen={isDocumentViewerOpen}
+        item={documentViewerItem}
+        onClose={() => {
+          setIsDocumentViewerOpen(false);
+          setDocumentViewerItem(null);
+        }}
+        onConvertToMarkdown={handleConvertToMarkdown}
+        onOpenAsMarkdown={handleOpenAsMarkdown}
+        onOpenExternally={handleOpenWithSystemApp}
+        onExport={handleExportFile}
+      />
+
       <MarkdownModal
         isOpen={isMarkdownModalOpen}
         item={markdownItem}
@@ -822,7 +911,6 @@ export const App: React.FC = () => {
       />
 
       <NewFolderModal
-
         isOpen={isNewFolderModalOpen}
         onClose={() => setIsNewFolderModalOpen(false)}
         onCreate={handleCreateFolder}

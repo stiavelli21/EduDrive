@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import {
@@ -35,6 +36,9 @@ import {
   ArrowLeft,
   Sigma,
   SquareFunction,
+  Palette,
+  Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 import { DriveItem } from '../../types';
 
@@ -487,9 +491,35 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             >
               <SquareFunction className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              onClick={() =>
+                insertSnippet('$\\textcolor{#2563eb}{', '}$', 'x^2 + y^2 = r^2')
+              }
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-indigo-600 hover:text-indigo-900 transition-colors cursor-pointer"
+              title="Formula LaTeX con Colore"
+            >
+              <Palette className="w-4 h-4" />
+            </button>
 
             <div className="h-4 w-px bg-gray-200 mx-1" />
 
+            <button
+              type="button"
+              onClick={() => insertSnippet('<span style="color: #2563eb">', '</span>', 'testo colorato')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-blue-600 hover:text-blue-900 transition-colors cursor-pointer"
+              title="Testo colorato (HTML span)"
+            >
+              <span className="font-bold text-xs px-1 py-0.5 rounded bg-blue-50 border border-blue-200">Colore</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => insertSnippet('![', '](https://)', 'Descrizione immagine')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Inserisci Immagine"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
             <button
               type="button"
               onClick={() => insertSnippet('[', '](https://)', 'Testo del link')}
@@ -529,7 +559,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
               <article className="prose prose-slate max-w-none markdown-body text-gray-800">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[rehypeRaw, rehypeKatex]}
                   components={{
                     h1: ({ node, ...props }) => (
                       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 pb-2 mb-4 border-b border-gray-200 mt-2" {...props} />
@@ -612,6 +642,20 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                         {children}
                       </a>
                     ),
+                    img: ({ node, src, alt, ...props }: any) => (
+                      <span className="block my-5 text-center">
+                        <img
+                          src={src}
+                          alt={alt || 'Immagine'}
+                          className="max-h-96 max-w-full mx-auto rounded-xl border border-gray-200 shadow-sm object-contain"
+                          loading="lazy"
+                          {...props}
+                        />
+                        {alt && alt !== 'immagine' && (
+                          <span className="block text-xs text-gray-500 mt-1.5 italic">{alt}</span>
+                        )}
+                      </span>
+                    ),
                     input: ({ node, ...props }) => (
                       <input
                         type="checkbox"
@@ -660,7 +704,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                   <article className="prose prose-slate max-w-none text-gray-800">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
+                      rehypePlugins={[rehypeRaw, rehypeKatex]}
                       components={{
                         h1: ({ node, ...props }) => (
                           <h1 className="text-xl md:text-2xl font-bold text-gray-900 pb-2 mb-3 border-b border-gray-200 mt-2" {...props} />
@@ -721,6 +765,20 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                           >
                             {children}
                           </a>
+                        ),
+                        img: ({ node, src, alt, ...props }: any) => (
+                          <span className="block my-3 text-center">
+                            <img
+                              src={src}
+                              alt={alt || 'Immagine'}
+                              className="max-h-72 max-w-full mx-auto rounded-lg border border-gray-200 shadow-xs object-contain"
+                              loading="lazy"
+                              {...props}
+                            />
+                            {alt && alt !== 'immagine' && (
+                              <span className="block text-xs text-gray-500 mt-1 italic">{alt}</span>
+                            )}
+                          </span>
                         ),
                         input: ({ node, ...props }) => (
                           <input

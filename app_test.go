@@ -92,3 +92,45 @@ func TestSeedInitialData(t *testing.T) {
 		t.Fatalf("Expected 0 items on subsequent launch after deletion, got %d", len(itemsAfterSecondSeed))
 	}
 }
+
+func TestGetFileBase64(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "edudrive_app_b64_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "edudrive.db")
+	database, err := db.InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	storageDir := filepath.Join(tempDir, "storage_data")
+	storageMgr, err := storage.NewStorageManager(storageDir)
+	if err != nil {
+		t.Fatalf("NewStorageManager failed: %v", err)
+	}
+
+	app := &App{
+		database: database,
+		storage:  storageMgr,
+		dataDir:  tempDir,
+	}
+
+	item, err := app.CreateMarkdownFile("test.md", "Hello Base64 Test", "")
+	if err != nil {
+		t.Fatalf("CreateMarkdownFile failed: %v", err)
+	}
+
+	b64, err := app.GetFileBase64(item.ID)
+	if err != nil {
+		t.Fatalf("GetFileBase64 failed: %v", err)
+	}
+
+	if b64 == "" {
+		t.Fatalf("Expected non-empty base64 string")
+	}
+}
+

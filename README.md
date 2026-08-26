@@ -36,18 +36,22 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
    - Editor integrato con barra degli strumenti di formattazione rapida (inclusi pulsanti per formule matematiche inline e blocchi LaTeX), modalita affiancata (Split Editor + Anteprima in tempo reale) e salvataggio rapido con scorciatoia `Ctrl+S`.
    - Conteggio in tempo reale di parole, caratteri, righe e stima del tempo di lettura.
 
-4. **Apertura ed Esportazione**:
-   - Apertura con doppio clic tramite l'applicazione predefinita del sistema operativo o tramite visualizzatore in-app per documenti Markdown.
+4. **Visualizzatore PDF, Documenti e Convertitore Markdown**:
+   - Lettore in-app integrato per file PDF e documenti Microsoft Word (.docx).
+   - Controlli completi nel visualizzatore: zoom in/out, rotazione pagina, visualizzazione a schermo intero, stampa rapida ed esportazione.
+   - Motore di conversione documenti a Markdown: converte PDF, DOCX, DOC e file di testo in documenti Markdown con supporto a titoli strutturati, tabelle e formule matematiche LaTeX.
+
+5. **Apertura ed Esportazione**:
+   - Apertura con doppio clic tramite visualizzatore in-app (per Markdown, PDF, DOCX) o applicazione predefinita del sistema operativo.
    - Esportazione e salvataggio di copie dei file in percorsi personalizzati.
 
-5. **Cestino e Ripristino**:
+6. **Cestino e Ripristino**:
    - Soft-delete degli elementi con vista dedicata Cestino.
    - I file nel cestino non hanno scadenza automatica e rimangono archiviati a tempo indeterminato finche non si svuota il cestino o si eliminano singolarmente.
    - Funzioni di ripristino o eliminazione definitiva.
    - Svuotamento completo del cestino con cancellazione fisica dei file da disco.
 
-6. **Libretto Universitario e Calcolo Media Ponderata**:
-
+7. **Libretto Universitario e Calcolo Media Ponderata**:
    - Sezione dedicata "Libretto" posizionata nella barra laterale sinistra sotto al cestino.
    - Calcolo istantaneo e automatico della **media ponderata** in base ai CFU degli esami superati.
    - Stima automatica del **voto base di partenza per la laurea** su 110.
@@ -56,7 +60,7 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
    - Simulatore dinamico "What-If" per calcolare in tempo reale come un futuro voto influenzera la media e la base di laurea.
    - Configurazione personalizzabile del peso della lode (30, 31 o 33).
 
-7. **Gestione Date Esami e Scadenze**:
+8. **Gestione Date Esami e Scadenze**:
    - Creazione rapida di date d'esame e materie dal menu "+ Nuovo".
    - Visualizzazione nella barra laterale sinistra ordinata per imminenza (esami piu vicini in cima).
    - Calcolo automatico dei giorni rimanenti con indicatore a linea colorata:
@@ -65,15 +69,14 @@ EduDrive e un'applicazione desktop locale per la gestione dei file, progettata c
      - Linea rossa: urgenza elevata (<= 10 giorni).
    - Possibilita di eliminare gli esami conclusi.
 
-8. **Ricerca Globale**:
+9. **Ricerca Globale**:
    - Ricerca istantanea in tempo reale per nome file o cartella.
 
-9. **Interfaccia e Layout**:
-   - Viste commutabili: Griglia ed Elenco tabellare.
-   - Icone e badge dedicati in base al tipo MIME ed estensione.
-   - Menu contestuale col tasto destro per tutte le operazioni rapide.
-   - Widget e modale con statistiche di memoria occupata.
-
+10. **Interfaccia e Layout**:
+    - Viste commutabili: Griglia ed Elenco tabellare.
+    - Icone e badge dedicati in base al tipo MIME ed estensione.
+    - Menu contestuale col tasto destro per tutte le operazioni rapide.
+    - Widget e modale con statistiche di memoria occupata.
 
 ---
 
@@ -84,6 +87,7 @@ graph TD
     UI[Frontend: React 19 + TypeScript + TailwindCSS] <==>|Wails IPC Bindings| AppGo[Backend: app.go]
     AppGo <--> DB[(Database: db/db.go - SQLite Pure Go)]
     AppGo <--> Storage[Storage: storage/storage.go - Disco Locale]
+    AppGo <--> Conv[Converter: converter/ - Parser DOCX/PDF]
     AppGo <--> OS[OS APIs: Dialog Nativi & Default App Launcher]
 ```
 
@@ -95,6 +99,11 @@ EduDrive/
 ├── wails.json              # Configurazione del progetto Wails
 ├── go.mod / go.sum         # Dipendenze Go
 │
+├── converter/              # Parser e convertitore documenti a Markdown
+│   ├── converter.go        # Router conversioni (PDF, DOCX, DOC, TXT)
+│   ├── docx.go             # Parser Word DOCX con tabelle e LaTeX OMML
+│   └── pdf.go              # Parser PDF nativo pure Go
+│
 ├── db/                     # Layer SQLite Pure-Go
 │   ├── db.go               # Schema, query CRUD, app_settings, transazioni
 │   └── db_test.go          # Test unitari database
@@ -103,7 +112,7 @@ EduDrive/
 │   └── item.go
 │
 ├── storage/                # Gestione fisica dei file su disco
-│   ├── storage.go          # Salvataggio con UUID, detection MIME, export, rimozione
+│   ├── storage.go          # Salvataggio con UUID, detection MIME, Base64, export, rimozione
 │   └── storage_test.go     # Test unitari storage manager
 │
 ├── frontend/               # Applicazione React + TypeScript + Vite + TailwindCSS

@@ -84,21 +84,24 @@ graph TD
 | File | Responsabilita Principali |
 | :--- | :--- |
 | [`main.go`](main.go) | Inizializzazione finestra desktop Wails, configurazione backdrop Mica su Windows, montaggio asset frontend e hook di ciclo di vita (`startup`, `shutdown`). |
-| [`app.go`](app.go) | Controller centrale esportato a Wails. Espone tutti i metodi richiamabili dal frontend via IPC (CRUD file/cartelle, import/export, lettura/creazione/modifica Markdown, cestino, statistiche storage, scadenze esami, libretto universitario) e gestione dell'inizializzazione dati con seeding automatico di `README.md` incorporato a compile-time via `//go:embed`. |
+| [`app.go`](app.go) | Controller centrale esportato a Wails. Espone tutti i metodi richiamabili dal frontend via IPC (CRUD file/cartelle, import/export, lettura/creazione/modifica Markdown, visualizzazione e conversione PDF/DOCX in Markdown, cestino, statistiche storage, scadenze esami, libretto universitario) e gestione dell'inizializzazione dati con seeding automatico di `README.md` incorporato a compile-time via `//go:embed`. |
 | [`app_test.go`](app_test.go) | Test unitari per il ciclo di vita e il seeding iniziale dei file di default. |
 | [`models/item.go`](models/item.go) | Strutture dati condivise: `Item`, `Breadcrumb`, `StorageStats`, `ExamDate`, `PassedExam`. |
 | [`db/db.go`](db/db.go) | Data Access Layer SQLite (pure Go). Gestione tabelle `items`, `exam_dates`, `passed_exams`, `app_settings`, migrazioni automatiche, query ricorsive ad albero, sincronizzazione dimensioni/timestamp, soft-delete, statistiche aggregate e transazioni. |
 | [`db/db_test.go`](db/db_test.go) | Suite completa di test unitari per tutte le operazioni sul database SQLite. |
-| [`storage/storage.go`](storage/storage.go) | Gestione fisica dei file: salvataggio con UUID, lettura e aggiornamento contenuti testuali/Markdown, esportazione su disco, rilevamento MIME type basato su signature binaria/estensione, eliminazione sicura. |
+| [`storage/storage.go`](storage/storage.go) | Gestione fisica dei file: salvataggio con UUID, lettura e aggiornamento contenuti testuali/Markdown, esportazione su disco, codifica Base64 per visualizzazione in-app, rilevamento MIME type basato su signature binaria/estensione, eliminazione sicura. |
 | [`storage/storage_test.go`](storage/storage_test.go) | Suite di test unitari per il gestore di storage su disco. |
+| [`converter/converter.go`](converter/converter.go) | Motore di conversione documenti a Markdown (PDF, DOCX, DOC, formati di testo). |
+| [`converter/docx.go`](converter/docx.go) | Parser OOXML per file Word (.docx) con supporto titoli, tabelle e formule matematiche OMML convertite in sintassi LaTeX KaTeX. |
+| [`converter/pdf.go`](converter/pdf.go) | Parser PDF nativo pure Go basato su `pdfcpu` con estrazione testo strutturato, rilevamento titoli e conversione simboli matematici. |
 
 ### 4.2 Frontend React + TypeScript
 | File / Directory | Responsabilita Principali |
 | :--- | :--- |
 | [`frontend/src/main.tsx`](frontend/src/main.tsx) | Entry point React con montaggio root in strict mode. |
-| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Coordinatore di stato globale: navigazione cartelle, selezione viste, gestione drag-and-drop globale, toast notifications e orchestrazione modali (inclusa apertura e salvataggio documenti Markdown). |
+| [`frontend/src/App.tsx`](frontend/src/App.tsx) | Coordinatore di stato globale: navigazione cartelle, selezione viste, gestione drag-and-drop globale, toast notifications e orchestrazione modali (inclusa apertura e salvataggio documenti Markdown, visualizzatore PDF e documenti). |
 | [`frontend/src/types/index.ts`](frontend/src/types/index.ts) | Tipi e interfacce TypeScript dell'applicazione (`DriveItem`, `BreadcrumbItem`, `StorageStats`, `ExamDateItem`, `PassedExamItem`, `ViewMode`, `LayoutMode`, `ToastMessage`). |
-| [`frontend/src/utils/formatters.tsx`](frontend/src/utils/formatters.tsx) | Funzioni helper: `formatBytes` (formattazione dimensioni), `formatDate` (date localizzate), `getFileTypeInfo` (icone e badge per estensione/MIME, con badge dedicato per file Markdown), `getExamUrgencyInfo` (colori e urgenza scadenze). |
+| [`frontend/src/utils/formatters.tsx`](frontend/src/utils/formatters.tsx) | Funzioni helper: `formatBytes` (formattazione dimensioni), `formatDate` (date localizzate), `getFileTypeInfo` (icone e badge per estensione/MIME, con badge dedicato per file Markdown e PDF), `getExamUrgencyInfo` (colori e urgenza scadenze). |
 | [`frontend/src/style.css`](frontend/src/style.css) | Foglio di stile principale con direttive TailwindCSS, configurazione font, animazioni e scrollbar personalizzate. |
 | [`frontend/wailsjs/`](frontend/wailsjs/) | Codice generato da Wails contenente i client JavaScript e le definizioni TypeScript per invocare le funzioni di `app.go`. |
 
@@ -112,13 +115,14 @@ graph TD
 | [`GridView.tsx`](frontend/src/components/GridView.tsx) | Layout a schede/griglia in stile Google Drive con sezioni separate per cartelle e file/link. Supporta selezione, doppio clic e menu tasto destro. |
 | [`ListView.tsx`](frontend/src/components/ListView.tsx) | Vista tabellare dettagliata con colonne (Nome, Ultima modifica, Dimensione, Tipo) e azioni rapide. |
 | [`CareerView.tsx`](frontend/src/components/CareerView.tsx) | Cruscotto completo del Libretto Universitario: calcolo media ponderata, stima voto base di laurea su 110, avanzamento CFU per tipologia di corso (180, 120, 300, 360), simulatore interattivo 'What-If', configurazione peso lode e tabella esami con ricerca/filtri. |
-| [`ContextMenu.tsx`](frontend/src/components/ContextMenu.tsx) | Menu contestuale al clic col tasto destro: Apri / Leggi in EduDrive, Apri con app di sistema, Esporta, Rinomina, Dettagli, Sposta nel Cestino, Ripristina, Elimina Definitivo. |
+| [`ContextMenu.tsx`](frontend/src/components/ContextMenu.tsx) | Menu contestuale al clic col tasto destro: Apri / Leggi in EduDrive, Visualizza Documento, Converti in Markdown, Apri con app di sistema, Esporta, Rinomina, Dettagli, Sposta nel Cestino, Ripristina, Elimina Definitivo. |
 | [`DropOverlay.tsx`](frontend/src/components/DropOverlay.tsx) | Overlay visivo per drag-and-drop di file da Esplora Risorse di Windows. |
 | [`ToastContainer.tsx`](frontend/src/components/ToastContainer.tsx) | Contenitore flottante per notifiche toast non bloccanti (successo, errore, avviso, info). |
 
 ### 4.4 Modali (`frontend/src/components/Modals/`)
 | Modale | Scopo |
 | :--- | :--- |
+| [`DocumentViewerModal.tsx`](frontend/src/components/Modals/DocumentViewerModal.tsx) | Visualizzatore e lettore integrato in-app per PDF e documenti Word (.docx) con zoom, rotazione, stampa, esportazione e conversione rapida a Markdown. |
 | [`MarkdownModal.tsx`](frontend/src/components/Modals/MarkdownModal.tsx) | Visualizzatore, lettore ed editor Markdown integrato con supporto anteprima live/split view, rendering completo di formule matematiche LaTeX/KaTeX (inline e a blocchi), toolbar di formattazione rapida GFM/LaTeX, conteggio parole/tempo di lettura e salvataggio in-app. |
 | [`NewFolderModal.tsx`](frontend/src/components/Modals/NewFolderModal.tsx) | Creazione di nuove cartelle virtuali nella posizione corrente. |
 | [`NewLinkModal.tsx`](frontend/src/components/Modals/NewLinkModal.tsx) | Creazione di collegamenti web / segnalibri con prefisso automatico HTTPS. |
