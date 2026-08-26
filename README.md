@@ -1,180 +1,91 @@
 # EduDrive
 
-EduDrive e un'applicazione desktop locale per la gestione dei file, progettata come clone di Google Drive. Permette di organizzare, archiviare, visualizzare e cercare file e cartelle in locale e offline, con archiviazione fisica su disco e database SQLite.
+EduDrive e un'applicazione desktop per la gestione dei file e l'organizzazione dello studio universitario. Funziona completamente in locale e offline, combinando le funzionalita di un archivio file intuitivo (in stile Google Drive) con strumenti dedicati al percorso accademico degli studenti.
 
 ---
 
-## Stack Tecnologico
+## Panoramica e Funzionalita
 
-- **Desktop Framework**: Wails v2 (backend Go nativo + frontend WebView2 su Windows)
+### 1. Gestione di File e Cartelle
+- **Organizzazione ad albero**: creazione di cartelle a qualsiasi livello di profondita con navigazione rapida tramite percorsi breadcrumb.
+- **Importazione semplice**: caricamento di file singoli o multipli tramite la finestra di dialogo di sistema o tramite trascinamento diretto (Drag & Drop).
+- **Modalita di visualizzazione**: possibilita di scegliere tra vista a griglia (con icone grandi) e vista a elenco dettagliato.
+- **Ricerca in tempo reale**: individuazione istantanea di file e cartelle digitando il nome nella barra di ricerca.
+- **Cestino e recupero**: eliminazione sicura nel cestino con possibilita di ripristino o di eliminazione definitiva.
+
+### 2. Studio, Documenti e Note
+- **Editor Markdown e formule scientifiche**: creazione e modifica di appunti in formato Markdown con supporto a tabelle, elenchi, codice e formule matematiche LaTeX/KaTeX. Include modalita affiancata (editor e anteprima in tempo reale), salvataggio rapido (`Ctrl+S`) e statistiche di lettura (conteggio parole, caratteri e stima dei minuti).
+- **Lettore documenti integrato**: apertura e lettura in-app di documenti PDF e file Microsoft Word (.docx) con funzioni di zoom, rotazione, visualizzazione a schermo intero e stampa.
+- **Conversione automatica in Markdown**: trasformazione diretta di PDF, DOCX, DOC e file di testo in documenti Markdown formattati.
+- **Segnalibri Web**: salvataggio di link a siti internet e risorse online all'interno delle cartelle.
+
+### 3. Strumenti per la Carriera Universitaria
+- **Libretto Esami e Media Ponderata**: registrazione degli esami superati (materia, voto, eventuale lode e CFU) con calcolo automatico e immediato della media ponderata.
+- **Stima del Voto di Laurea**: calcolo automatico del voto base di partenza per la laurea su base 110.
+- **Monitoraggio CFU**: barra di avanzamento rispetto all'obiettivo di crediti formativi (Triennale 180 CFU, Magistrale 120 CFU, Ciclo Unico 300/360 CFU).
+- **Simulatore di Voti ("What-If")**: strumento dinamico per simulare l'impatto di un voto futuro sulla media e sulla base di laurea prima di sostenere l'esame.
+- **Scadenziario Esami**: promemoria delle prossime date d'esame nella barra laterale con indicatore visivo di urgenza a colori (verde per date lontane, giallo per scadenze intermedie, rosso per scadenze imminenti entro 10 giorni).
+
+---
+
+## Dettagli Tecnici e Architettura
+
+### Stack Tecnologico
+- **Desktop Shell**: Wails v2 (Go backend + WebView2 su Windows)
 - **Backend**: Go (Golang 1.25+)
-- **Database**: SQLite Pure-Go (`modernc.org/sqlite`) - Nessuna dipendenza CGO o GCC
-- **Frontend**: React 19 + TypeScript + Vite
-- **Styling**: TailwindCSS v3
-- **Icone**: Lucide React
-- **Storage Locale**: File system gestito in `%APPDATA%/EduDrive` con identificatori UUID univoci
+- **Database**: SQLite Pure-Go (`modernc.org/sqlite` - Zero CGO/GCC)
+- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3
+- **Icone e Formule**: Lucide Icons, KaTeX (`remark-math`, `rehype-katex`)
 
----
+### Architettura e Persistenza Dati
+- **Disaccoppiamento Storage**: i nomi logici e la struttura delle cartelle risiedono nel database SQLite, mentre i file fisici vengono archiviati su disco tramite identificatori univoci UUID (`storage_data/<UUID>.<ext>`).
+- **Segnalibri URL**: archiviati come record nel database (`mime_type = 'url'`) a zero byte su disco.
+- **Cestino e Soft-Delete**: l'eliminazione sposta l'elemento nel cestino (`is_trash = 1`) preservando i dati fisici. La cancellazione definitiva da disco avviene solo su eliminazione permanente o svuotamento del cestino.
 
-## Funzionalita Principali
+### Percorsi dei Dati a Runtime
+- **Directory Dati**: `%APPDATA%\EduDrive\`
+- **Database SQLite**: `%APPDATA%\EduDrive\edudrive.db`
+- **Archivio File Fisici**: `%APPDATA%\EduDrive\storage_data\`
 
-1. **Gestione Cartelle e Alberature**:
-   - Creazione di cartelle virtuali a profondita illimitata.
-   - Navigazione rapida tramite percorsi breadcrumb cliccabili.
-   - Rinomina ed eliminazione con gestione automatica della gerarchia.
-
-2. **Importazione e Archiviazione File**:
-   - Caricamento multiplo tramite file dialog nativo di Windows.
-   - Supporto Drag and Drop per trascinare file da Esplora Risorse nell'applicazione.
-   - Salvataggio fisico dei file con UUID univoci nella cartella `storage_data/`.
-
-3. **Lettore ed Editor Markdown Integrato**:
-   - Inclusione automatica del file `README.md` di benvenuto e guida al primo avvio dell'applicazione (incorporato a tempo di compilazione tramite Go embed), liberamente modificabile o eliminabile dall'utente.
-   - Apertura e lettura diretta dei file Markdown (`.md`, `.markdown`) all'interno dell'applicazione con rendering grafico formattato GFM (tabelle, checklist, blocchi di codice, citazioni, titoli e formattazione tipografica).
-   - Supporto completo a formule matematiche e simboli scientifici LaTeX/KaTeX, sia in linea (`$...$`) che in blocco dedicato (`$$...$$`).
-   - Creazione diretta di nuovi file Markdown dal menu "+ Nuovo" della barra laterale.
-   - Editor integrato con barra degli strumenti di formattazione rapida (inclusi pulsanti per formule matematiche inline e blocchi LaTeX), modalita affiancata (Split Editor + Anteprima in tempo reale) e salvataggio rapido con scorciatoia `Ctrl+S`.
-   - Conteggio in tempo reale di parole, caratteri, righe e stima del tempo di lettura.
-
-4. **Visualizzatore PDF, Documenti e Convertitore Markdown**:
-   - Lettore in-app integrato per file PDF e documenti Microsoft Word (.docx).
-   - Controlli completi nel visualizzatore: zoom in/out, rotazione pagina, visualizzazione a schermo intero, stampa rapida ed esportazione.
-   - Motore di conversione documenti a Markdown: converte PDF, DOCX, DOC e file di testo in documenti Markdown con supporto a titoli strutturati, tabelle e formule matematiche LaTeX.
-
-5. **Apertura ed Esportazione**:
-   - Apertura con doppio clic tramite visualizzatore in-app (per Markdown, PDF, DOCX) o applicazione predefinita del sistema operativo.
-   - Esportazione e salvataggio di copie dei file in percorsi personalizzati.
-
-6. **Cestino e Ripristino**:
-   - Soft-delete degli elementi con vista dedicata Cestino.
-   - I file nel cestino non hanno scadenza automatica e rimangono archiviati a tempo indeterminato finche non si svuota il cestino o si eliminano singolarmente.
-   - Funzioni di ripristino o eliminazione definitiva.
-   - Svuotamento completo del cestino con cancellazione fisica dei file da disco.
-
-7. **Libretto Universitario e Calcolo Media Ponderata**:
-   - Sezione dedicata "Libretto" posizionata nella barra laterale sinistra sotto al cestino.
-   - Calcolo istantaneo e automatico della **media ponderata** in base ai CFU degli esami superati.
-   - Stima automatica del **voto base di partenza per la laurea** su 110.
-   - Barra di avanzamento CFU rispetto all'obiettivo di laurea (Triennale 180 CFU, Magistrale 120 CFU, Ciclo Unico 300/360 CFU).
-   - Inserimento, modifica ed eliminazione rapida degli esami superati (materia, voto 18-30, lode 30L, CFU).
-   - Simulatore dinamico "What-If" per calcolare in tempo reale come un futuro voto influenzera la media e la base di laurea.
-   - Configurazione personalizzabile del peso della lode (30, 31 o 33).
-
-8. **Gestione Date Esami e Scadenze**:
-   - Creazione rapida di date d'esame e materie dal menu "+ Nuovo".
-   - Visualizzazione nella barra laterale sinistra ordinata per imminenza (esami piu vicini in cima).
-   - Calcolo automatico dei giorni rimanenti con indicatore a linea colorata:
-     - Linea verde: tempo abbondante (> 30 giorni).
-     - Linea gialla: tempo che stringe (tra 10 e 30 giorni).
-     - Linea rossa: urgenza elevata (<= 10 giorni).
-   - Possibilita di eliminare gli esami conclusi.
-
-9. **Ricerca Globale**:
-   - Ricerca istantanea in tempo reale per nome file o cartella.
-
-10. **Interfaccia e Layout**:
-    - Viste commutabili: Griglia ed Elenco tabellare.
-    - Icone e badge dedicati in base al tipo MIME ed estensione.
-    - Menu contestuale col tasto destro per tutte le operazioni rapide.
-    - Widget e modale con statistiche di memoria occupata.
-
----
-
-## Struttura del Progetto
-
-```mermaid
-graph TD
-    UI[Frontend: React 19 + TypeScript + TailwindCSS] <==>|Wails IPC Bindings| AppGo[Backend: app.go]
-    AppGo <--> DB[(Database: db/db.go - SQLite Pure Go)]
-    AppGo <--> Storage[Storage: storage/storage.go - Disco Locale]
-    AppGo <--> Conv[Converter: converter/ - Parser DOCX/PDF]
-    AppGo <--> OS[OS APIs: Dialog Nativi & Default App Launcher]
-```
+### Struttura del Progetto
 
 ```
 EduDrive/
-├── app.go                  # Controller backend, export metodi Wails e embed README.md
-├── app_test.go             # Test unitari ciclo di vita e seed iniziale
-├── main.go                 # Entrypoint Go, configurazione finestra e Wails
-├── wails.json              # Configurazione del progetto Wails
-├── go.mod / go.sum         # Dipendenze Go
-│
-├── converter/              # Parser e convertitore documenti a Markdown
-│   ├── converter.go        # Router conversioni (PDF, DOCX, DOC, TXT)
-│   ├── docx.go             # Parser Word DOCX con tabelle e LaTeX OMML
-│   └── pdf.go              # Parser PDF nativo pure Go
-│
-├── db/                     # Layer SQLite Pure-Go
-│   ├── db.go               # Schema, query CRUD, app_settings, transazioni
-│   └── db_test.go          # Test unitari database
-│
-├── models/                 # Strutture dati condivise (Item, Breadcrumb, StorageStats)
-│   └── item.go
-│
-├── storage/                # Gestione fisica dei file su disco
-│   ├── storage.go          # Salvataggio con UUID, detection MIME, Base64, export, rimozione
-│   └── storage_test.go     # Test unitari storage manager
-│
-├── frontend/               # Applicazione React + TypeScript + Vite + TailwindCSS
-│   ├── index.html
-│   ├── package.json
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
+├── app.go                  # Controller backend Wails, export metodi IPC e logica embed
+├── main.go                 # Inizializzazione finestra desktop e lifecycle Wails
+├── models/                 # Strutture dati Go (Item, Breadcrumb, ExamDate, PassedExam, ecc.)
+├── db/                     # Layer SQLite (schema, migrazioni, query CRUD)
+├── storage/                # Gestione fisica file su disco (UUID, rilevamento MIME, I/O)
+├── converter/              # Motore di conversione documenti a Markdown (DOCX, PDF, testo)
+├── frontend/               # Interfaccia utente React + TypeScript
 │   ├── src/
-│   │   ├── main.tsx        # Entrypoint React
-│   │   ├── App.tsx         # Coordinatore principale di stato e UI
-│   │   ├── style.css       # Stili e direttive Tailwind
-│   │   ├── types/          # Tipi e interfacce TypeScript
-│   │   ├── utils/          # Formattatori byte, date e resolver icone
-│   │   ├── components/     # Componenti UI (Header, Sidebar, GridView, ListView, Modals, ecc.)
+│   │   ├── App.tsx         # Stato globale, navigazione e coordinamento modali
+│   │   ├── components/     # Viste e componenti UI (Header, Sidebar, GridView, ListView, CareerView)
 │   │   └── wailsjs/        # Bindings TypeScript autogenerati da Wails
-│   └── dist/               # Build frontend di produzione
-│
-└── build/
-    └── bin/
-        └── EduDrive.exe    # Eseguibile desktop compilato per Windows
+└── build/bin/              # Eseguibile compilato per Windows (EduDrive.exe)
 ```
 
 ---
 
-## Guida all'Avvio e allo Sviluppo
+## Guida allo Sviluppo e alla Compilazione
 
 ### Prerequisiti
-- Go 1.25 o superiore
+- Go 1.25+
 - Node.js 20+ e npm
 - Wails v2 CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 
-### Modalita Sviluppo (Hot Reload)
-```bash
-wails dev
-```
+### Comandi Principali
 
-### Compilazione e Creazione del File .exe
-Per compilare l'applicazione ed esportare l'eseguibile per Windows:
 ```bash
+# Avvio in modalita sviluppo con hot-reload
+wails dev
+
+# Esecuzione dei test unitari backend
+go test -v ./...
+
+# Verifica build frontend
+cd frontend && npm run build
+
+# Compilazione eseguibile desktop per Windows
 wails build
 ```
-
-### Posizione dell'Eseguibile e Avvio
-Dopo la compilazione, il file binario verra generato nel percorso:
-- `build/bin/EduDrive.exe`
-
-Per avviare l'applicazione:
-- **Da terminale (PowerShell/CMD)**:
-  ```powershell
-  .\build\bin\EduDrive.exe
-  ```
-- **Da interfaccia grafica**: aprire la cartella `build/bin/` ed eseguire con doppio clic `EduDrive.exe`.
-
-### Esecuzione Test Unitari
-```bash
-go test -v ./...
-```
-
----
-
-## Posizione dei Dati
-
-- **Directory Base**: `%APPDATA%\EduDrive`
-- **Database**: `%APPDATA%\EduDrive\edudrive.db`
-- **Archivio File**: `%APPDATA%\EduDrive\storage_data\`

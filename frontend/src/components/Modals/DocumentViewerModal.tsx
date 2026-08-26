@@ -5,20 +5,12 @@ import {
   X,
   Download,
   ExternalLink,
-  BookOpen,
-  Maximize2,
-  Minimize2,
   ZoomIn,
   ZoomOut,
-  RotateCw,
-  RefreshCw,
   Printer,
-  Sparkles,
+  FileCode,
   Loader2,
   AlertCircle,
-  Info,
-  Calendar,
-  HardDrive,
 } from 'lucide-react';
 import { DriveItem } from '../../types';
 import { GetFileBase64 } from '../../../wailsjs/go/main/App';
@@ -29,7 +21,7 @@ interface DocumentViewerModalProps {
   item: DriveItem | null;
   onClose: () => void;
   onConvertToMarkdown: (item: DriveItem) => void;
-  onOpenAsMarkdown: (item: DriveItem) => void;
+  onOpenAsMarkdown?: (item: DriveItem) => void;
   onOpenExternally: (item: DriveItem) => void;
   onExport: (item: DriveItem) => void;
 }
@@ -61,7 +53,6 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isConverting, setIsConverting] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const docxContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -123,8 +114,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             try {
               docxContainerRef.current.innerHTML = '';
               await docx.renderAsync(uint8Data.buffer as ArrayBuffer, docxContainerRef.current, undefined, {
-                className: 'docx-viewer-content',
-                inWrapper: true,
+                className: 'docx',
+                inWrapper: false,
                 ignoreWidth: false,
                 ignoreHeight: false,
                 ignoreFonts: false,
@@ -234,11 +225,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   if (!isOpen || !item) return null;
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex flex-col w-full h-full bg-white overflow-hidden animate-fade-in ${
-        isFullscreen ? 'p-0' : 'p-0'
-      }`}
-    >
+    <div className="fixed inset-0 z-50 flex flex-col w-full h-full bg-white overflow-hidden animate-fade-in">
       <div className="flex flex-col w-full h-full bg-white overflow-hidden">
         {/* Header Toolbar */}
         <header className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-slate-50/90 backdrop-blur-xs select-none shrink-0">
@@ -286,33 +273,22 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
           {/* Right: Actions Toolbar */}
           <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-            {/* Convert to Markdown (.md) */}
-            <button
-              onClick={handleConvert}
-              disabled={isConverting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
-              title="Crea una copia convertita in formato Markdown (.md)"
-            >
-              {isConverting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-              )}
-              <span>Converti in .md</span>
-            </button>
-
-            {/* Open as Markdown (on the fly) */}
-            <button
-              onClick={() => {
-                onClose();
-                onOpenAsMarkdown(item);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all shadow-xs active:scale-95 cursor-pointer"
-              title="Visualizza e modifica istantaneamente in formato Markdown con formule KaTeX"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Apri in .md</span>
-            </button>
+            {/* Convert to Markdown (.md) - Only for Word DOCX */}
+            {isDocx && (
+              <button
+                onClick={handleConvert}
+                disabled={isConverting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Crea una copia convertita in formato Markdown (.md)"
+              >
+                {isConverting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-600" />
+                ) : (
+                  <FileCode className="w-3.5 h-3.5 text-gray-600" />
+                )}
+                <span>Converti in .md</span>
+              </button>
+            )}
 
             {/* Open Externally */}
             <button
@@ -371,19 +347,6 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               </div>
             )}
 
-            {/* Fullscreen Toggle */}
-            <button
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-1.5 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg transition-all shadow-xs active:scale-95 ml-1 cursor-pointer"
-              title={isFullscreen ? 'Riduci finestra' : 'Schermo intero'}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-4 h-4" />
-              ) : (
-                <Maximize2 className="w-4 h-4" />
-              )}
-            </button>
-
             {/* Close */}
             <button
               onClick={onClose}
@@ -418,16 +381,18 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               </h3>
               <p className="text-sm text-gray-600">{errorMessage}</p>
               <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenAsMarkdown(item);
-                  }}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Apri in .md</span>
-                </button>
+                {isDocx && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onConvertToMarkdown(item);
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileCode className="w-4 h-4" />
+                    <span>Converti in .md</span>
+                  </button>
+                )}
                 <button
                   onClick={() => onOpenExternally(item)}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -449,7 +414,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             ) : null
           ) : isDocx ? (
             /* DOCX Viewer (Paper Canvas with Zoom) */
-            <div className="w-full h-full overflow-auto p-4 sm:p-8 flex justify-center bg-slate-200/80 custom-scrollbar">
+            <div className="w-full h-full overflow-auto p-4 sm:p-8 flex justify-center bg-slate-100/90 custom-scrollbar">
               <div
                 style={{
                   transform: `scale(${zoomLevel / 100})`,
@@ -460,7 +425,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               >
                 <div
                   ref={docxContainerRef}
-                  className="docx-render-host bg-white shadow-2xl rounded-xs min-h-[1056px] text-gray-900 select-text"
+                  className="docx-render-host text-gray-900 select-text"
                 />
               </div>
             </div>
@@ -481,13 +446,6 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
             <span>Lettore integrato EduDrive</span>
-            <span>•</span>
-            <span className="hidden sm:inline">
-              Vuoi estrarre testo o formule matematiche in LaTeX? Clicca su{' '}
-              <strong className="text-indigo-600 font-semibold cursor-pointer hover:underline" onClick={() => { onClose(); onOpenAsMarkdown(item); }}>
-                "Apri in .md"
-              </strong>
-            </span>
           </div>
 
           <div className="flex items-center gap-4">

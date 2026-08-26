@@ -382,35 +382,43 @@ td .katex {
   font-family: Calibri, 'Segoe UI', Arial, sans-serif;
   line-height: 1.5;
   color: #1e293b;
+  background: transparent !important;
 }
 
-.docx-render-host .docx-wrapper {
+.docx-render-host .docx-wrapper,
+.docx-render-host [class*="wrapper"],
+.docx-wrapper {
   background: transparent !important;
   padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.docx-render-host .docx {
+.docx-render-host .docx,
+.docx-render-host section,
+.docx-viewer-content {
   background: #ffffff !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
-  margin-bottom: 24px !important;
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+  margin: 0 auto 24px auto !important;
+  border-radius: 2px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border: none !important;
 }
 
-.docx-render-host .docx table {
+.docx-render-host table {
   border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
 }
 
-.docx-render-host .docx table td,
-.docx-render-host .docx table th {
+.docx-render-host table td,
+.docx-render-host table th {
   border: 1px solid #cbd5e1;
   padding: 6px 10px;
 }
 
-.docx-render-host .docx img {
+.docx-render-host img {
   max-width: 100%;
   height: auto;
   border-radius: 4px;

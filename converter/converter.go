@@ -33,8 +33,7 @@ func ConvertDocument(filePath string) (string, error) {
 		return c.Convert()
 
 	case ".pdf":
-		c := NewPdfConverter(filePath)
-		return c.Convert()
+		return "", fmt.Errorf("la conversione da PDF a Markdown non è supportata")
 
 	case ".txt", ".md", ".markdown", ".csv", ".json", ".xml", ".html", ".log":
 		// Direct text content reading

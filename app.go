@@ -474,7 +474,7 @@ func (a *App) SaveMarkdownFile(id string, content string) error {
 	return nil
 }
 
-// ConvertToMarkdown converts an existing PDF or Word (.docx) document to Markdown format
+// ConvertToMarkdown converts an existing Word (.docx) document or text file to Markdown format
 func (a *App) ConvertToMarkdown(id string) (*models.Item, error) {
 	if a.database == nil || a.storage == nil {
 		return nil, fmt.Errorf("services not initialized")
@@ -491,6 +491,11 @@ func (a *App) ConvertToMarkdown(id string) (*models.Item, error) {
 
 	if item.MimeType == "url" {
 		return nil, fmt.Errorf("cannot convert web link to markdown")
+	}
+
+	ext := strings.ToLower(filepath.Ext(item.Name))
+	if ext == ".pdf" || item.MimeType == "application/pdf" {
+		return nil, fmt.Errorf("la conversione da file PDF non è supportata")
 	}
 
 	fullPath := a.storage.GetFullPath(item.StoragePath)
@@ -539,6 +544,11 @@ func (a *App) ConvertFileContent(id string) (string, error) {
 		return item.StoragePath, nil
 	}
 
+	ext := strings.ToLower(filepath.Ext(item.Name))
+	if ext == ".pdf" || item.MimeType == "application/pdf" {
+		return "", fmt.Errorf("la conversione da file PDF non è supportata")
+	}
+
 	fullPath := a.storage.GetFullPath(item.StoragePath)
 	if fullPath == "" {
 		return "", fmt.Errorf("file storage path not found")
@@ -557,8 +567,8 @@ func (a *App) ImportAndConvertToMarkdown(parentID string) ([]models.Item, error)
 		Title: "Seleziona file da importare in formato Markdown",
 		Filters: []wailsRuntime.FileFilter{
 			{
-				DisplayName: "Documenti supportati (*.pdf, *.docx, *.doc, *.txt, *.md)",
-				Pattern:     "*.pdf;*.docx;*.doc;*.txt;*.md;*.markdown",
+				DisplayName: "Documenti supportati (*.docx, *.doc, *.txt, *.md)",
+				Pattern:     "*.docx;*.doc;*.txt;*.md;*.markdown",
 			},
 			{
 				DisplayName: "Tutti i file (*.*)",

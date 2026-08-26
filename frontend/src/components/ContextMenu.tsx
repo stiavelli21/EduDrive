@@ -10,8 +10,6 @@ import {
   FolderOpen,
   Eye,
   FileCode,
-  Sparkles,
-  BookOpen,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -23,7 +21,7 @@ interface ContextMenuProps {
   onOpen: (item: DriveItem) => void;
   onOpenWithSystemApp: (item: DriveItem) => void;
   onConvertToMarkdown: (item: DriveItem) => void;
-  onOpenAsMarkdown: (item: DriveItem) => void;
+  onOpenAsMarkdown?: (item: DriveItem) => void;
   onExport: (item: DriveItem) => void;
   onRename: (item: DriveItem) => void;
   onDelete: (item: DriveItem, permanent: boolean) => void;
@@ -40,7 +38,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onOpen,
   onOpenWithSystemApp,
   onConvertToMarkdown,
-  onOpenAsMarkdown,
   onExport,
   onRename,
   onDelete,
@@ -66,15 +63,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     left: `${Math.min(x, window.innerWidth - 220)}px`,
   };
 
-  const isConvertible =
+  const isDocx =
     !item.isFolder &&
     item.mimeType !== 'url' &&
-    (item.name.toLowerCase().endsWith('.pdf') ||
-      item.mimeType === 'application/pdf' ||
-      item.name.toLowerCase().endsWith('.docx') ||
+    (item.name.toLowerCase().endsWith('.docx') ||
       item.name.toLowerCase().endsWith('.doc') ||
-      item.mimeType?.includes('word') ||
-      item.mimeType?.includes('text'));
+      item.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      item.mimeType === 'application/msword');
 
   if (viewMode === 'trash') {
     return (
@@ -140,31 +135,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         </span>
       </button>
 
-      {/* Convert to Markdown and open in Editor */}
-      {isConvertible && (
+      {/* Convert to Markdown and open in Editor (Only for Word .docx documents) */}
+      {isDocx && (
         <button
           onClick={() => {
             onClose();
             onConvertToMarkdown(item);
           }}
-          className="w-full px-4 py-2 flex items-center gap-2.5 text-teal-700 hover:bg-teal-50 transition-colors cursor-pointer text-left font-medium"
+          className="w-full px-4 py-2 flex items-center gap-2.5 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer text-left"
         >
-          <Sparkles className="w-4 h-4 text-teal-600" />
+          <FileCode className="w-4 h-4 text-gray-500" />
           <span>Converti in Markdown</span>
-        </button>
-      )}
-
-      {/* Open as Markdown (on the fly without creating a copy) */}
-      {isConvertible && (
-        <button
-          onClick={() => {
-            onClose();
-            onOpenAsMarkdown(item);
-          }}
-          className="w-full px-4 py-2 flex items-center gap-2.5 text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer text-left"
-        >
-          <BookOpen className="w-4 h-4 text-indigo-600" />
-          <span>Apri in Markdown</span>
         </button>
       )}
 
