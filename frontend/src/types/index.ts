@@ -22,3 +22,7 @@ export interface ContextMenuState {
   y: number;
   item: DriveItem | null;
 }
+
+export type SortField = 'name' | 'updatedAt' | 'size' | 'type';
+export type SortDirection = 'asc' | 'desc';
+export type TypeFilter = 'all' | 'documents' | 'images' | 'links' | 'markdown' | 'code';

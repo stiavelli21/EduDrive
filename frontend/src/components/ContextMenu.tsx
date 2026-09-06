@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Eye,
   FileCode,
+  FolderSymlink,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -24,6 +25,7 @@ interface ContextMenuProps {
   onOpenAsMarkdown?: (item: DriveItem) => void;
   onExport: (item: DriveItem) => void;
   onRename: (item: DriveItem) => void;
+  onMove?: (item: DriveItem) => void;
   onDelete: (item: DriveItem, permanent: boolean) => void;
   onRestore: (item: DriveItem) => void;
   onDetails: (item: DriveItem) => void;
@@ -40,6 +42,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onConvertToMarkdown,
   onExport,
   onRename,
+  onMove,
   onDelete,
   onRestore,
   onDetails,
@@ -178,6 +181,20 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       )}
 
       <div className="my-1 border-t border-gray-100" />
+
+      {/* Move Item */}
+      {onMove && (
+        <button
+          onClick={() => {
+            onClose();
+            onMove(item);
+          }}
+          className="w-full px-4 py-2 flex items-center gap-2.5 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer text-left"
+        >
+          <FolderSymlink className="w-4 h-4 text-gray-500" />
+          <span>Sposta in...</span>
+        </button>
+      )}
 
       {/* Rename */}
       <button

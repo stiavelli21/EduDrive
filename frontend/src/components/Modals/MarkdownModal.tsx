@@ -5,6 +5,24 @@ import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-yaml';
+
 import {
   FileText,
   X,
@@ -39,8 +57,14 @@ import {
   Palette,
   Image as ImageIcon,
   Sparkles,
+  Printer,
+  Search,
+  AlignLeft,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { DriveItem } from '../../types';
+import { escapeHtml } from '../../utils/formatters';
 
 interface MarkdownModalProps {
   isOpen: boolean;
@@ -50,6 +74,42 @@ interface MarkdownModalProps {
   onSave: (name: string, content: string, id?: string) => Promise<void>;
   onExport?: (item: DriveItem) => void;
   onOpenExternally?: (item: DriveItem) => void;
+}
+
+export interface TocHeading {
+  id: string;
+  level: number;
+  text: string;
+}
+
+// Extract headings H1, H2, H3 ignoring code blocks
+export function extractHeadings(markdown: string): TocHeading[] {
+  const headings: TocHeading[] = [];
+  const lines = markdown.split('\n');
+  let inCodeBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock) continue;
+
+    const match = line.match(/^(#{1,3})\s+(.+)$/);
+    if (match) {
+      const level = match[1].length;
+      const text = match[2].replace(/[*_`~[\]]/g, '').trim();
+      const slug = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+      const id = `toc-${headings.length}-${slug}`;
+      headings.push({ id, level, text });
+    }
+  }
+
+  return headings;
 }
 
 export const MarkdownModal: React.FC<MarkdownModalProps> = ({
@@ -70,7 +130,18 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
+  // TOC State
+  const [isTocOpen, setIsTocOpen] = useState<boolean>(true);
+  const [headings, setHeadings] = useState<TocHeading[]>([]);
+
+  // Search & Replace State
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [replaceQuery, setReplaceQuery] = useState<string>('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize or reset state when modal opens or item changes
   useEffect(() => {
@@ -81,15 +152,26 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
         setOriginalContent(initialContent);
         setMode('view');
       } else {
-        setFileName('Nuovo documento.md');
+        setFileName('Nuova nota.md');
         setContent('');
         setOriginalContent('');
         setMode('edit');
         setEditorLayout('split');
       }
       setIsCopied(false);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setReplaceQuery('');
     }
   }, [isOpen, item, initialContent]);
+
+  // Debounced TOC headings calculation to avoid lag on long documents
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHeadings(extractHeadings(content));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [content]);
 
   // Statistics calculation
   const stats = useMemo(() => {
@@ -101,7 +183,66 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
     return { chars, words, lines, readingTimeMinutes };
   }, [content]);
 
-  const hasUnsavedChanges = content !== originalContent || (isCreating && fileName !== 'Nuovo documento.md');
+  // Search matches indices in content
+  const searchMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    const fullText = content.toLowerCase();
+    const indices: number[] = [];
+    let pos = 0;
+    while (pos < fullText.length) {
+      const found = fullText.indexOf(query, pos);
+      if (found === -1) break;
+      indices.push(found);
+      pos = found + query.length;
+    }
+    return indices;
+  }, [searchQuery, content]);
+
+  // Navigate to current search match in editor
+  useEffect(() => {
+    if (!isSearchOpen || searchMatches.length === 0 || !searchQuery.trim()) return;
+    const matchPos = searchMatches[currentMatchIndex];
+    if (matchPos !== undefined && textareaRef.current && mode === 'edit') {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(matchPos, matchPos + searchQuery.length);
+      const linesBefore = content.substring(0, matchPos).split('\n').length;
+      const lineHeight = 22;
+      textareaRef.current.scrollTop = Math.max(0, (linesBefore - 4) * lineHeight);
+    }
+  }, [currentMatchIndex, searchMatches, isSearchOpen, mode, searchQuery, content]);
+
+  const handleNextMatch = () => {
+    if (searchMatches.length === 0) return;
+    setCurrentMatchIndex((prev) => (prev + 1) % searchMatches.length);
+  };
+
+  const handlePrevMatch = () => {
+    if (searchMatches.length === 0) return;
+    setCurrentMatchIndex((prev) => (prev - 1 + searchMatches.length) % searchMatches.length);
+  };
+
+  const handleReplace = () => {
+    if (!searchQuery || searchMatches.length === 0) return;
+    const matchPos = searchMatches[currentMatchIndex];
+    const newContent =
+      content.substring(0, matchPos) +
+      replaceQuery +
+      content.substring(matchPos + searchQuery.length);
+    setContent(newContent);
+  };
+
+  const handleReplaceAll = () => {
+    if (!searchQuery) return;
+    const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    setContent(content.replace(regex, replaceQuery));
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const hasUnsavedChanges = content !== originalContent || (isCreating && fileName !== 'Nuova nota.md');
 
   // Insert markdown snippet at textarea cursor position
   const insertSnippet = (before: string, after: string = '', defaultPlaceholder: string = '') => {
@@ -201,9 +342,9 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 w-screen h-screen bg-white flex flex-col overflow-hidden animate-fade-in select-text">
+    <div data-print-container="true" className="fixed inset-0 z-50 w-screen h-screen bg-white flex flex-col overflow-hidden animate-fade-in select-text">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-200 bg-gray-50/95 shrink-0">
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-200 bg-gray-50/95 shrink-0 no-print">
         <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
           <button
             onClick={handleRequestClose}
@@ -249,6 +390,17 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             {mode === 'view' && item && (
               <>
                 <button
+                  onClick={() => setIsTocOpen((prev) => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                    isTocOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-700'
+                  }`}
+                  title="Mostra / Nascondi indice dei contenuti"
+                >
+                  <AlignLeft className="w-3.5 h-3.5" />
+                  <span>Indice</span>
+                </button>
+
+                <button
                   onClick={() => setMode('edit')}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors cursor-pointer"
                   title="Modifica questo documento"
@@ -258,12 +410,33 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                 </button>
 
                 <button
+                  onClick={() => {
+                    setIsSearchOpen((prev) => !prev);
+                    if (!isSearchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
+                  }}
+                  className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
+                    isSearchOpen ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-600'
+                  }`}
+                  title="Cerca nel documento (Ctrl+F)"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                <button
                   onClick={handleCopyContent}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-700 text-xs font-medium border border-gray-200 transition-colors cursor-pointer"
                   title="Copia testo negli appunti"
                 >
                   {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{isCopied ? 'Copiato!' : 'Copia'}</span>
+                </button>
+
+                <button
+                  onClick={handlePrint}
+                  className="p-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 transition-colors cursor-pointer"
+                  title="Stampa / Esporta in PDF formattato (Ctrl+P)"
+                >
+                  <Printer className="w-4 h-4" />
                 </button>
 
                 {onExport && (
@@ -291,6 +464,19 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             {/* Edit / Create Mode Actions */}
             {mode === 'edit' && (
               <>
+                <button
+                  onClick={() => {
+                    setIsSearchOpen((prev) => !prev);
+                    if (!isSearchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
+                  }}
+                  className={`p-1.5 rounded-xl border mr-1 transition-colors cursor-pointer ${
+                    isSearchOpen ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-600'
+                  }`}
+                  title="Cerca e sostituisci nel documento (Ctrl+F)"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
                 {/* Layout Switcher */}
                 <div className="flex items-center bg-gray-200/80 p-0.5 rounded-lg mr-2">
                   <button
@@ -361,10 +547,91 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
           </div>
         </div>
 
+        {/* Search & Replace Floating Bar */}
+        {isSearchOpen && (
+          <div className="flex items-center gap-2 px-6 py-2.5 bg-slate-50 border-b border-gray-200 text-xs shrink-0 select-none flex-wrap no-print">
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-gray-300">
+              <Search className="w-3.5 h-3.5 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentMatchIndex(0);
+                }}
+                placeholder="Cerca nel testo..."
+                className="outline-hidden text-xs text-gray-800 placeholder:text-gray-400 w-44"
+              />
+            </div>
+
+            <span className="text-gray-500 font-mono text-[11px] min-w-[70px]">
+              {searchMatches.length > 0
+                ? `${currentMatchIndex + 1} di ${searchMatches.length}`
+                : searchQuery.trim()
+                ? 'Nessun riscontro'
+                : ''}
+            </span>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handlePrevMatch}
+                disabled={searchMatches.length === 0}
+                className="p-1 rounded bg-white hover:bg-gray-100 disabled:opacity-30 border border-gray-200 text-gray-600 cursor-pointer"
+                title="Riscontro precedente"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleNextMatch}
+                disabled={searchMatches.length === 0}
+                className="p-1 rounded bg-white hover:bg-gray-100 disabled:opacity-30 border border-gray-200 text-gray-600 cursor-pointer"
+                title="Riscontro successivo"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {mode === 'edit' && (
+              <div className="flex items-center gap-1.5 ml-2">
+                <input
+                  type="text"
+                  value={replaceQuery}
+                  onChange={(e) => setReplaceQuery(e.target.value)}
+                  placeholder="Sostituisci con..."
+                  className="px-2.5 py-1 bg-white rounded-lg border border-gray-300 outline-hidden text-xs text-gray-800 placeholder:text-gray-400 w-40"
+                />
+                <button
+                  onClick={handleReplace}
+                  disabled={searchMatches.length === 0}
+                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-30 border border-gray-200 text-gray-700 font-medium cursor-pointer"
+                >
+                  Sostituisci
+                </button>
+                <button
+                  onClick={handleReplaceAll}
+                  disabled={searchMatches.length === 0}
+                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-30 border border-gray-200 text-gray-700 font-medium cursor-pointer"
+                >
+                  Tutti
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setIsSearchOpen(false)}
+              className="p-1 text-gray-400 hover:text-gray-600 ml-auto cursor-pointer"
+              title="Chiudi ricerca (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
 
         {/* Formatting Toolbar (Only in Edit Mode) */}
         {mode === 'edit' && editorLayout !== 'preview-only' && (
-          <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-white overflow-x-auto shrink-0 select-none">
+          <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-white overflow-x-auto shrink-0 select-none no-print">
             <button
               type="button"
               onClick={() => insertSnippet('# ', '', 'Titolo')}
@@ -553,122 +820,217 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden flex bg-white">
-          {/* Mode View: Pure Reader View */}
+          {/* Mode View: Reader View with Collapsible TOC Sidebar */}
           {mode === 'view' && (
-            <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full">
-              <article className="prose prose-slate max-w-none markdown-body text-gray-800">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeRaw, rehypeKatex]}
-                  components={{
-                    h1: ({ node, ...props }) => (
-                      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 pb-2 mb-4 border-b border-gray-200 mt-2" {...props} />
-                    ),
-                    h2: ({ node, ...props }) => (
-                      <h2 className="text-xl md:text-2xl font-semibold text-gray-900 pb-1 mb-3 border-b border-gray-100 mt-6" {...props} />
-                    ),
-                    h3: ({ node, ...props }) => (
-                      <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-2 mt-5" {...props} />
-                    ),
-                    p: ({ node, ...props }) => (
-                      <p className="text-sm md:text-base leading-relaxed text-gray-700 mb-4" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="list-disc pl-6 space-y-1 text-sm md:text-base text-gray-700 mb-4" {...props} />
-                    ),
-                    ol: ({ node, ...props }) => (
-                      <ol className="list-decimal pl-6 space-y-1 text-sm md:text-base text-gray-700 mb-4" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="leading-relaxed" {...props} />
-                    ),
-                    blockquote: ({ node, ...props }) => (
-                      <blockquote className="border-l-4 border-blue-500 bg-blue-50/50 pl-4 py-2 my-4 rounded-r-lg text-gray-700 italic text-sm md:text-base" {...props} />
-                    ),
-                    code: ({ node, inline, className, children, ...props }: any) => {
-                      if (inline) {
+            <div className="flex-1 flex overflow-hidden w-full h-full">
+              {/* Dynamic Table of Contents Sidebar */}
+              {isTocOpen && (
+                <aside className="w-64 border-r border-gray-200 bg-gray-50/80 p-4 overflow-y-auto shrink-0 select-none custom-scrollbar hidden md:block no-print">
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                      Indice ({headings.length})
+                    </span>
+                    <button
+                      onClick={() => setIsTocOpen(false)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-200/50 cursor-pointer"
+                      title="Nascondi indice"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {headings.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">Nessun titolo nel documento.</p>
+                  ) : (
+                    <nav className="space-y-1">
+                      {headings.map((h) => (
+                        <button
+                          key={h.id}
+                          onClick={() => {
+                            const el = document.getElementById(h.id);
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                          className={`w-full text-left truncate rounded-lg py-1 px-2 text-xs transition-colors hover:bg-gray-200/70 cursor-pointer ${
+                            h.level === 1
+                              ? 'font-bold text-gray-900'
+                              : h.level === 2
+                              ? 'pl-3.5 font-medium text-gray-700'
+                              : 'pl-6 text-gray-500 text-[11px]'
+                          }`}
+                          title={h.text}
+                        >
+                          {h.text}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
+                </aside>
+              )}
+
+              {/* Reader Document Canvas */}
+              <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto w-full markdown-print-area">
+                <article className="prose prose-slate max-w-none markdown-body text-gray-800">
+                  {(() => {
+                    let headingIndex = 0;
+                    return (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                        components={{
+                          h1: ({ node, children, ...props }) => {
+                            const h = headings[headingIndex++];
+                            return (
+                              <h1
+                                id={h?.id}
+                                className="text-2xl md:text-3xl font-bold text-gray-900 pb-2 mb-4 border-b border-gray-200 mt-2 scroll-mt-6"
+                                {...props}
+                              >
+                                {children}
+                              </h1>
+                            );
+                          },
+                          h2: ({ node, children, ...props }) => {
+                            const h = headings[headingIndex++];
+                            return (
+                              <h2
+                                id={h?.id}
+                                className="text-xl md:text-2xl font-semibold text-gray-900 pb-1 mb-3 border-b border-gray-100 mt-6 scroll-mt-6"
+                                {...props}
+                              >
+                                {children}
+                              </h2>
+                            );
+                          },
+                          h3: ({ node, children, ...props }) => {
+                            const h = headings[headingIndex++];
+                            return (
+                              <h3
+                                id={h?.id}
+                                className="text-lg md:text-xl font-semibold text-gray-800 mb-2 mt-5 scroll-mt-6"
+                                {...props}
+                              >
+                                {children}
+                              </h3>
+                            );
+                          },
+                          p: ({ node, ...props }) => (
+                            <p className="text-sm md:text-base leading-relaxed text-gray-700 mb-4" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-disc pl-6 space-y-1 text-sm md:text-base text-gray-700 mb-4" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal pl-6 space-y-1 text-sm md:text-base text-gray-700 mb-4" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="leading-relaxed" {...props} />
+                          ),
+                          blockquote: ({ node, ...props }) => (
+                            <blockquote className="border-l-4 border-blue-500 bg-blue-50/50 pl-4 py-2 my-4 rounded-r-lg text-gray-700 italic text-sm md:text-base" {...props} />
+                          ),
+                          code: ({ node, inline, className, children, ...props }: any) => {
+                            if (inline) {
+                              return (
+                                <code className="px-1.5 py-0.5 rounded-md bg-gray-100 text-pink-600 font-mono text-xs font-semibold border border-gray-200" {...props}>
+                                  {children}
+                                </code>
+                              );
+                            }
+                            const match = /language-(\w+)/.exec(className || '');
+                            const lang = match ? match[1] : '';
+                            const rawCode = String(children).replace(/\n$/, '');
+                            const grammar = lang && Prism.languages[lang] ? Prism.languages[lang] : null;
+                            let highlighted = escapeHtml(rawCode);
+                            if (grammar) {
+                              try {
+                                highlighted = Prism.highlight(rawCode, grammar, lang);
+                              } catch {
+                                highlighted = escapeHtml(rawCode);
+                              }
+                            }
+
                         return (
-                          <code className="px-1.5 py-0.5 rounded-md bg-gray-100 text-pink-600 font-mono text-xs font-semibold border border-gray-200" {...props}>
-                            {children}
-                          </code>
-                        );
-                      }
-                      return (
-                        <div className="relative my-4 rounded-xl overflow-hidden border border-gray-200 bg-gray-900 text-gray-100 shadow-sm font-mono text-xs md:text-sm">
-                          <div className="flex items-center justify-between px-4 py-1.5 bg-gray-800/80 border-b border-gray-700 text-gray-400 text-xs">
-                            <span>Codice</span>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(String(children));
-                              }}
-                              className="hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-                              title="Copia codice"
-                            >
-                              <Copy className="w-3 h-3" />
-                              <span>Copia</span>
-                            </button>
+                          <div className="relative my-4 rounded-xl overflow-hidden border border-gray-700 bg-gray-900 text-gray-100 shadow-sm font-mono text-xs md:text-sm">
+                            <div className="flex items-center justify-between px-4 py-1.5 bg-gray-800/90 border-b border-gray-700 text-gray-400 text-xs select-none">
+                              <span className="font-mono uppercase text-[10px] tracking-wider text-blue-400 font-semibold">
+                                {lang || 'Codice'}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(rawCode);
+                                }}
+                                className="hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                                title="Copia codice"
+                              >
+                                <Copy className="w-3 h-3" />
+                                <span>Copia</span>
+                              </button>
+                            </div>
+                            <pre className="p-4 overflow-x-auto font-mono text-xs md:text-sm leading-relaxed !bg-transparent !m-0 !text-gray-100">
+                              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+                            </pre>
                           </div>
-                          <pre className="p-4 overflow-x-auto font-mono">
-                            <code {...props}>{children}</code>
-                          </pre>
+                        );
+                      },
+                      table: ({ node, ...props }) => (
+                        <div className="overflow-x-auto my-4 rounded-xl border border-gray-200 shadow-xs">
+                          <table className="w-full text-left text-sm text-gray-700 divide-y divide-gray-200" {...props} />
                         </div>
-                      );
-                    },
-                    table: ({ node, ...props }) => (
-                      <div className="overflow-x-auto my-4 rounded-xl border border-gray-200 shadow-xs">
-                        <table className="w-full text-left text-sm text-gray-700 divide-y divide-gray-200" {...props} />
-                      </div>
-                    ),
-                    thead: ({ node, ...props }) => (
-                      <thead className="bg-gray-50 text-xs font-semibold text-gray-900 uppercase tracking-wider" {...props} />
-                    ),
-                    th: ({ node, ...props }) => (
-                      <th className="px-4 py-3 border-b border-gray-200" {...props} />
-                    ),
-                    td: ({ node, ...props }) => (
-                      <td className="px-4 py-2.5 border-b border-gray-100" {...props} />
-                    ),
-                    hr: ({ node, ...props }) => (
-                      <hr className="my-6 border-gray-200" {...props} />
-                    ),
-                    a: ({ node, href, children, ...props }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 underline font-medium inline-flex items-center gap-0.5"
-                        {...props}
-                      >
-                        {children}
-                      </a>
-                    ),
-                    img: ({ node, src, alt, ...props }: any) => (
-                      <span className="block my-5 text-center">
-                        <img
-                          src={src}
-                          alt={alt || 'Immagine'}
-                          className="max-h-96 max-w-full mx-auto rounded-xl border border-gray-200 shadow-sm object-contain"
-                          loading="lazy"
+                      ),
+                      thead: ({ node, ...props }) => (
+                        <thead className="bg-gray-50 text-xs font-semibold text-gray-900 uppercase tracking-wider" {...props} />
+                      ),
+                      th: ({ node, ...props }) => (
+                        <th className="px-4 py-3 border-b border-gray-200" {...props} />
+                      ),
+                      td: ({ node, ...props }) => (
+                        <td className="px-4 py-2.5 border-b border-gray-100" {...props} />
+                      ),
+                      hr: ({ node, ...props }) => (
+                        <hr className="my-6 border-gray-200" {...props} />
+                      ),
+                      a: ({ node, href, children, ...props }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline font-medium inline-flex items-center gap-0.5"
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      ),
+                      img: ({ node, src, alt, ...props }: any) => (
+                        <span className="block my-5 text-center">
+                          <img
+                            src={src}
+                            alt={alt || 'Immagine'}
+                            className="max-h-96 max-w-full mx-auto rounded-xl border border-gray-200 shadow-sm object-contain"
+                            loading="lazy"
+                            {...props}
+                          />
+                          {alt && alt !== 'immagine' && (
+                            <span className="block text-xs text-gray-500 mt-1.5 italic">{alt}</span>
+                          )}
+                        </span>
+                      ),
+                      input: ({ node, ...props }) => (
+                        <input
+                          type="checkbox"
+                          disabled
+                          className="mr-2 rounded text-blue-600 focus:ring-blue-500 cursor-default"
                           {...props}
                         />
-                        {alt && alt !== 'immagine' && (
-                          <span className="block text-xs text-gray-500 mt-1.5 italic">{alt}</span>
-                        )}
-                      </span>
-                    ),
-                    input: ({ node, ...props }) => (
-                      <input
-                        type="checkbox"
-                        disabled
-                        className="mr-2 rounded text-blue-600 focus:ring-blue-500 cursor-default"
-                        {...props}
-                      />
-                    ),
-                  }}
-                >
-                  {content || '*Nessun contenuto nel file.*'}
-                </ReactMarkdown>
-              </article>
+                      ),
+                    }}
+                  >
+                    {content || '*Nessun contenuto nel file.*'}
+                  </ReactMarkdown>
+                    );
+                  })()}
+                </article>
+              </div>
             </div>
           )}
 
@@ -735,9 +1097,22 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                               </code>
                             );
                           }
+                          const match = /language-(\w+)/.exec(className || '');
+                          const lang = match ? match[1] : '';
+                          const rawCode = String(children).replace(/\n$/, '');
+                          const grammar = lang && Prism.languages[lang] ? Prism.languages[lang] : null;
+                          let highlighted = escapeHtml(rawCode);
+                          if (grammar) {
+                            try {
+                              highlighted = Prism.highlight(rawCode, grammar, lang);
+                            } catch {
+                              highlighted = escapeHtml(rawCode);
+                            }
+                          }
+
                           return (
-                            <pre className="p-3 my-3 rounded-xl bg-gray-900 text-gray-100 overflow-x-auto font-mono text-xs border border-gray-800">
-                              <code {...props}>{children}</code>
+                            <pre className="p-3 my-3 rounded-xl bg-gray-900 text-gray-100 overflow-x-auto font-mono text-xs border border-gray-800 leading-relaxed">
+                              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
                             </pre>
                           );
                         },
@@ -800,7 +1175,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
         </div>
 
         {/* Footer Status Bar */}
-        <div className="flex items-center justify-between px-5 py-2.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 shrink-0 select-none">
+        <div className="flex items-center justify-between px-5 py-2.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 shrink-0 select-none no-print">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-gray-400" />

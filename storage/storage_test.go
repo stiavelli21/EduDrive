@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,6 +108,77 @@ func TestStorageOperations(t *testing.T) {
 	}
 	if string(binaryData) != updatedMd {
 		t.Fatalf("Expected binary content %q, got %q", updatedMd, string(binaryData))
+	}
+}
+
+func TestServeStorageFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "edudrive_http_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	storageDir := filepath.Join(tempDir, "storage_data")
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		t.Fatalf("Failed to create storage dir: %v", err)
+	}
+
+	testFileName := "testfile.txt"
+	testContent := "0123456789HelloEduDriveStreaming"
+	if err := os.WriteFile(filepath.Join(storageDir, testFileName), []byte(testContent), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// 1. Successful GET request
+	req := httptest.NewRequest("GET", "/storage/"+testFileName, nil)
+	rec := httptest.NewRecorder()
+	ServeStorageFile(rec, req, storageDir)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", rec.Code)
+	}
+	if rec.Body.String() != testContent {
+		t.Fatalf("Expected body %q, got %q", testContent, rec.Body.String())
+	}
+	if rec.Header().Get("Content-Type") != "text/plain" {
+		t.Fatalf("Expected Content-Type text/plain, got %s", rec.Header().Get("Content-Type"))
+	}
+
+	// 2. HTTP Range request (streaming seek)
+	rangeReq := httptest.NewRequest("GET", "/storage/"+testFileName, nil)
+	rangeReq.Header.Set("Range", "bytes=0-9")
+	rangeRec := httptest.NewRecorder()
+	ServeStorageFile(rangeRec, rangeReq, storageDir)
+
+	if rangeRec.Code != http.StatusPartialContent {
+		t.Fatalf("Expected status 206 for Range request, got %d", rangeRec.Code)
+	}
+	if rangeRec.Body.String() != "0123456789" {
+		t.Fatalf("Expected range bytes '0123456789', got %q", rangeRec.Body.String())
+	}
+
+	// 3. Path traversal attack attempt
+	traversalReq := httptest.NewRequest("GET", "/storage/../storage_data/"+testFileName, nil)
+	traversalRec := httptest.NewRecorder()
+	ServeStorageFile(traversalRec, traversalReq, storageDir)
+	if traversalRec.Code == http.StatusOK {
+		t.Fatalf("Expected error on path traversal attempt, got status 200")
+	}
+
+	// 4. Non-existent file
+	missingReq := httptest.NewRequest("GET", "/storage/nonexistent.txt", nil)
+	missingRec := httptest.NewRecorder()
+	ServeStorageFile(missingRec, missingReq, storageDir)
+	if missingRec.Code != http.StatusNotFound {
+		t.Fatalf("Expected status 404 for missing file, got %d", missingRec.Code)
+	}
+
+	// 5. Method not allowed
+	postReq := httptest.NewRequest("POST", "/storage/"+testFileName, nil)
+	postRec := httptest.NewRecorder()
+	ServeStorageFile(postRec, postReq, storageDir)
+	if postRec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("Expected status 405 for POST request, got %d", postRec.Code)
 	}
 }
 

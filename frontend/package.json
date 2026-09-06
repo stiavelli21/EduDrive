@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/prismjs": "^1.26.6",
     "clsx": "^2.1.1",
     "docx-preview": "^0.4.0",
     "katex": "^0.18.4",
     "lucide-react": "^1.33.0",
+    "prismjs": "^1.30.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",

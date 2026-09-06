@@ -8,13 +8,18 @@ EduDrive e un'applicazione desktop per la gestione dei file e l'organizzazione d
 
 ### 1. Gestione di File e Cartelle
 - **Organizzazione ad albero**: creazione di cartelle a qualsiasi livello di profondita con navigazione rapida tramite percorsi breadcrumb.
-- **Importazione semplice**: caricamento di file singoli o multipli tramite la finestra di dialogo di sistema o tramite trascinamento diretto (Drag & Drop).
+- **Spostamento elementi**: spostamento rapido di file e cartelle tramite modale ad albero gerarchico ("Sposta in...") con rilevamento automatico e prevenzione dei cicli ricorsivi infiniti, oltre al supporto per il trascinamento Drag & Drop interno tra cartelle.
+- **Filtri rapidi e ordinamento avanzato**: barra di filtraggio per tipologia (Tutti, Documenti, Note, Link, Immagini) e ordinamento multi-campo (per Nome, Data di modifica, Dimensione e Tipo di file) con direzione ascendente o discendente.
+- **Importazione ed esportazione**: caricamento di file singoli o multipli tramite la finestra di dialogo di sistema o tramite trascinamento esterno dal computer (Drag & Drop), con esportazione immediata di copie su disco.
 - **Modalita di visualizzazione**: possibilita di scegliere tra vista a griglia (con icone grandi) e vista a elenco dettagliato.
-- **Ricerca in tempo reale**: individuazione istantanea di file e cartelle digitando il nome nella barra di ricerca.
+- **Ricerca in tempo reale**: individuazione istantanea di file e cartelle digitando il nome nella barra di ricerca globale.
 - **Cestino e recupero**: eliminazione sicura nel cestino con possibilita di ripristino o di eliminazione definitiva.
 
-### 2. Studio, Documenti e Note
-- **Editor Markdown e formule scientifiche**: creazione e modifica di appunti in formato Markdown con supporto a tabelle, elenchi, codice e formule matematiche LaTeX/KaTeX. Include modalita affiancata (editor e anteprima in tempo reale), salvataggio rapido (`Ctrl+S`) e statistiche di lettura (conteggio parole, caratteri e stima dei minuti).
+### 2. Studio, Documenti, Immagini e Codice
+- **Streaming HTTP locale ad alte prestazioni**: erogazione diretta dei file fisici tramite handler HTTP di Wails (`/storage/<uuid>.<ext>`) con supporto completo alle intestazioni HTTP Range (riproduzione e seek immediato di audio e video, azzeramento dell'overhead di memoria Base64/Blob).
+- **Visualizzatore immagini integrato (Lightbox)**: visualizzazione in-app per immagini (`.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`, `.gif`) con zoom a rotellina, trascinamento (pan), rotazione a 90 gradi, modalita a schermo intero e navigazione a galleria tra le immagini della cartella.
+- **Visualizzatore ed editor di codice e testo**: visualizzazione e modifica in-app di file di codice e testo piano (`.txt`, `.json`, `.csv`, `.log`, `.py`, `.sql`, `.java`, `.c`, `.cpp`, `.html`, `.css`, `.js`, `.ts`, ecc.) con numerazione delle righe, colorazione sintattica PrismJS, ricerca interna (`Ctrl+F`), scorciatoia di salvataggio rapido (`Ctrl+S`) e persistenza immediata su disco e database.
+- **Creazione ed editor Note Markdown**: creazione rapida di note ("Crea nota"), visualizzatore ed editor Markdown con colorazione sintattica nei blocchi di codice, indice dinamico laterale dei titoli (Table of Contents / TOC) con scorrimento fluido, ricerca e sostituzione testuale (`Ctrl+F`), rendering di formule scientifiche LaTeX/KaTeX, statistiche di lettura e stampa/esportazione diretta in PDF impaginato.
 - **Lettore documenti integrato**: apertura e lettura in-app di documenti PDF e file Microsoft Word (.docx) con funzioni di zoom, rotazione, visualizzazione a schermo intero e stampa.
 - **Conversione automatica in Markdown**: trasformazione diretta di PDF, DOCX, DOC e file di testo in documenti Markdown formattati.
 - **Segnalibri Web**: salvataggio di link a siti internet e risorse online all'interno delle cartelle.

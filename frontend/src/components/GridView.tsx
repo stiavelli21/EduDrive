@@ -1,7 +1,7 @@
 import React from 'react';
 import { DriveItem } from '../types';
 import { formatBytes, formatDate, getFileTypeInfo } from '../utils/formatters';
-import { Folder, MoreVertical, UploadCloud, FolderPlus, FileQuestion } from 'lucide-react';
+import { Folder, MoreVertical, UploadCloud, FolderPlus, FileQuestion, Trash2 } from 'lucide-react';
 
 interface GridViewProps {
   items: DriveItem[];
@@ -11,6 +11,10 @@ interface GridViewProps {
   onContextMenu: (e: React.MouseEvent, item: DriveItem) => void;
   onUpload: () => void;
   onCreateFolder: () => void;
+  onMoveItem?: (draggedId: string, targetFolderId: string) => void;
+  onDragStartInternal?: (itemId: string) => void;
+  onDragEndInternal?: () => void;
+  isTrash?: boolean;
 }
 
 export const GridView: React.FC<GridViewProps> = ({
@@ -21,11 +25,28 @@ export const GridView: React.FC<GridViewProps> = ({
   onContextMenu,
   onUpload,
   onCreateFolder,
+  onMoveItem,
+  onDragStartInternal,
+  onDragEndInternal,
+  isTrash = false,
 }) => {
+  const [dropOverFolderId, setDropOverFolderId] = React.useState<string | null>(null);
+  const draggedIdRef = React.useRef<string | null>(null);
   const folders = items.filter((item) => item.isFolder);
   const files = items.filter((item) => !item.isFolder);
 
   if (items.length === 0) {
+    if (isTrash) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-4">
+            <Trash2 className="w-10 h-10 stroke-[1.75]" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800">Il cestino è vuoto</h3>
+        </div>
+      );
+    }
+
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
         <div className="w-20 h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
@@ -66,9 +87,51 @@ export const GridView: React.FC<GridViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {folders.map((folder) => {
               const isSelected = selectedId === folder.id;
+              const isDropTarget = dropOverFolderId === folder.id;
+
               return (
                 <div
                   key={folder.id}
+                  draggable
+                  onDragStart={(e) => {
+                    draggedIdRef.current = folder.id;
+                    e.dataTransfer.setData('application/x-edudrive-item-id', folder.id);
+                    e.dataTransfer.setData('text/plain', folder.id);
+                    onDragStartInternal?.(folder.id);
+                  }}
+                  onDragEnd={() => {
+                    draggedIdRef.current = null;
+                    setDropOverFolderId(null);
+                    onDragEndInternal?.();
+                  }}
+                  onDragOver={(e) => {
+                    if (
+                      e.dataTransfer.types.includes('application/x-edudrive-item-id') &&
+                      draggedIdRef.current !== folder.id
+                    ) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDropOverFolderId(folder.id);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      if (dropOverFolderId === folder.id) {
+                        setDropOverFolderId(null);
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (e.dataTransfer.types.includes('application/x-edudrive-item-id')) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDropOverFolderId(null);
+                      const draggedId = e.dataTransfer.getData('application/x-edudrive-item-id');
+                      if (draggedId && draggedId !== folder.id && onMoveItem) {
+                        onMoveItem(draggedId, folder.id);
+                      }
+                    }
+                  }}
                   onClick={() => onSelect(folder)}
                   onDoubleClick={() => onOpen(folder)}
                   onContextMenu={(e) => {
@@ -78,7 +141,9 @@ export const GridView: React.FC<GridViewProps> = ({
                     onContextMenu(e, folder);
                   }}
                   className={`group relative flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
+                    isDropTarget
+                      ? 'bg-blue-100 border-blue-500 ring-3 ring-blue-300 shadow-md scale-[1.02]'
+                      : isSelected
                       ? 'bg-blue-50/80 border-blue-400 ring-2 ring-blue-100 shadow-xs'
                       : 'bg-white hover:bg-gray-50/80 border-gray-200 hover:border-gray-300 hover:shadow-xs'
                   }`}
@@ -124,6 +189,17 @@ export const GridView: React.FC<GridViewProps> = ({
               return (
                 <div
                   key={file.id}
+                  draggable
+                  onDragStart={(e) => {
+                    draggedIdRef.current = file.id;
+                    e.dataTransfer.setData('application/x-edudrive-item-id', file.id);
+                    e.dataTransfer.setData('text/plain', file.id);
+                    onDragStartInternal?.(file.id);
+                  }}
+                  onDragEnd={() => {
+                    draggedIdRef.current = null;
+                    onDragEndInternal?.();
+                  }}
                   onClick={() => onSelect(file)}
                   onDoubleClick={() => onOpen(file)}
                   onContextMenu={(e) => {

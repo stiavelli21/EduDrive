@@ -424,5 +424,59 @@ td .katex {
   border-radius: 4px;
 }
 
+/* Print / PDF Export Styling */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  header,
+  footer,
+  aside,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Hide background application when a print container modal is active */
+  body:has([data-print-container="true"]) #root > div > *:not([data-print-container="true"]) {
+    display: none !important;
+  }
+
+  .fixed.inset-0 {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .markdown-print-area {
+    padding: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  pre,
+  blockquote,
+  table,
+  .katex-display {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  h1, h2, h3, h4 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  @page {
+    margin: 15mm;
+  }
+}
+
 
 

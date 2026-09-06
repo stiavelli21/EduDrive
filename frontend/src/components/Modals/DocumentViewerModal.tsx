@@ -11,9 +11,10 @@ import {
   FileCode,
   Loader2,
   AlertCircle,
+  Video,
+  Music,
 } from 'lucide-react';
 import { DriveItem } from '../../types';
-import { GetFileBase64 } from '../../../wailsjs/go/main/App';
 import { formatBytes, formatDate } from '../../utils/formatters';
 
 interface DocumentViewerModalProps {
@@ -24,19 +25,6 @@ interface DocumentViewerModalProps {
   onOpenAsMarkdown?: (item: DriveItem) => void;
   onOpenExternally: (item: DriveItem) => void;
   onExport: (item: DriveItem) => void;
-}
-
-/**
- * Converts a base64 encoded string into a Uint8Array.
- */
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = window.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -50,12 +38,16 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isConverting, setIsConverting] = useState<boolean>(false);
 
   const docxContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const fileUrl = useMemo(() => {
+    if (!item || !item.storagePath) return '';
+    return `/storage/${item.storagePath}`;
+  }, [item]);
 
   const isPdf = useMemo(() => {
     if (!item) return false;
@@ -74,10 +66,36 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     );
   }, [item]);
 
+  const isVideo = useMemo(() => {
+    if (!item) return false;
+    const name = item.name.toLowerCase();
+    return (
+      item.mimeType.startsWith('video/') ||
+      name.endsWith('.mp4') ||
+      name.endsWith('.webm') ||
+      name.endsWith('.ogg') ||
+      name.endsWith('.mov') ||
+      name.endsWith('.mkv')
+    );
+  }, [item]);
+
+  const isAudio = useMemo(() => {
+    if (!item) return false;
+    const name = item.name.toLowerCase();
+    return (
+      item.mimeType.startsWith('audio/') ||
+      name.endsWith('.mp3') ||
+      name.endsWith('.wav') ||
+      name.endsWith('.ogg') ||
+      name.endsWith('.flac') ||
+      name.endsWith('.m4a') ||
+      name.endsWith('.aac')
+    );
+  }, [item]);
+
   // Load and render document when modal opens or item changes
   useEffect(() => {
     let active = true;
-    let createdUrl: string | null = null;
 
     const loadDocument = async () => {
       if (!isOpen || !item) return;
@@ -86,34 +104,22 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
       setErrorMessage(null);
       setZoomLevel(100);
 
-      // Clean up previous blob URL
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-        setBlobUrl(null);
-      }
-
       try {
-        const base64Data = await GetFileBase64(item.id);
-        if (!active) return;
+        if (isDocx) {
+          // Fetch binary arrayBuffer directly from streaming endpoint without Base64 overhead
+          const res = await fetch(`/storage/${item.storagePath}`);
+          if (!res.ok) {
+            throw new Error(`Impossibile scaricare il documento Word (${res.status})`);
+          }
+          const arrayBuffer = await res.arrayBuffer();
+          if (!active) return;
 
-        if (!base64Data) {
-          throw new Error('Contenuto del file non disponibile');
-        }
-
-        const uint8Data = base64ToUint8Array(base64Data);
-
-        if (isPdf) {
-          const pdfBlob = new Blob([uint8Data.buffer as ArrayBuffer], { type: 'application/pdf' });
-          createdUrl = URL.createObjectURL(pdfBlob);
-          setBlobUrl(createdUrl);
-          setIsLoading(false);
-        } else if (isDocx) {
-          // Wait for container to be in DOM
+          // Render DOCX into container
           setTimeout(async () => {
             if (!active || !docxContainerRef.current) return;
             try {
               docxContainerRef.current.innerHTML = '';
-              await docx.renderAsync(uint8Data.buffer as ArrayBuffer, docxContainerRef.current, undefined, {
+              await docx.renderAsync(arrayBuffer, docxContainerRef.current, undefined, {
                 className: 'docx',
                 inWrapper: false,
                 ignoreWidth: false,
@@ -126,7 +132,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 renderEndnotes: true,
                 useBase64URL: true,
               });
-              setIsLoading(false);
+              if (active) setIsLoading(false);
             } catch (renderErr: any) {
               console.error('DOCX render error:', renderErr);
               if (active) {
@@ -138,16 +144,13 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             }
           }, 50);
         } else {
-          // Fallback for other file types
-          const fallbackBlob = new Blob([uint8Data.buffer as ArrayBuffer], { type: item.mimeType || 'application/octet-stream' });
-          createdUrl = URL.createObjectURL(fallbackBlob);
-          setBlobUrl(createdUrl);
+          // For PDF, Video, Audio and generic fallbacks, the streaming endpoint is used directly
           setIsLoading(false);
         }
       } catch (err: any) {
         console.error('Failed to load document:', err);
         if (active) {
-          setErrorMessage(err?.toString() || 'Errore nel caricamento del file');
+          setErrorMessage(err?.message || err?.toString() || 'Errore nel caricamento del file');
           setIsLoading(false);
         }
       }
@@ -162,11 +165,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
     return () => {
       active = false;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
-  }, [isOpen, item, isPdf, isDocx]);
+  }, [isOpen, item, isDocx]);
 
   // Keyboard shortcut listener (Esc to close, Ctrl+P to print)
   useEffect(() => {
@@ -237,10 +237,20 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                   ? 'bg-red-500 text-white'
                   : isDocx
                   ? 'bg-blue-600 text-white'
+                  : isVideo
+                  ? 'bg-purple-600 text-white'
+                  : isAudio
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-indigo-600 text-white'
               }`}
             >
-              <FileText className="w-5 h-5" />
+              {isVideo ? (
+                <Video className="w-5 h-5" />
+              ) : isAudio ? (
+                <Music className="w-5 h-5" />
+              ) : (
+                <FileText className="w-5 h-5" />
+              )}
             </div>
 
             <div className="min-w-0">
@@ -257,10 +267,22 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                       ? 'bg-red-100 text-red-700 border border-red-200'
                       : isDocx
                       ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : isVideo
+                      ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                      : isAudio
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                       : 'bg-gray-100 text-gray-700 border border-gray-200'
                   }`}
                 >
-                  {isPdf ? 'PDF' : isDocx ? 'Word DOCX' : 'Documento'}
+                  {isPdf
+                    ? 'PDF'
+                    : isDocx
+                    ? 'Word DOCX'
+                    : isVideo
+                    ? 'Video'
+                    : isAudio
+                    ? 'Audio'
+                    : 'Documento'}
                 </span>
               </div>
               <p className="text-xs text-gray-500 flex items-center gap-2">
@@ -403,15 +425,13 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               </div>
             </div>
           ) : isPdf ? (
-            /* PDF Viewer (Chromium / WebView2 engine) */
-            blobUrl ? (
-              <iframe
-                ref={iframeRef}
-                src={`${blobUrl}#toolbar=1&navpanes=1&statusbar=1&view=FitH`}
-                title={item.name}
-                className="w-full h-full border-0 bg-slate-900"
-              />
-            ) : null
+            /* PDF Viewer (Chromium / WebView2 native engine via streaming URL) */
+            <iframe
+              ref={iframeRef}
+              src={`${fileUrl}#toolbar=1&navpanes=1&statusbar=1&view=FitH`}
+              title={item.name}
+              className="w-full h-full border-0 bg-slate-900"
+            />
           ) : isDocx ? (
             /* DOCX Viewer (Paper Canvas with Zoom) */
             <div className="w-full h-full overflow-auto p-4 sm:p-8 flex justify-center bg-slate-100/90 custom-scrollbar">
@@ -429,15 +449,41 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 />
               </div>
             </div>
+          ) : isVideo ? (
+            /* Video Streaming Player with Range Support */
+            <div className="w-full h-full flex items-center justify-center p-6 bg-black">
+              <video
+                controls
+                autoPlay
+                className="max-w-full max-h-full rounded-lg shadow-2xl"
+                src={fileUrl}
+              >
+                Il tuo browser non supporta la riproduzione video.
+              </video>
+            </div>
+          ) : isAudio ? (
+            /* Audio Streaming Player with Range Support */
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-slate-900 gap-6">
+              <div className="w-24 h-24 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
+                <Music className="w-12 h-12" />
+              </div>
+              <p className="text-white text-base font-medium max-w-md truncate">{item.name}</p>
+              <audio
+                controls
+                autoPlay
+                className="w-full max-w-md shadow-lg"
+                src={fileUrl}
+              >
+                Il tuo browser non supporta la riproduzione audio.
+              </audio>
+            </div>
           ) : (
             /* Generic Fallback Viewer */
-            blobUrl && (
-              <iframe
-                src={blobUrl}
-                title={item.name}
-                className="w-full h-full border-0 bg-white"
-              />
-            )
+            <iframe
+              src={fileUrl}
+              title={item.name}
+              className="w-full h-full border-0 bg-white"
+            />
           )}
         </div>
 

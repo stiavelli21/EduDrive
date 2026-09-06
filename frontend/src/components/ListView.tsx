@@ -1,7 +1,7 @@
 import React from 'react';
 import { DriveItem } from '../types';
 import { formatBytes, formatDate, getFileTypeInfo } from '../utils/formatters';
-import { MoreVertical, UploadCloud, FolderPlus } from 'lucide-react';
+import { MoreVertical, UploadCloud, FolderPlus, Trash2 } from 'lucide-react';
 
 interface ListViewProps {
   items: DriveItem[];
@@ -11,6 +11,10 @@ interface ListViewProps {
   onContextMenu: (e: React.MouseEvent, item: DriveItem) => void;
   onUpload: () => void;
   onCreateFolder: () => void;
+  onMoveItem?: (draggedId: string, targetFolderId: string) => void;
+  onDragStartInternal?: (itemId: string) => void;
+  onDragEndInternal?: () => void;
+  isTrash?: boolean;
 }
 
 export const ListView: React.FC<ListViewProps> = ({
@@ -21,8 +25,25 @@ export const ListView: React.FC<ListViewProps> = ({
   onContextMenu,
   onUpload,
   onCreateFolder,
+  onMoveItem,
+  onDragStartInternal,
+  onDragEndInternal,
+  isTrash = false,
 }) => {
+  const [dropOverFolderId, setDropOverFolderId] = React.useState<string | null>(null);
+  const draggedIdRef = React.useRef<string | null>(null);
   if (items.length === 0) {
+    if (isTrash) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-4">
+            <Trash2 className="w-10 h-10 stroke-[1.75]" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800">Il cestino è vuoto</h3>
+        </div>
+      );
+    }
+
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-fade-in">
         <div className="w-20 h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
@@ -68,11 +89,53 @@ export const ListView: React.FC<ListViewProps> = ({
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
               const isSelected = selectedId === item.id;
+              const isDropTarget = dropOverFolderId === item.id;
               const typeInfo = getFileTypeInfo(item.name, item.isFolder, item.mimeType);
 
               return (
                 <tr
                   key={item.id}
+                  draggable
+                  onDragStart={(e) => {
+                    draggedIdRef.current = item.id;
+                    e.dataTransfer.setData('application/x-edudrive-item-id', item.id);
+                    e.dataTransfer.setData('text/plain', item.id);
+                    onDragStartInternal?.(item.id);
+                  }}
+                  onDragEnd={() => {
+                    draggedIdRef.current = null;
+                    setDropOverFolderId(null);
+                    onDragEndInternal?.();
+                  }}
+                  onDragOver={(e) => {
+                    if (
+                      item.isFolder &&
+                      e.dataTransfer.types.includes('application/x-edudrive-item-id') &&
+                      draggedIdRef.current !== item.id
+                    ) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDropOverFolderId(item.id);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      if (dropOverFolderId === item.id) {
+                        setDropOverFolderId(null);
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (item.isFolder && e.dataTransfer.types.includes('application/x-edudrive-item-id')) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDropOverFolderId(null);
+                      const draggedId = e.dataTransfer.getData('application/x-edudrive-item-id');
+                      if (draggedId && draggedId !== item.id && onMoveItem) {
+                        onMoveItem(draggedId, item.id);
+                      }
+                    }
+                  }}
                   onClick={() => onSelect(item)}
                   onDoubleClick={() => onOpen(item)}
                   onContextMenu={(e) => {
@@ -82,7 +145,9 @@ export const ListView: React.FC<ListViewProps> = ({
                     onContextMenu(e, item);
                   }}
                   className={`group cursor-pointer transition-colors ${
-                    isSelected
+                    isDropTarget
+                      ? 'bg-blue-100 text-blue-950 font-bold border-y-2 border-blue-500'
+                      : isSelected
                       ? 'bg-blue-50/80 text-blue-950 font-medium'
                       : 'hover:bg-gray-50/80 text-gray-800'
                   }`}

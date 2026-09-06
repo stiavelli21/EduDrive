@@ -325,5 +325,131 @@ func TestDatabaseOperations(t *testing.T) {
 	}
 }
 
+func TestMoveItem(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "edudrive_move_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	database, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	// Create Folder A
+	folderA := &models.Item{
+		ID:       "folder-a",
+		Name:     "Cartella A",
+		IsFolder: true,
+	}
+	_ = database.InsertItem(folderA)
+
+	// Create Folder B
+	folderB := &models.Item{
+		ID:       "folder-b",
+		Name:     "Cartella B",
+		IsFolder: true,
+	}
+	_ = database.InsertItem(folderB)
+
+	// Create Subfolder A1 inside Folder A
+	parentA := "folder-a"
+	folderA1 := &models.Item{
+		ID:       "folder-a1",
+		Name:     "Sottocartella A1",
+		ParentID: &parentA,
+		IsFolder: true,
+	}
+	_ = database.InsertItem(folderA1)
+
+	// Create File 1 at root
+	file1 := &models.Item{
+		ID:       "file-1",
+		Name:     "documento.txt",
+		IsFolder: false,
+	}
+	_ = database.InsertItem(file1)
+
+	// 1. Move file1 into folderA
+	if err := database.MoveItem("file-1", &folderA.ID); err != nil {
+		t.Fatalf("Failed to move file-1 into folderA: %v", err)
+	}
+	movedFile, _ := database.GetItemByID("file-1")
+	if movedFile.ParentID == nil || *movedFile.ParentID != "folder-a" {
+		t.Fatalf("Expected parent_id folder-a, got %v", movedFile.ParentID)
+	}
+
+	// 2. Move folderA1 into folderB
+	if err := database.MoveItem("folder-a1", &folderB.ID); err != nil {
+		t.Fatalf("Failed to move folder-a1 into folderB: %v", err)
+	}
+	movedSubfolder, _ := database.GetItemByID("folder-a1")
+	if movedSubfolder.ParentID == nil || *movedSubfolder.ParentID != "folder-b" {
+		t.Fatalf("Expected parent_id folder-b, got %v", movedSubfolder.ParentID)
+	}
+
+	// 3. Move folder-a1 back into folder-a
+	if err := database.MoveItem("folder-a1", &folderA.ID); err != nil {
+		t.Fatalf("Failed to move folder-a1 back to folder-a: %v", err)
+	}
+
+	// 4. Cycle prevention: Attempt to move folder-a into folder-a1 (its own child!)
+	err = database.MoveItem("folder-a", &folderA1.ID)
+	if err == nil {
+		t.Fatalf("Expected error when moving folder into its own subfolder, got nil")
+	}
+
+	// 5. Self move prevention: Attempt to move folder-a into itself
+	err = database.MoveItem("folder-a", &folderA.ID)
+	if err == nil {
+		t.Fatalf("Expected error when moving folder into itself, got nil")
+	}
+
+	// 6. Non-folder target prevention: Attempt to move folder-a into file-1
+	err = database.MoveItem("folder-a", &file1.ID)
+	if err == nil {
+		t.Fatalf("Expected error when moving into a non-folder file, got nil")
+	}
+
+	// 7. Move file1 back to root (nil parent)
+	if err := database.MoveItem("file-1", nil); err != nil {
+		t.Fatalf("Failed to move file-1 to root: %v", err)
+	}
+	rootFile, _ := database.GetItemByID("file-1")
+	if rootFile.ParentID != nil && *rootFile.ParentID != "" {
+		t.Fatalf("Expected nil parent_id for file-1 at root, got %v", rootFile.ParentID)
+	}
+
+	// 8. Test GetAllFolders
+	allFolders, err := database.GetAllFolders()
+	if err != nil {
+		t.Fatalf("GetAllFolders failed: %v", err)
+	}
+	if len(allFolders) != 3 {
+		t.Fatalf("Expected 3 folders, got %d", len(allFolders))
+	}
+
+	// 9. Trash destination prevention: Send folderB to trash, then attempt to move file-1 into folderB
+	if err := database.SetTrashStatus("folder-b", true); err != nil {
+		t.Fatalf("Failed to trash folderB: %v", err)
+	}
+	if err := database.MoveItem("file-1", &folderB.ID); err == nil {
+		t.Fatalf("Expected error when moving item into a trashed folder, got nil")
+	}
+
+	// 10. Trashed item move prevention: Attempt to move trashed folderB into folderA
+	if err := database.MoveItem("folder-b", &folderA.ID); err == nil {
+		t.Fatalf("Expected error when moving a trashed item, got nil")
+	}
+
+	// 11. No-op move: Moving file1 to its current parent (nil) should succeed without error
+	if err := database.MoveItem("file-1", nil); err != nil {
+		t.Fatalf("Expected no-op move to succeed, got %v", err)
+	}
+}
+
 
 

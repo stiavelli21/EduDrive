@@ -279,4 +279,57 @@ func (sm *StorageManager) ReadBinaryContent(storageFilename string) ([]byte, err
 	return os.ReadFile(fullPath)
 }
 
+// ServeStorageFile securely streams a stored physical file over HTTP with path traversal guards
+func ServeStorageFile(w http.ResponseWriter, r *http.Request, storageDir string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Support both /storage/<filename> and /api/storage/<filename>
+	path := r.URL.Path
+	var filename string
+	if strings.HasPrefix(path, "/storage/") {
+		filename = strings.TrimPrefix(path, "/storage/")
+	} else if strings.HasPrefix(path, "/api/storage/") {
+		filename = strings.TrimPrefix(path, "/api/storage/")
+	} else {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Strictly validate and sanitize filename against path traversal attacks
+	cleaned := filepath.Clean(filename)
+	base := filepath.Base(cleaned)
+	if base == "." || base == "/" || base == "\\" || strings.Contains(base, "..") || base == "" {
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	fullPath := filepath.Join(storageDir, base)
+
+	// Ensure the full path stays strictly inside storageDir
+	rel, err := filepath.Rel(storageDir, fullPath)
+	if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
+		http.Error(w, "Access Denied", http.StatusForbidden)
+		return
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Security and MIME headers
+	mimeType := DetectMimeType(base, nil)
+	if mimeType != "" {
+		w.Header().Set("Content-Type", mimeType)
+	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	http.ServeFile(w, r, fullPath)
+}
+
 

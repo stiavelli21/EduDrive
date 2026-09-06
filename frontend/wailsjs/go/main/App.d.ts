@@ -26,6 +26,8 @@ export function EmptyTrash():Promise<void>;
 
 export function ExportFile(arg1:string):Promise<void>;
 
+export function GetAllFolders():Promise<Array<models.Item>>;
+
 export function GetAppStoragePath():Promise<string>;
 
 export function GetBreadcrumbs(arg1:string):Promise<Array<models.Breadcrumb>>;
@@ -33,6 +35,8 @@ export function GetBreadcrumbs(arg1:string):Promise<Array<models.Breadcrumb>>;
 export function GetFileBase64(arg1:string):Promise<string>;
 
 export function GetFileContent(arg1:string):Promise<string>;
+
+export function GetFileUrl(arg1:string):Promise<string>;
 
 export function GetStorageStats():Promise<models.StorageStats>;
 
@@ -48,6 +52,8 @@ export function ListItems(arg1:string,arg2:string):Promise<Array<models.Item>>;
 
 export function ListPassedExams():Promise<Array<models.PassedExam>>;
 
+export function MoveItem(arg1:string,arg2:string):Promise<void>;
+
 export function OpenFileLocally(arg1:string):Promise<void>;
 
 export function RenameItem(arg1:string,arg2:string):Promise<void>;
@@ -57,6 +63,8 @@ export function RestoreItem(arg1:string):Promise<void>;
 export function SaveFileFromBase64(arg1:string,arg2:string,arg3:string):Promise<models.Item>;
 
 export function SaveMarkdownFile(arg1:string,arg2:string):Promise<void>;
+
+export function SaveTextFile(arg1:string,arg2:string):Promise<void>;
 
 export function SearchItems(arg1:string):Promise<Array<models.Item>>;
 

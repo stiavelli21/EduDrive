@@ -16,7 +16,6 @@ import {
   Award,
   BookOpen,
   FileCode,
-  FileUp,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,7 +24,6 @@ interface SidebarProps {
   onNewFolder: () => void;
   onNewMarkdown: () => void;
   onUploadFiles: () => void;
-  onImportAndConvertToMarkdown?: () => void;
   onNewLink: () => void;
   onNewExamDate: () => void;
   onDeleteExamDate: (id: string) => void;
@@ -41,7 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNewFolder,
   onNewMarkdown,
   onUploadFiles,
-  onImportAndConvertToMarkdown,
   onNewLink,
   onNewExamDate,
   onDeleteExamDate,
@@ -108,18 +105,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Upload className="w-4 h-4 text-blue-600" />
                 <span>Carica file...</span>
               </button>
-              {onImportAndConvertToMarkdown && (
-                <button
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onImportAndConvertToMarkdown();
-                  }}
-                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
-                >
-                  <FileUp className="w-4 h-4 text-teal-600" />
-                  <span>Importa in .md</span>
-                </button>
-              )}
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -128,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 text-left text-sm text-gray-700 transition-colors cursor-pointer"
               >
                 <FileCode className="w-4 h-4 text-indigo-600" />
-                <span>Nuovo File .md</span>
+                <span>Crea nota</span>
               </button>
               <button
                 onClick={() => {
@@ -175,21 +160,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={() => onViewModeChange('trash')}
-          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
             viewMode === 'trash'
               ? 'bg-rose-50 text-rose-700 font-semibold'
               : 'text-gray-700 hover:bg-gray-100/80'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <Trash2 className={`w-4 h-4 ${viewMode === 'trash' ? 'text-rose-600' : 'text-gray-500'}`} />
-            <span>Cestino</span>
-          </div>
-          {stats && stats.trashItems > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold">
-              {stats.trashItems}
-            </span>
-          )}
+          <Trash2 className={`w-4 h-4 ${viewMode === 'trash' ? 'text-rose-600' : 'text-gray-500'}`} />
+          <span>Cestino</span>
         </button>
 
         {/* Career / Booklet Section - Under Cestino */}

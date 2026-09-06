@@ -14,7 +14,7 @@ EduDrive is a local desktop Google Drive clone with integrated academic tools (u
 - **Backend**: Go (1.25+), Controller-Service-Repository pattern.
 - **Database**: Pure-Go SQLite via `modernc.org/sqlite` (**strictly Zero CGO/GCC**).
 - **Storage**: UUID-based physical files in `%APPDATA%/EduDrive/storage_data/`.
-- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3, Lucide Icons, KaTeX (`remark-math`, `rehype-katex`).
+- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3, Lucide Icons, KaTeX (`remark-math`, `rehype-katex`), PrismJS.
 - **IPC**: Strongly-typed Wails bindings (`frontend/wailsjs`).
 
 ### Runtime Paths
@@ -37,7 +37,11 @@ EduDrive is a local desktop Google Drive clone with integrated academic tools (u
    - Soft-delete (`is_trash = 1`) MUST NOT delete physical files from disk.
    - Moving a folder to trash or restoring it MUST cascade recursively to all children.
    - Physical deletion from disk occurs ONLY on `DeleteItem(permanent=true)` or `EmptyTrash()`.
-4. **Documentation & Code Language Rules**:
+4. **Hierarchical Move & Cycle Prevention**:
+   - Moving an item via `MoveItem(id, targetFolderId)` MUST enforce cycle detection via SQLite `WITH RECURSIVE` queries to prevent placing a folder inside its own subtree.
+5. **Streaming & Path Traversal Guard**:
+   - Local HTTP file streaming via `AssetServer.Handler` (`/storage/<uuid>.<ext>`) MUST strictly sanitize paths (`filepath.Clean`, boundary verification within `storage_data/`) and support HTTP Range requests for video/audio seek.
+6. **Documentation & Code Language Rules**:
    - **Code Comments**: All source code comments (Go, TypeScript, CSS, SQL) MUST be frequent, clear, and strictly in **English**.
    - **Project Documentation (`.md`)**: Human-facing documentation (such as `README.md`) MUST be written in **Italian**, concise, technical, and free of emojis.
    - **Doc Sync**: Always keep `README.md` and `AGENTS.md` synchronized whenever features, schemas, or APIs change.
@@ -49,18 +53,18 @@ EduDrive is a local desktop Google Drive clone with integrated academic tools (u
 ```
 EduDrive/
 ├── app.go                  # Central Wails controller (IPC bindings, file operations, seed logic)
-├── main.go                 # Desktop window initialization & Wails lifecycle hooks
+├── main.go                 # Desktop window initialization, AssetServer.Handler streaming & lifecycle hooks
 ├── models/item.go          # Core structs: Item, Breadcrumb, StorageStats, ExamDate, PassedExam
-├── db/db.go                # SQLite DAL: migrations, hierarchical recursive queries, career/exam CRUD
-├── storage/storage.go      # Physical file management: UUID mapping, MIME detection, Base64/export
+├── db/db.go                # SQLite DAL: migrations, hierarchical recursive queries, move/cycle checks, career CRUD
+├── storage/storage.go      # Physical file management: UUID mapping, MIME detection, Range HTTP streaming, export
 ├── converter/              # Document conversion engine to Markdown (DOCX, PDF, text)
 │   ├── docx.go             # Word parser with table formatting and OMML-to-LaTeX conversion
 │   └── pdf.go              # Pure-Go PDF parser using pdfcpu
 └── frontend/src/
-    ├── App.tsx             # Global state coordinator, navigation, modal orchestration
-    ├── types/index.ts      # TypeScript interfaces matching backend models
+    ├── App.tsx             # Global state coordinator, navigation, fast filters, sorting, modal orchestration
+    ├── types/index.ts      # TypeScript interfaces matching backend models, SortField, TypeFilter
     ├── components/         # UI components (Header, Sidebar, GridView, ListView, CareerView)
-    └── components/Modals/  # Operational modals (MarkdownModal, DocumentViewerModal, etc.)
+    └── components/Modals/  # Modals: MarkdownModal, DocumentViewerModal, ImageViewerModal, CodeViewerModal, MoveItemModal
 ```
 
 ---

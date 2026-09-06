@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,22 +35,47 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil || userConfigDir == "" {
+		userConfigDir = "."
+	}
+	dataDir := filepath.Join(userConfigDir, "EduDrive")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		dataDir = "./edudrive_data"
+		_ = os.MkdirAll(dataDir, 0755)
+	}
+
+	return &App{
+		dataDir: dataDir,
+	}
+}
+
+// getAssetHandler returns an HTTP handler for streaming storage files securely
+func (a *App) getAssetHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		storageDir := filepath.Join(a.dataDir, "storage_data")
+		if a.storage != nil && a.storage.BaseDir != "" {
+			storageDir = a.storage.BaseDir
+		}
+		storage.ServeStorageFile(w, r, storageDir)
+	})
 }
 
 // startup is called when the app starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// Determine data directory
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil || userConfigDir == "" {
-		userConfigDir = "."
-	}
-	a.dataDir = filepath.Join(userConfigDir, "EduDrive")
-	if err := os.MkdirAll(a.dataDir, 0755); err != nil {
-		a.dataDir = "./edudrive_data"
-		_ = os.MkdirAll(a.dataDir, 0755)
+	// Determine data directory if not already set
+	if a.dataDir == "" {
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil || userConfigDir == "" {
+			userConfigDir = "."
+		}
+		a.dataDir = filepath.Join(userConfigDir, "EduDrive")
+		if err := os.MkdirAll(a.dataDir, 0755); err != nil {
+			a.dataDir = "./edudrive_data"
+			_ = os.MkdirAll(a.dataDir, 0755)
+		}
 	}
 
 	// Initialize Database
@@ -442,6 +468,31 @@ func (a *App) GetFileBase64(id string) (string, error) {
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
+// GetFileUrl returns the HTTP streaming URL for a stored file
+func (a *App) GetFileUrl(id string) (string, error) {
+	if a.database == nil {
+		return "", fmt.Errorf("database not initialized")
+	}
+
+	item, err := a.database.GetItemByID(id)
+	if err != nil || item == nil {
+		return "", fmt.Errorf("file not found")
+	}
+
+	if item.IsFolder {
+		return "", fmt.Errorf("cannot stream a folder")
+	}
+
+	if item.MimeType == "url" {
+		return item.StoragePath, nil
+	}
+
+	if item.StoragePath == "" {
+		return "", fmt.Errorf("file has no storage path")
+	}
+
+	return "/storage/" + item.StoragePath, nil
+}
 
 // SaveMarkdownFile updates the content of an existing markdown file and synchronizes DB metadata
 func (a *App) SaveMarkdownFile(id string, content string) error {
@@ -472,6 +523,11 @@ func (a *App) SaveMarkdownFile(id string, content string) error {
 	}
 
 	return nil
+}
+
+// SaveTextFile updates the content of a text or code document and updates database metadata
+func (a *App) SaveTextFile(id string, content string) error {
+	return a.SaveMarkdownFile(id, content)
 }
 
 // ConvertToMarkdown converts an existing Word (.docx) document or text file to Markdown format
@@ -716,6 +772,29 @@ func (a *App) RenameItem(id string, newName string) error {
 	}
 
 	return a.database.UpdateItemName(id, trimmed)
+}
+
+// MoveItem moves an item into a destination folder or to root
+func (a *App) MoveItem(id string, newParentID string) error {
+	if a.database == nil {
+		return fmt.Errorf("database not initialized")
+	}
+
+	var pID *string
+	trimmedParent := strings.TrimSpace(newParentID)
+	if trimmedParent != "" && trimmedParent != "root" {
+		pID = &trimmedParent
+	}
+
+	return a.database.MoveItem(id, pID)
+}
+
+// GetAllFolders returns all active folders in the Drive for destination selection
+func (a *App) GetAllFolders() ([]models.Item, error) {
+	if a.database == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	return a.database.GetAllFolders()
 }
 
 // DeleteItem moves an item to trash or permanently deletes it

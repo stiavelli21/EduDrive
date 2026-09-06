@@ -50,6 +50,10 @@ export function ExportFile(arg1) {
   return window['go']['main']['App']['ExportFile'](arg1);
 }
 
+export function GetAllFolders() {
+  return window['go']['main']['App']['GetAllFolders']();
+}
+
 export function GetAppStoragePath() {
   return window['go']['main']['App']['GetAppStoragePath']();
 }
@@ -64,6 +68,10 @@ export function GetFileBase64(arg1) {
 
 export function GetFileContent(arg1) {
   return window['go']['main']['App']['GetFileContent'](arg1);
+}
+
+export function GetFileUrl(arg1) {
+  return window['go']['main']['App']['GetFileUrl'](arg1);
 }
 
 export function GetStorageStats() {
@@ -94,6 +102,10 @@ export function ListPassedExams() {
   return window['go']['main']['App']['ListPassedExams']();
 }
 
+export function MoveItem(arg1, arg2) {
+  return window['go']['main']['App']['MoveItem'](arg1, arg2);
+}
+
 export function OpenFileLocally(arg1) {
   return window['go']['main']['App']['OpenFileLocally'](arg1);
 }
@@ -112,6 +124,10 @@ export function SaveFileFromBase64(arg1, arg2, arg3) {
 
 export function SaveMarkdownFile(arg1, arg2) {
   return window['go']['main']['App']['SaveMarkdownFile'](arg1, arg2);
+}
+
+export function SaveTextFile(arg1, arg2) {
+  return window['go']['main']['App']['SaveTextFile'](arg1, arg2);
 }
 
 export function SearchItems(arg1) {

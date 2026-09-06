@@ -381,6 +381,129 @@ func (d *Database) UpdateItemSizeAndTimestamp(id string, sizeBytes int64) error 
 	return err
 }
 
+// MoveItem moves an item to a new parent folder, preventing circular dependencies and invalid targets
+func (d *Database) MoveItem(id string, newParentID *string) error {
+	if id == "" {
+		return fmt.Errorf("item ID cannot be empty")
+	}
+
+	item, err := d.GetItemByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to fetch item: %w", err)
+	}
+	if item == nil {
+		return fmt.Errorf("item not found")
+	}
+
+	if item.IsTrash {
+		return fmt.Errorf("cannot move a trashed item; restore it first")
+	}
+
+	var targetParent sql.NullString
+	if newParentID != nil && *newParentID != "" {
+		destID := *newParentID
+		if id == destID {
+			return fmt.Errorf("cannot move an item into itself")
+		}
+
+		target, err := d.GetItemByID(destID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch destination folder: %w", err)
+		}
+		if target == nil {
+			return fmt.Errorf("destination folder not found")
+		}
+		if !target.IsFolder {
+			return fmt.Errorf("destination must be a folder")
+		}
+		if target.IsTrash {
+			return fmt.Errorf("cannot move item into a trashed folder")
+		}
+
+		// If moving a folder, verify that destination is NOT a descendant of the folder (cycle prevention)
+		if item.IsFolder {
+			cycleQuery := `
+			WITH RECURSIVE subordinates AS (
+				SELECT id FROM items WHERE parent_id = ?
+				UNION ALL
+				SELECT items.id FROM items JOIN subordinates ON items.parent_id = subordinates.id
+			)
+			SELECT COUNT(*) FROM subordinates WHERE id = ?
+			`
+			var count int
+			if err := d.conn.QueryRow(cycleQuery, id, destID).Scan(&count); err != nil {
+				return fmt.Errorf("failed to check folder hierarchy: %w", err)
+			}
+			if count > 0 {
+				return fmt.Errorf("cannot move a folder into one of its subfolders")
+			}
+		}
+
+		targetParent = sql.NullString{String: destID, Valid: true}
+	}
+
+	// No-op if target parent matches current parent
+	if (item.ParentID == nil && !targetParent.Valid) ||
+		(item.ParentID != nil && targetParent.Valid && *item.ParentID == targetParent.String) {
+		return nil
+	}
+
+	query := `
+	UPDATE items
+	SET parent_id = ?, updated_at = ?
+	WHERE id = ?
+	`
+	_, err = d.conn.Exec(query, targetParent, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("failed to update item parent: %w", err)
+	}
+
+	return nil
+}
+
+// GetAllFolders returns all active non-trash folders for navigation and destination picker
+func (d *Database) GetAllFolders() ([]models.Item, error) {
+	query := `
+	SELECT id, name, parent_id, is_folder, size_bytes, mime_type, storage_path, is_trash, created_at, updated_at
+	FROM items
+	WHERE is_trash = 0 AND is_folder = 1
+	ORDER BY name COLLATE NOCASE ASC
+	`
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	folders := make([]models.Item, 0)
+	for rows.Next() {
+		var item models.Item
+		var pID sql.NullString
+		err := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&pID,
+			&item.IsFolder,
+			&item.SizeBytes,
+			&item.MimeType,
+			&item.StoragePath,
+			&item.IsTrash,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if pID.Valid {
+			val := pID.String
+			item.ParentID = &val
+		}
+		folders = append(folders, item)
+	}
+
+	return folders, nil
+}
+
 
 // SetTrashStatus sets trash flag for an item and all its descendants recursively
 func (d *Database) SetTrashStatus(id string, isTrash bool) error {

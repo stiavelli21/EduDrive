@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   DriveItem,
   BreadcrumbItem,
@@ -9,6 +9,9 @@ import {
   LayoutMode,
   ToastMessage,
   ContextMenuState,
+  SortField,
+  SortDirection,
+  TypeFilter,
 } from './types';
 import {
   ListItems,
@@ -39,7 +42,9 @@ import {
   SaveMarkdownFile,
   ConvertToMarkdown,
   ConvertFileContent,
-  ImportAndConvertToMarkdown,
+  MoveItem,
+  GetAllFolders,
+  SaveTextFile,
 } from '../wailsjs/go/main/App';
 
 import { Header } from './components/Header';
@@ -63,9 +68,16 @@ import { DetailsModal } from './components/Modals/DetailsModal';
 import { StorageModal } from './components/Modals/StorageModal';
 import { MarkdownModal } from './components/Modals/MarkdownModal';
 import { DocumentViewerModal } from './components/Modals/DocumentViewerModal';
-import { Trash2, Info } from 'lucide-react';
-
-
+import { MoveItemModal } from './components/Modals/MoveItemModal';
+import { ImageViewerModal } from './components/Modals/ImageViewerModal';
+import { CodeViewerModal } from './components/Modals/CodeViewerModal';
+import {
+  isImageFile,
+  isMarkdownFile,
+  isCodeOrTextFile,
+  filterAndSortItems,
+} from './utils/formatters';
+import { Trash2, Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Navigation & View State
@@ -73,6 +85,9 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('drive');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('grid');
   const [items, setItems] = useState<DriveItem[]>([]);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<DriveItem | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -85,6 +100,7 @@ export const App: React.FC = () => {
   // Drag & Drop State
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const dragCounter = useRef<number>(0);
+  const isInternalDragRef = useRef<boolean>(false);
 
   // Toast Notifications
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -143,6 +159,24 @@ export const App: React.FC = () => {
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
   const [documentViewerItem, setDocumentViewerItem] = useState<DriveItem | null>(null);
+
+  // New Modals: Move, Image Viewer, Code Viewer
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [moveItemTarget, setMoveItemTarget] = useState<DriveItem | null>(null);
+  const [allFolders, setAllFolders] = useState<DriveItem[]>([]);
+
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [imageViewerItem, setImageViewerItem] = useState<DriveItem | null>(null);
+
+  const [isCodeViewerOpen, setIsCodeViewerOpen] = useState(false);
+  const [codeViewerItem, setCodeViewerItem] = useState<DriveItem | null>(null);
+  const [codeViewerContent, setCodeViewerContent] = useState<string>('');
+
+  // Memoized filtered and sorted items
+  const displayItems = useMemo(() => {
+    return filterAndSortItems(items, typeFilter, sortField, sortDirection);
+  }, [items, typeFilter, sortField, sortDirection]);
+
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -230,7 +264,7 @@ export const App: React.FC = () => {
     setSelectedItem(null);
   };
 
-  // Navigate into Folder or Open File / Link / Markdown Document
+  // Navigate into Folder or Open File / Link / Markdown / Image / Code / Document
   const handleOpenItem = async (item: DriveItem) => {
     if (item.isFolder) {
       setSearchQuery('');
@@ -244,11 +278,7 @@ export const App: React.FC = () => {
       } catch (err: any) {
         addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il link.');
       }
-    } else if (
-      item.mimeType === 'text/markdown' ||
-      item.name.toLowerCase().endsWith('.md') ||
-      item.name.toLowerCase().endsWith('.markdown')
-    ) {
+    } else if (isMarkdownFile(item)) {
       try {
         const fileContent = await GetFileContent(item.id);
         setMarkdownItem(item);
@@ -258,12 +288,27 @@ export const App: React.FC = () => {
         console.error('Failed to load markdown content:', err);
         addToast('error', 'Errore nella lettura', err?.toString() || 'Impossibile leggere il file Markdown.');
       }
+    } else if (isImageFile(item)) {
+      setImageViewerItem(item);
+      setIsImageViewerOpen(true);
+    } else if (isCodeOrTextFile(item)) {
+      try {
+        const fileContent = await GetFileContent(item.id);
+        setCodeViewerItem(item);
+        setCodeViewerContent(fileContent || '');
+        setIsCodeViewerOpen(true);
+      } catch (err: any) {
+        console.error('Failed to load code/text content:', err);
+        addToast('error', 'Errore nella lettura', err?.toString() || 'Impossibile leggere il file di testo.');
+      }
     } else if (
       item.name.toLowerCase().endsWith('.pdf') ||
       item.mimeType === 'application/pdf' ||
       item.name.toLowerCase().endsWith('.docx') ||
       item.name.toLowerCase().endsWith('.doc') ||
-      item.mimeType?.includes('word')
+      item.mimeType?.includes('word') ||
+      item.mimeType?.startsWith('video/') ||
+      item.mimeType?.startsWith('audio/')
     ) {
       setDocumentViewerItem(item);
       setIsDocumentViewerOpen(true);
@@ -274,6 +319,45 @@ export const App: React.FC = () => {
       } catch (err: any) {
         addToast('error', "Errore nell'apertura", err?.toString() || 'Impossibile aprire il file.');
       }
+    }
+  };
+
+  // Move Item (file or folder) into another folder or root
+  const handleMoveItem = async (itemId: string, targetFolderId: string) => {
+    try {
+      await MoveItem(itemId, targetFolderId);
+      addToast('success', 'Elemento spostato', 'Elemento spostato con successo.');
+      await loadData();
+    } catch (err: any) {
+      console.error('Failed to move item:', err);
+      addToast('error', 'Errore nello spostamento', err?.toString() || 'Impossibile spostare l\'elemento.');
+      throw err;
+    }
+  };
+
+  // Open Move Modal
+  const handleOpenMoveModal = async (item: DriveItem) => {
+    try {
+      const folders = await GetAllFolders();
+      setAllFolders(folders || []);
+      setMoveItemTarget(item);
+      setIsMoveModalOpen(true);
+    } catch (err: any) {
+      console.error('Failed to load folders for move modal:', err);
+      addToast('error', 'Errore', 'Impossibile caricare l\'elenco delle cartelle.');
+    }
+  };
+
+  // Save Code or Plain Text File
+  const handleSaveCode = async (id: string, content: string) => {
+    try {
+      await SaveTextFile(id, content);
+      addToast('success', 'File salvato', 'Le modifiche al file sono state salvate.');
+      await loadData();
+    } catch (err: any) {
+      console.error('Failed to save code file:', err);
+      addToast('error', 'Errore nel salvataggio', err?.toString() || 'Impossibile salvare il file.');
+      throw err;
     }
   };
 
@@ -430,23 +514,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Import files and convert to Markdown immediately
-  const handleImportAndConvertToMarkdown = async () => {
-    try {
-      const converted = await ImportAndConvertToMarkdown(currentFolderId);
-      if (converted && converted.length > 0) {
-        addToast(
-          'success',
-          'Documenti convertiti',
-          `${converted.length} ${converted.length === 1 ? 'file importato e tradotto' : 'file importati e tradotti'} in Markdown con successo.`
-        );
-        loadData();
-      }
-    } catch (err: any) {
-      addToast('error', "Errore nell'importazione e conversione", err?.toString() || 'Impossibile convertire i file.');
-    }
-  };
-
   // Export / Download File
   const handleExportFile = async (item: DriveItem) => {
     try {
@@ -567,8 +634,9 @@ export const App: React.FC = () => {
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    dragCounter.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+    if (isInternalDragRef.current) return;
+    if (e.dataTransfer.types && (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes('public.file-url'))) {
+      dragCounter.current += 1;
       setIsDragging(true);
     }
   };
@@ -576,8 +644,10 @@ export const App: React.FC = () => {
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isInternalDragRef.current) return;
     dragCounter.current -= 1;
-    if (dragCounter.current === 0) {
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
       setIsDragging(false);
     }
   };
@@ -585,6 +655,11 @@ export const App: React.FC = () => {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isInternalDragRef.current) {
+      e.dataTransfer.dropEffect = 'move';
+    } else {
+      e.dataTransfer.dropEffect = 'copy';
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -592,6 +667,11 @@ export const App: React.FC = () => {
     e.stopPropagation();
     setIsDragging(false);
     dragCounter.current = 0;
+
+    if (isInternalDragRef.current) {
+      isInternalDragRef.current = false;
+      return;
+    }
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
@@ -737,7 +817,6 @@ export const App: React.FC = () => {
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onNewMarkdown={handleNewMarkdown}
           onUploadFiles={handleUploadFiles}
-          onImportAndConvertToMarkdown={handleImportAndConvertToMarkdown}
           onNewLink={() => setIsNewLinkModalOpen(true)}
           onNewExamDate={() => setIsNewExamModalOpen(true)}
           onDeleteExamDate={handleDeleteExamDate}
@@ -756,7 +835,7 @@ export const App: React.FC = () => {
           }}
         >
           {/* Breadcrumb & Sub-header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-xs">
+          <div className="px-6 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-xs">
             <Breadcrumbs
               breadcrumbs={breadcrumbs}
               viewMode={viewMode}
@@ -767,7 +846,8 @@ export const App: React.FC = () => {
             {viewMode !== 'career' && (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-400 font-medium">
-                  {items.length} {items.length === 1 ? 'elemento' : 'elementi'}
+                  {displayItems.length} {displayItems.length === 1 ? 'elemento' : 'elementi'}
+                  {displayItems.length !== items.length && ` (di ${items.length})`}
                 </span>
                 {viewMode === 'trash' && items.length > 0 && (
                   <button
@@ -781,6 +861,64 @@ export const App: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Area 3.2: Fast Filters and Multi-Field Sorting Bar */}
+          {viewMode !== 'career' && (
+            <div className="px-6 py-2 border-b border-gray-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0 select-none">
+              {/* Type Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
+                {[
+                  { key: 'all', label: 'Tutti' },
+                  { key: 'documents', label: 'Documenti' },
+                  { key: 'markdown', label: 'Note' },
+                  { key: 'links', label: 'Link' },
+                  { key: 'images', label: 'Immagini' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setTypeFilter(tab.key as TypeFilter)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                      typeFilter === tab.key
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200/80'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sorting Controls */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-white px-2.5 py-1 rounded-lg border border-gray-200/80 shadow-2xs">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] font-medium text-gray-400">Ordina:</span>
+                  <select
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value as SortField)}
+                    className="bg-transparent font-medium text-gray-700 outline-hidden cursor-pointer text-xs"
+                  >
+                    <option value="name">Nome</option>
+                    <option value="updatedAt">Data modifica</option>
+                    <option value="size">Dimensione</option>
+                    <option value="type">Tipo</option>
+                  </select>
+                </div>
+
+                <button
+                  onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                  className="p-1.5 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200/80 rounded-lg shadow-2xs transition-colors cursor-pointer"
+                  title={sortDirection === 'asc' ? 'Ordinamento crescente (A-Z)' : 'Ordinamento decrescente (Z-A)'}
+                >
+                  {sortDirection === 'asc' ? (
+                    <ArrowUp className="w-3.5 h-3.5 text-blue-600" />
+                  ) : (
+                    <ArrowDown className="w-3.5 h-3.5 text-blue-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Trash Information Banner inside Trash Section */}
           {viewMode === 'trash' && (
@@ -825,23 +963,31 @@ export const App: React.FC = () => {
             >
               {layoutMode === 'grid' ? (
                 <GridView
-                  items={items}
+                  items={displayItems}
                   selectedId={selectedItem?.id || null}
                   onSelect={(item) => setSelectedItem(item)}
                   onOpen={handleOpenItem}
                   onContextMenu={handleContextMenu}
                   onUpload={handleUploadFiles}
                   onCreateFolder={() => setIsNewFolderModalOpen(true)}
+                  onMoveItem={handleMoveItem}
+                  onDragStartInternal={() => { isInternalDragRef.current = true; }}
+                  onDragEndInternal={() => { isInternalDragRef.current = false; }}
+                  isTrash={viewMode === 'trash'}
                 />
               ) : (
                 <ListView
-                  items={items}
+                  items={displayItems}
                   selectedId={selectedItem?.id || null}
                   onSelect={(item) => setSelectedItem(item)}
                   onOpen={handleOpenItem}
                   onContextMenu={handleContextMenu}
                   onUpload={handleUploadFiles}
                   onCreateFolder={() => setIsNewFolderModalOpen(true)}
+                  onMoveItem={handleMoveItem}
+                  onDragStartInternal={() => { isInternalDragRef.current = true; }}
+                  onDragEndInternal={() => { isInternalDragRef.current = false; }}
+                  isTrash={viewMode === 'trash'}
                 />
               )}
             </div>
@@ -866,6 +1012,7 @@ export const App: React.FC = () => {
           onOpenAsMarkdown={handleOpenAsMarkdown}
           onExport={handleExportFile}
           onRename={(item) => setRenameModalItem(item)}
+          onMove={handleOpenMoveModal}
           onDelete={handleDelete}
           onRestore={handleRestore}
           onDetails={(item) => setDetailsModalItem(item)}
@@ -880,13 +1027,50 @@ export const App: React.FC = () => {
           onClose={() => setBgContextMenu({ visible: false, x: 0, y: 0 })}
           onNewFolder={() => setIsNewFolderModalOpen(true)}
           onUploadFiles={handleUploadFiles}
-          onImportAndConvertToMarkdown={handleImportAndConvertToMarkdown}
           onNewMarkdown={handleNewMarkdown}
           onNewLink={() => setIsNewLinkModalOpen(true)}
         />
       )}
 
       {/* Modals */}
+      <MoveItemModal
+        isOpen={isMoveModalOpen}
+        item={moveItemTarget}
+        folders={allFolders}
+        onClose={() => {
+          setIsMoveModalOpen(false);
+          setMoveItemTarget(null);
+        }}
+        onMove={handleMoveItem}
+      />
+
+      <ImageViewerModal
+        isOpen={isImageViewerOpen}
+        item={imageViewerItem}
+        allItems={displayItems}
+        onClose={() => {
+          setIsImageViewerOpen(false);
+          setImageViewerItem(null);
+        }}
+        onNavigateItem={(item) => setImageViewerItem(item)}
+        onOpenExternally={handleOpenWithSystemApp}
+        onExport={handleExportFile}
+      />
+
+      <CodeViewerModal
+        isOpen={isCodeViewerOpen}
+        item={codeViewerItem}
+        initialContent={codeViewerContent}
+        onClose={() => {
+          setIsCodeViewerOpen(false);
+          setCodeViewerItem(null);
+          setCodeViewerContent('');
+        }}
+        onSave={handleSaveCode}
+        onOpenExternally={handleOpenWithSystemApp}
+        onExport={handleExportFile}
+      />
+
       <DocumentViewerModal
         isOpen={isDocumentViewerOpen}
         item={documentViewerItem}

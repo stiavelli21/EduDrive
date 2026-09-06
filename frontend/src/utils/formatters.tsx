@@ -1,4 +1,5 @@
 import React from 'react';
+import { DriveItem, SortField, SortDirection, TypeFilter } from '../types';
 import {
   Folder,
   FileText,
@@ -248,4 +249,130 @@ export function getExamUrgencyInfo(examDateVal: any): ExamUrgencyInfo {
       textClass: 'text-rose-600',
     };
   }
+}
+
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function isImageFile(itemOrName: DriveItem | string, mimeType?: string): boolean {
+  const name = typeof itemOrName === 'string' ? itemOrName : itemOrName.name;
+  const mime = typeof itemOrName === 'string' ? mimeType : (itemOrName.mimeType || mimeType);
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tif', 'tiff'].includes(ext) || (mime ? mime.startsWith('image/') : false);
+}
+
+export function isMarkdownFile(itemOrName: DriveItem | string, mimeType?: string): boolean {
+  const name = typeof itemOrName === 'string' ? itemOrName : itemOrName.name;
+  const mime = typeof itemOrName === 'string' ? mimeType : (itemOrName.mimeType || mimeType);
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ['md', 'markdown'].includes(ext) || mime === 'text/markdown';
+}
+
+export function isPdfFile(itemOrName: DriveItem | string, mimeType?: string): boolean {
+  const name = typeof itemOrName === 'string' ? itemOrName : itemOrName.name;
+  const mime = typeof itemOrName === 'string' ? mimeType : (itemOrName.mimeType || mimeType);
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ext === 'pdf' || mime === 'application/pdf';
+}
+
+export function isDocxFile(itemOrName: DriveItem | string, mimeType?: string): boolean {
+  const name = typeof itemOrName === 'string' ? itemOrName : itemOrName.name;
+  const mime = typeof itemOrName === 'string' ? mimeType : (itemOrName.mimeType || mimeType);
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ['docx', 'doc'].includes(ext) || (mime ? mime.includes('word') : false);
+}
+
+export function isCodeOrTextFile(itemOrName: DriveItem | string, mimeType?: string): boolean {
+  const name = typeof itemOrName === 'string' ? itemOrName : itemOrName.name;
+  const mime = typeof itemOrName === 'string' ? mimeType : (itemOrName.mimeType || mimeType);
+  // If it's markdown, let markdown reader take priority
+  if (isMarkdownFile(name, mime)) return false;
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const codeExts = [
+    'txt', 'json', 'csv', 'log', 'py', 'sql', 'java', 'c', 'cpp', 'h', 'hpp',
+    'html', 'css', 'scss', 'js', 'ts', 'jsx', 'tsx', 'sh', 'bash', 'go', 'rs',
+    'xml', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'env', 'bat', 'cmd', 'ps1',
+  ];
+  return codeExts.includes(ext) || mime === 'text/plain' || mime === 'application/json';
+}
+
+export function filterAndSortItems(
+  items: DriveItem[],
+  filter: TypeFilter,
+  sortField: SortField,
+  sortDir: SortDirection
+): DriveItem[] {
+  let filtered = [...items];
+
+  // Apply Type Filter
+  if (filter !== 'all') {
+    filtered = filtered.filter((item) => {
+      // In folder navigation, keep folders or filter matching files
+      if (item.isFolder) {
+        return false; // When specific file type filter is chosen, show matching files
+      }
+      const ext = item.name.split('.').pop()?.toLowerCase() || '';
+      switch (filter) {
+        case 'documents':
+          return (
+            ['pdf', 'docx', 'doc', 'txt', 'rtf', 'odt', 'xlsx', 'xls', 'pptx', 'ppt'].includes(ext) ||
+            item.mimeType?.includes('pdf') ||
+            item.mimeType?.includes('word') ||
+            item.mimeType === 'text/plain'
+          );
+        case 'images':
+          return isImageFile(item.name, item.mimeType);
+        case 'links':
+          return item.mimeType === 'url' || ext === 'url';
+        case 'markdown':
+          return isMarkdownFile(item.name, item.mimeType);
+        case 'code':
+          return isCodeOrTextFile(item.name, item.mimeType);
+        default:
+          return true;
+      }
+    });
+  }
+
+  // Apply Sorting (folders always grouped at top unless sorting by size/date specifically)
+  filtered.sort((a, b) => {
+    // Keep folders first
+    if (a.isFolder && !b.isFolder) return -1;
+    if (!a.isFolder && b.isFolder) return 1;
+
+    let comparison = 0;
+    switch (sortField) {
+      case 'name':
+        comparison = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        break;
+      case 'updatedAt': {
+        const timeA = new Date(a.updatedAt).getTime() || 0;
+        const timeB = new Date(b.updatedAt).getTime() || 0;
+        comparison = timeA - timeB;
+        break;
+      }
+      case 'size': {
+        const sizeA = a.sizeBytes || 0;
+        const sizeB = b.sizeBytes || 0;
+        comparison = sizeA - sizeB;
+        break;
+      }
+      case 'type': {
+        const extA = a.isFolder ? 'folder' : (a.name.split('.').pop()?.toLowerCase() || '');
+        const extB = b.isFolder ? 'folder' : (b.name.split('.').pop()?.toLowerCase() || '');
+        comparison = extA.localeCompare(extB);
+        break;
+      }
+    }
+
+    return sortDir === 'asc' ? comparison : -comparison;
+  });
+
+  return filtered;
 }
