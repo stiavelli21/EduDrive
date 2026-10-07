@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -95,6 +96,37 @@ func (d *Database) migrate() error {
 		key TEXT PRIMARY KEY,
 		value TEXT NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS podcasts (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		topic TEXT NOT NULL DEFAULT '',
+		tone TEXT NOT NULL DEFAULT 'colloquial',
+		source_item_ids TEXT NOT NULL DEFAULT '[]',
+		source_item_names TEXT NOT NULL DEFAULT '[]',
+		turns_json TEXT NOT NULL DEFAULT '[]',
+		audio_path TEXT NOT NULL DEFAULT '',
+		duration_seconds REAL NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_podcasts_created_at ON podcasts(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS study_handouts (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		topic TEXT NOT NULL DEFAULT '',
+		mode TEXT NOT NULL DEFAULT 'reasoned_handout',
+		detail_level TEXT NOT NULL DEFAULT 'standard',
+		source_item_ids TEXT NOT NULL DEFAULT '[]',
+		source_item_names TEXT NOT NULL DEFAULT '[]',
+		content_markdown TEXT NOT NULL DEFAULT '',
+		drive_item_id TEXT,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_study_handouts_created_at ON study_handouts(created_at DESC);
 	`
 	_, err := d.conn.Exec(query)
 	return err
@@ -902,5 +934,271 @@ func (d *Database) SetSetting(key string, value string) error {
 	_, err := d.conn.Exec(query, key, value)
 	return err
 }
+
+// InsertPodcast stores a new podcast episode and its transcript in the database
+func (d *Database) InsertPodcast(ep *models.PodcastEpisode) error {
+	sourceIDsJSON, _ := json.Marshal(ep.SourceItemIDs)
+	sourceNamesJSON, _ := json.Marshal(ep.SourceItemNames)
+	turnsJSON, _ := json.Marshal(ep.Turns)
+
+	query := `
+	INSERT INTO podcasts (id, title, topic, tone, source_item_ids, source_item_names, turns_json, audio_path, duration_seconds, created_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	_, err := d.conn.Exec(query,
+		ep.ID,
+		ep.Title,
+		ep.Topic,
+		ep.Tone,
+		string(sourceIDsJSON),
+		string(sourceNamesJSON),
+		string(turnsJSON),
+		ep.AudioPath,
+		ep.DurationSeconds,
+		ep.CreatedAt,
+	)
+	return err
+}
+
+// GetPodcasts retrieves all podcast episodes sorted by creation date descending
+func (d *Database) GetPodcasts() ([]models.PodcastEpisode, error) {
+	query := `
+	SELECT id, title, topic, tone, source_item_ids, source_item_names, turns_json, audio_path, duration_seconds, created_at
+	FROM podcasts
+	ORDER BY created_at DESC
+	`
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var episodes []models.PodcastEpisode
+	for rows.Next() {
+		var ep models.PodcastEpisode
+		var sourceIDsJSON, sourceNamesJSON, turnsJSON string
+
+		err := rows.Scan(
+			&ep.ID,
+			&ep.Title,
+			&ep.Topic,
+			&ep.Tone,
+			&sourceIDsJSON,
+			&sourceNamesJSON,
+			&turnsJSON,
+			&ep.AudioPath,
+			&ep.DurationSeconds,
+			&ep.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		_ = json.Unmarshal([]byte(sourceIDsJSON), &ep.SourceItemIDs)
+		_ = json.Unmarshal([]byte(sourceNamesJSON), &ep.SourceItemNames)
+		_ = json.Unmarshal([]byte(turnsJSON), &ep.Turns)
+
+		episodes = append(episodes, ep)
+	}
+
+	if episodes == nil {
+		episodes = []models.PodcastEpisode{}
+	}
+	return episodes, nil
+}
+
+// GetPodcastByID retrieves a specific podcast episode by its ID
+func (d *Database) GetPodcastByID(id string) (*models.PodcastEpisode, error) {
+	query := `
+	SELECT id, title, topic, tone, source_item_ids, source_item_names, turns_json, audio_path, duration_seconds, created_at
+	FROM podcasts
+	WHERE id = ?
+	`
+	var ep models.PodcastEpisode
+	var sourceIDsJSON, sourceNamesJSON, turnsJSON string
+
+	err := d.conn.QueryRow(query, id).Scan(
+		&ep.ID,
+		&ep.Title,
+		&ep.Topic,
+		&ep.Tone,
+		&sourceIDsJSON,
+		&sourceNamesJSON,
+		&turnsJSON,
+		&ep.AudioPath,
+		&ep.DurationSeconds,
+		&ep.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	_ = json.Unmarshal([]byte(sourceIDsJSON), &ep.SourceItemIDs)
+	_ = json.Unmarshal([]byte(sourceNamesJSON), &ep.SourceItemNames)
+	_ = json.Unmarshal([]byte(turnsJSON), &ep.Turns)
+
+	return &ep, nil
+}
+
+// DeletePodcast removes a podcast episode by its ID
+func (d *Database) DeletePodcast(id string) error {
+	query := `DELETE FROM podcasts WHERE id = ?`
+	_, err := d.conn.Exec(query, id)
+	return err
+}
+
+// InsertStudyHandout persists a newly generated study handout or synthesis to the database
+func (d *Database) InsertStudyHandout(h *models.StudyHandout) error {
+	sourceIDsJSON, _ := json.Marshal(h.SourceItemIDs)
+	sourceNamesJSON, _ := json.Marshal(h.SourceItemNames)
+
+	var driveItemID sql.NullString
+	if h.DriveItemID != nil && *h.DriveItemID != "" {
+		driveItemID = sql.NullString{String: *h.DriveItemID, Valid: true}
+	}
+
+	query := `
+	INSERT INTO study_handouts (
+		id, title, topic, mode, detail_level,
+		source_item_ids, source_item_names, content_markdown,
+		drive_item_id, created_at, updated_at
+	)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	_, err := d.conn.Exec(query,
+		h.ID,
+		h.Title,
+		h.Topic,
+		h.Mode,
+		h.DetailLevel,
+		string(sourceIDsJSON),
+		string(sourceNamesJSON),
+		h.ContentMarkdown,
+		driveItemID,
+		h.CreatedAt,
+		h.UpdatedAt,
+	)
+	return err
+}
+
+// GetStudyHandouts retrieves all study handouts ordered by creation date descending
+func (d *Database) GetStudyHandouts() ([]models.StudyHandout, error) {
+	query := `
+	SELECT id, title, topic, mode, detail_level, source_item_ids, source_item_names, content_markdown, drive_item_id, created_at, updated_at
+	FROM study_handouts
+	ORDER BY created_at DESC
+	`
+	rows, err := d.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var handouts []models.StudyHandout
+	for rows.Next() {
+		var h models.StudyHandout
+		var sourceIDsJSON, sourceNamesJSON string
+		var driveItemID sql.NullString
+
+		err := rows.Scan(
+			&h.ID,
+			&h.Title,
+			&h.Topic,
+			&h.Mode,
+			&h.DetailLevel,
+			&sourceIDsJSON,
+			&sourceNamesJSON,
+			&h.ContentMarkdown,
+			&driveItemID,
+			&h.CreatedAt,
+			&h.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		_ = json.Unmarshal([]byte(sourceIDsJSON), &h.SourceItemIDs)
+		_ = json.Unmarshal([]byte(sourceNamesJSON), &h.SourceItemNames)
+		if driveItemID.Valid {
+			val := driveItemID.String
+			h.DriveItemID = &val
+		}
+
+		handouts = append(handouts, h)
+	}
+
+	if handouts == nil {
+		handouts = []models.StudyHandout{}
+	}
+	return handouts, nil
+}
+
+// GetStudyHandoutByID retrieves a single study handout by its unique ID
+func (d *Database) GetStudyHandoutByID(id string) (*models.StudyHandout, error) {
+	query := `
+	SELECT id, title, topic, mode, detail_level, source_item_ids, source_item_names, content_markdown, drive_item_id, created_at, updated_at
+	FROM study_handouts
+	WHERE id = ?
+	`
+	var h models.StudyHandout
+	var sourceIDsJSON, sourceNamesJSON string
+	var driveItemID sql.NullString
+
+	err := d.conn.QueryRow(query, id).Scan(
+		&h.ID,
+		&h.Title,
+		&h.Topic,
+		&h.Mode,
+		&h.DetailLevel,
+		&sourceIDsJSON,
+		&sourceNamesJSON,
+		&h.ContentMarkdown,
+		&driveItemID,
+		&h.CreatedAt,
+		&h.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	_ = json.Unmarshal([]byte(sourceIDsJSON), &h.SourceItemIDs)
+	_ = json.Unmarshal([]byte(sourceNamesJSON), &h.SourceItemNames)
+	if driveItemID.Valid {
+		val := driveItemID.String
+		h.DriveItemID = &val
+	}
+
+	return &h, nil
+}
+
+// UpdateStudyHandout updates the title, markdown content and drive item reference of a study handout
+func (d *Database) UpdateStudyHandout(h *models.StudyHandout) error {
+	var driveItemID sql.NullString
+	if h.DriveItemID != nil && *h.DriveItemID != "" {
+		driveItemID = sql.NullString{String: *h.DriveItemID, Valid: true}
+	}
+
+	query := `
+	UPDATE study_handouts
+	SET title = ?, content_markdown = ?, drive_item_id = ?, updated_at = ?
+	WHERE id = ?
+	`
+	_, err := d.conn.Exec(query, h.Title, h.ContentMarkdown, driveItemID, h.UpdatedAt, h.ID)
+	return err
+}
+
+// DeleteStudyHandout deletes a study handout record by its ID
+func (d *Database) DeleteStudyHandout(id string) error {
+	query := `DELETE FROM study_handouts WHERE id = ?`
+	_, err := d.conn.Exec(query, id)
+	return err
+}
+
 
 

@@ -53,6 +53,8 @@ import { Breadcrumbs } from './components/Breadcrumbs';
 import { GridView } from './components/GridView';
 import { ListView } from './components/ListView';
 import { CareerView } from './components/CareerView';
+import { PodcastStudioView } from './components/Podcast/PodcastStudioView';
+import { HandoutStudioView } from './components/Handout/HandoutStudioView';
 import { ContextMenu } from './components/ContextMenu';
 import { BackgroundContextMenu } from './components/BackgroundContextMenu';
 import { ToastContainer } from './components/ToastContainer';
@@ -71,6 +73,7 @@ import { DocumentViewerModal } from './components/Modals/DocumentViewerModal';
 import { MoveItemModal } from './components/Modals/MoveItemModal';
 import { ImageViewerModal } from './components/Modals/ImageViewerModal';
 import { CodeViewerModal } from './components/Modals/CodeViewerModal';
+import { AISettingsModal } from './components/Modals/AISettingsModal';
 import {
   isImageFile,
   isMarkdownFile,
@@ -159,7 +162,6 @@ export const App: React.FC = () => {
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
   const [documentViewerItem, setDocumentViewerItem] = useState<DriveItem | null>(null);
-
   // New Modals: Move, Image Viewer, Code Viewer
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [moveItemTarget, setMoveItemTarget] = useState<DriveItem | null>(null);
@@ -171,12 +173,12 @@ export const App: React.FC = () => {
   const [isCodeViewerOpen, setIsCodeViewerOpen] = useState(false);
   const [codeViewerItem, setCodeViewerItem] = useState<DriveItem | null>(null);
   const [codeViewerContent, setCodeViewerContent] = useState<string>('');
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
 
   // Memoized filtered and sorted items
   const displayItems = useMemo(() => {
     return filterAndSortItems(items, typeFilter, sortField, sortDirection);
   }, [items, typeFilter, sortField, sortDirection]);
-
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -620,7 +622,7 @@ export const App: React.FC = () => {
 
   // Right Click Context Menu Handler for Workspace Background (Creation menu)
   const handleBackgroundContextMenu = (e: React.MouseEvent) => {
-    if (viewMode === 'trash' || viewMode === 'career') return;
+    if (viewMode === 'trash' || viewMode === 'career' || viewMode === 'podcast' || viewMode === 'handouts') return;
     e.preventDefault();
     setContextMenu({ visible: false, x: 0, y: 0, item: null });
     setBgContextMenu({
@@ -805,6 +807,7 @@ export const App: React.FC = () => {
         onLayoutChange={setLayoutMode}
         onRefresh={loadData}
         onOpenStorageModal={() => setIsStorageModalOpen(true)}
+        onOpenAISettings={() => setIsAISettingsOpen(true)}
         isLoading={isLoading}
       />
 
@@ -843,7 +846,7 @@ export const App: React.FC = () => {
               onNavigateFolder={handleNavigateBreadcrumb}
             />
 
-            {viewMode !== 'career' && (
+            {viewMode !== 'career' && viewMode !== 'podcast' && viewMode !== 'handouts' && (
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-400 font-medium">
                   {displayItems.length} {displayItems.length === 1 ? 'elemento' : 'elementi'}
@@ -941,8 +944,7 @@ export const App: React.FC = () => {
             </div>
           )}
 
-
-          {/* Files / Folders List / Grid Area or Career / Booklet View */}
+          {/* Files / Folders List / Grid Area or Career / Booklet View or Podcast Studio View or Handout Studio View */}
           {viewMode === 'career' ? (
             <CareerView
               passedExams={passedExams}
@@ -955,6 +957,18 @@ export const App: React.FC = () => {
                 setIsPassedExamModalOpen(true);
               }}
               onDeletePassedExam={handleDeletePassedExam}
+            />
+          ) : viewMode === 'podcast' ? (
+            <PodcastStudioView
+              driveItems={items}
+              onOpenAISettings={() => setIsAISettingsOpen(true)}
+              addToast={addToast}
+            />
+          ) : viewMode === 'handouts' ? (
+            <HandoutStudioView
+              driveItems={items}
+              onOpenAISettings={() => setIsAISettingsOpen(true)}
+              addToast={addToast}
             />
           ) : (
             <div
@@ -1150,6 +1164,11 @@ export const App: React.FC = () => {
         stats={storageStats}
         storagePath={appStoragePath}
         onClose={() => setIsStorageModalOpen(false)}
+      />
+
+      <AISettingsModal
+        isOpen={isAISettingsOpen}
+        onClose={() => setIsAISettingsOpen(false)}
       />
 
       {/* Toast Notifications */}

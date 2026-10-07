@@ -16,6 +16,9 @@ import {
   Award,
   BookOpen,
   FileCode,
+  FileUp,
+  Radio,
+  Sparkles,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -181,6 +184,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <BookOpen className={`w-4 h-4 ${viewMode === 'career' ? 'text-emerald-600' : 'text-gray-500'}`} />
           <span>Libretto</span>
+        </button>
+
+        {/* Studio Dispense Section - AI Synthesis & Slide Notes */}
+        <button
+          onClick={() => onViewModeChange('handouts')}
+          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+            viewMode === 'handouts'
+              ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-xs'
+              : 'text-gray-700 hover:bg-gray-100/80'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles className={`w-4 h-4 ${viewMode === 'handouts' ? 'text-indigo-600' : 'text-gray-500'}`} />
+            <span>Studio Dispense</span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+            AI
+          </span>
+        </button>
+
+        {/* Podcast Studio Section - NotebookLM Style */}
+        <button
+          onClick={() => onViewModeChange('podcast')}
+          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+            viewMode === 'podcast'
+              ? 'bg-purple-50 text-purple-700 font-semibold shadow-xs'
+              : 'text-gray-700 hover:bg-gray-100/80'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Radio className={`w-4 h-4 ${viewMode === 'podcast' ? 'text-purple-600' : 'text-gray-500'}`} />
+            <span>Studio Podcast</span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700">
+            AI
+          </span>
         </button>
       </nav>
 

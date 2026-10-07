@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"EduDrive/converter"
@@ -31,6 +32,12 @@ type App struct {
 	database *db.Database
 	storage  *storage.StorageManager
 	dataDir  string
+
+	// AI assistant state: cancel functions of in-flight streaming requests keyed by request ID
+	aiMu      sync.Mutex
+	aiCancels map[string]context.CancelFunc
+	// aiBaseURL overrides the Gemini endpoint (used by tests); empty means the public API
+	aiBaseURL string
 }
 
 // NewApp creates a new App application struct

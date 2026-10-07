@@ -31,6 +31,30 @@ EduDrive e un'applicazione desktop per la gestione dei file e l'organizzazione d
 - **Simulatore di Voti ("What-If")**: strumento dinamico per simulare l'impatto di un voto futuro sulla media e sulla base di laurea prima di sostenere l'esame.
 - **Scadenziario Esami**: promemoria delle prossime date d'esame nella barra laterale con indicatore visivo di urgenza a colori (verde per date lontane, giallo per scadenze intermedie, rosso per scadenze imminenti entro 10 giorni).
 
+### 4. Assistente IA per gli Appunti (Google Gemini)
+- **Spiegazione contestuale su selezione**: selezione di porzioni di testo all'interno di documenti Markdown, Word (.docx) o PDF con visualizzazione immediata di un menu contestuale rapido (Spiega, Semplifica, Esempio pratico, Chiedi).
+- **Analisi visiva e appunti manoscritti**: supporto a immagini e foto di appunti scritti a mano con strumento di ritaglio ad area rettangolare per isolare formule, dimostrazioni o schemi e sottoporli all'IA.
+- **Pannello di studio laterale in streaming**: barra laterale dedicata alla discussione del documento con generazione progressiva delle risposte (Server-Sent Events) e rendering completo delle formule matematiche via KaTeX.
+- **Schematizzazione automatica**: pulsanti ad azione rapida per estrarre la scaletta dell'appunto, generare sintesi dei concetti cardine o produrre domande di autovalutazione per l'esame.
+- **Riservatezza e persistenza locale**: la chiave API di Google Gemini viene salvata in forma sicura nel database SQLite locale e non viene mai condivisa. L'assistente e disattivato per impostazione predefinita finche l'utente non inserisce una chiave valida.
+
+### 5. Studio Podcast (Stile NotebookLM)
+- **Generazione dialoghi tra conduttori**: creazione automatica di conversazioni didattiche e vivaci tra due host virtuali (Marco ed Elena) a partire da uno o piu documenti presenti in EduDrive.
+- **Domande di focus personalizzate**: spazio dedicato dove l'utente puo inserire dubbi specifici, chiarimenti o argomenti d'esame da includere e approfondire nel podcast.
+- **Sintesi vocale neurale realistica (Edge-TTS)**: generazione audio Pure-Go tramite protocollo WebSocket con voci neurali italiane di alta qualita (Diego ed Elsa).
+- **Player interattivo e trascrizione sincronizzata**: riproduzione audio con controllo della velocita, salti temporali, indicatore visivo dell'oratore attivo e avanzamento sincronizzato delle battute (stile karaoke).
+- **Esportazione file**: esportazione su disco della traccia audio (.mp3) e del copione integrale (.md) con timestamp delle battute.
+
+### 6. Studio Dispense (Sintetizzatore Multi-Documento e Slide)
+- **Elaborazione Multi-Fonte**: selezione aggregata di dispense, slide (PDF), documenti Word, immagini o file di testo convertiti ed elaborati contemporaneamente dall'IA.
+- **Quattro Modalita Didattiche**:
+  - *Dispensa Ragionata Discorsiva*: unifica le slide telegrafiche ed elenchi puntati isolati in un discorso accademico fluido, continuo e rigoroso, spiegando il filo conduttore logico.
+  - *Semplificazione Didattica (Metodo Feynman)*: scompone concetti ostici in passaggi graduali con analogie del mondo reale e chiarimento del gergo tecnico.
+  - *Approfondimento Tecnico & Esempi*: colma i salti logici tipici delle slide, esplicitando dimostrazioni matematiche complete in formato KaTeX ed esempi pratici o frammenti di codice.
+  - *Schemi & Preparazione Esame*: mappa concettuale dei punti cardine, lista di domande d'esame frequenti con risposte modello perfette e analisi dei trabocchetti piu comuni.
+- **Editor e Lettore Integrato**: visualizzazione formattata con formule matematiche KaTeX ed editor Markdown per apportare modifiche o note personali.
+- **Persistenza e Integrazione con il Drive**: salvataggio automatico o su richiesta del file .md all'interno dell'archivio EduDrive ed esportazione su file system locale.
+
 ---
 
 ## Dettagli Tecnici e Architettura
@@ -39,7 +63,8 @@ EduDrive e un'applicazione desktop per la gestione dei file e l'organizzazione d
 - **Desktop Shell**: Wails v2 (Go backend + WebView2 su Windows)
 - **Backend**: Go (Golang 1.25+)
 - **Database**: SQLite Pure-Go (`modernc.org/sqlite` - Zero CGO/GCC)
-- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3
+- **Motore IA**: Client REST Pure-Go per Google Gemini (`EduDrive/ai`) con streaming SSE e supporto multimodale (testo, PDF e immagini inline)
+- **Frontend**: React 19, TypeScript, Vite, TailwindCSS v3, PDF.js (`pdfjs-dist`)
 - **Icone e Formule**: Lucide Icons, KaTeX (`remark-math`, `rehype-katex`)
 
 ### Architettura e Persistenza Dati
@@ -57,15 +82,20 @@ EduDrive e un'applicazione desktop per la gestione dei file e l'organizzazione d
 ```
 EduDrive/
 ├── app.go                  # Controller backend Wails, export metodi IPC e logica embed
+├── app_ai.go               # Metodi IPC dell'assistente IA, gestione streaming ed eventi
+├── app_podcast.go          # Metodi IPC dello Studio Podcast (sceneggiatura, sintesi, export)
+├── app_handout.go          # Metodi IPC dello Studio Dispense (sintetizzatore multi-slide, prompt didattici, export)
+├── ai/                     # Client REST Pure-Go per Google Gemini API (SSE streaming, modelli)
+├── tts/                    # Client Pure-Go Edge-TTS (sintesi vocale neurale Diego ed Elsa)
 ├── main.go                 # Inizializzazione finestra desktop e lifecycle Wails
-├── models/                 # Strutture dati Go (Item, Breadcrumb, ExamDate, PassedExam, ecc.)
+├── models/                 # Strutture dati Go (Item, Breadcrumb, ExamDate, PassedExam, AI, Podcast, Handout)
 ├── db/                     # Layer SQLite (schema, migrazioni, query CRUD)
 ├── storage/                # Gestione fisica file su disco (UUID, rilevamento MIME, I/O)
 ├── converter/              # Motore di conversione documenti a Markdown (DOCX, PDF, testo)
 ├── frontend/               # Interfaccia utente React + TypeScript
 │   ├── src/
 │   │   ├── App.tsx         # Stato globale, navigazione e coordinamento modali
-│   │   ├── components/     # Viste e componenti UI (Header, Sidebar, GridView, ListView, CareerView)
+│   │   ├── components/     # Viste e componenti UI (Header, Sidebar, GridView, CareerView, AI, Podcast, Handout)
 │   │   └── wailsjs/        # Bindings TypeScript autogenerati da Wails
 └── build/bin/              # Eseguibile compilato per Windows (EduDrive.exe)
 ```

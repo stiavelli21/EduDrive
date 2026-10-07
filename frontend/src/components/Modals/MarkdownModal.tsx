@@ -65,6 +65,9 @@ import {
 } from 'lucide-react';
 import { DriveItem } from '../../types';
 import { escapeHtml } from '../../utils/formatters';
+import { SelectionPopover } from '../AI/SelectionPopover';
+import { AIPanel } from '../AI/AIPanel';
+import { AISettingsModal } from './AISettingsModal';
 
 interface MarkdownModalProps {
   isOpen: boolean;
@@ -140,6 +143,20 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
   const [replaceQuery, setReplaceQuery] = useState<string>('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
 
+  // AI Assistant and Selection Popover State
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
+  const [popoverState, setPopoverState] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    text: string;
+  }>({ visible: false, x: 0, y: 0, text: '' });
+  const [aiExternalRequest, setAiExternalRequest] = useState<{
+    question?: string;
+    selectedText?: string;
+  } | null>(null);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +179,8 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
       setIsSearchOpen(false);
       setSearchQuery('');
       setReplaceQuery('');
+      setPopoverState({ visible: false, x: 0, y: 0, text: '' });
+      setAiExternalRequest(null);
     }
   }, [isOpen, item, initialContent]);
 
@@ -172,6 +191,38 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
     }, 200);
     return () => clearTimeout(timer);
   }, [content]);
+
+  // Handle text selection in Reader or Preview to show AI popover
+  const handleSelectionMouseUp = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      setPopoverState((p) => ({ ...p, visible: false }));
+      return;
+    }
+    const text = sel.toString().trim();
+    if (text.length > 0) {
+      try {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setPopoverState({
+          visible: true,
+          x: rect.left + rect.width / 2,
+          y: rect.top,
+          text,
+        });
+      } catch {
+        // Fallback
+      }
+    }
+  };
+
+  const handleExplainSelection = (text: string, promptText?: string) => {
+    setIsAIPanelOpen(true);
+    setAiExternalRequest({
+      question: promptText,
+      selectedText: text,
+    });
+  };
 
   // Statistics calculation
   const stats = useMemo(() => {
@@ -386,6 +437,22 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
 
           {/* Action Bar & Mode Switcher */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* AI Assistant Toggle Button */}
+            <button
+              onClick={() => setIsAIPanelOpen(!isAIPanelOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer ${
+                isAIPanelOpen
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-indigo-500/20'
+                  : 'bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200'
+              }`}
+              title="Apri o chiudi l'assistente IA per questo appunto"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Assistente IA</span>
+            </button>
+
+            <div className="h-4 w-px bg-gray-300 mx-0.5 hidden sm:block" />
+
             {/* View Mode Actions */}
             {mode === 'view' && item && (
               <>
@@ -819,7 +886,11 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden flex bg-white">
+        <div className="flex-1 overflow-hidden flex bg-white relative">
+          <div
+            className="flex-1 flex overflow-hidden"
+            onMouseUp={handleSelectionMouseUp}
+          >
           {/* Mode View: Reader View with Collapsible TOC Sidebar */}
           {mode === 'view' && (
             <div className="flex-1 flex overflow-hidden w-full h-full">
@@ -1174,6 +1245,19 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
           )}
         </div>
 
+        {/* AI Sidebar */}
+        <AIPanel
+          isOpen={isAIPanelOpen}
+          onClose={() => setIsAIPanelOpen(false)}
+          onOpenSettings={() => setIsAISettingsOpen(true)}
+          itemId={item?.id}
+          documentName={fileName}
+          documentText={content}
+          externalRequest={aiExternalRequest}
+          onClearExternalRequest={() => setAiExternalRequest(null)}
+        />
+      </div>
+
         {/* Footer Status Bar */}
         <div className="flex items-center justify-between px-5 py-2.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 shrink-0 select-none no-print">
           <div className="flex items-center gap-4">
@@ -1198,7 +1282,23 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             </span>
           </div>
         </div>
-      </div>
+
+      {/* Floating Selection Popover */}
+      <SelectionPopover
+        visible={popoverState.visible}
+        x={popoverState.x}
+        y={popoverState.y}
+        selectedText={popoverState.text}
+        onExplain={handleExplainSelection}
+        onClose={() => setPopoverState((p) => ({ ...p, visible: false }))}
+      />
+
+      {/* AI Settings Modal */}
+      <AISettingsModal
+        isOpen={isAISettingsOpen}
+        onClose={() => setIsAISettingsOpen(false)}
+      />
+    </div>
   );
 };
 

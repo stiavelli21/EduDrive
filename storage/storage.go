@@ -332,4 +332,19 @@ func ServeStorageFile(w http.ResponseWriter, r *http.Request, storageDir string)
 	http.ServeFile(w, r, fullPath)
 }
 
+// SaveBinaryContent writes raw binary data (e.g. synthesized MP3 audio) to a new file in storage
+func (sm *StorageManager) SaveBinaryContent(ext string, data []byte) (string, error) {
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	storageFilename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	destPath := filepath.Join(sm.BaseDir, storageFilename)
+
+	if err := os.WriteFile(destPath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write binary content to storage: %w", err)
+	}
+
+	return storageFilename, nil
+}
+
 

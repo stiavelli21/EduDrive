@@ -8,6 +8,7 @@ import {
   RotateCw,
   HardDrive,
   GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -17,6 +18,7 @@ interface HeaderProps {
   onLayoutChange: (mode: LayoutMode) => void;
   onRefresh: () => void;
   onOpenStorageModal: () => void;
+  onOpenAISettings?: () => void;
   isLoading: boolean;
 }
 
@@ -27,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLayoutChange,
   onRefresh,
   onOpenStorageModal,
+  onOpenAISettings,
   isLoading,
 }) => {
   return (
@@ -81,6 +84,17 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <RotateCw className="w-4 h-4" />
         </button>
+
+        {/* AI Assistant Settings */}
+        {onOpenAISettings && (
+          <button
+            onClick={onOpenAISettings}
+            className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors"
+            title="Impostazioni Assistente IA (Google Gemini)"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Storage Quick Info */}
         <button
