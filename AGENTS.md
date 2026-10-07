@@ -53,10 +53,19 @@ EduDrive is a local desktop Google Drive clone with integrated academic tools (u
 ```
 EduDrive/
 ├── app.go                  # Central Wails controller (IPC bindings, file operations, seed logic)
+├── app_ai.go               # AI assistant IPC controller (streaming, prompt building, cancellations)
+├── app_podcast.go          # Podcast Studio controller (script generation, Edge-TTS audio synthesis, export)
+├── app_handout.go          # Study Handouts controller (multi-document slide synthesis, Feynman simplification, exam prep)
+├── ai/                     # Pure-Go Gemini REST client (SSE streaming, models, error mapping)
+│   ├── gemini.go           # REST client implementation (net/http only)
+│   └── gemini_test.go      # Mock server tests
+├── tts/                    # Pure-Go Edge-TTS synthesizer using gorilla/websocket
+│   ├── edgetts.go          # WebSocket client, Sec-MS-GEC DRM calculation, MP3 chunk parser
+│   └── edgetts_test.go     # Voice synthesis unit tests (it-IT-DiegoNeural, it-IT-ElsaNeural)
 ├── main.go                 # Desktop window initialization, AssetServer.Handler streaming & lifecycle hooks
-├── models/item.go          # Core structs: Item, Breadcrumb, StorageStats, ExamDate, PassedExam
-├── db/db.go                # SQLite DAL: migrations, hierarchical recursive queries, move/cycle checks, career CRUD
-├── storage/storage.go      # Physical file management: UUID mapping, MIME detection, Range HTTP streaming, export
+├── models/item.go          # Core structs: Item, Breadcrumb, StorageStats, ExamDate, PassedExam, AI, Podcast, Handout
+├── db/db.go                # SQLite DAL: migrations, hierarchical recursive queries, move/cycle checks, career/exam/podcast/handout CRUD
+├── storage/storage.go      # Physical file management: UUID mapping, MIME detection, Range HTTP streaming, Base64/export, binary save
 ├── converter/              # Document conversion engine to Markdown (DOCX, PDF, text)
 │   ├── docx.go             # Word parser with table formatting and OMML-to-LaTeX conversion
 │   └── pdf.go              # Pure-Go PDF parser using pdfcpu
@@ -64,7 +73,10 @@ EduDrive/
     ├── App.tsx             # Global state coordinator, navigation, fast filters, sorting, modal orchestration
     ├── types/index.ts      # TypeScript interfaces matching backend models, SortField, TypeFilter
     ├── components/         # UI components (Header, Sidebar, GridView, ListView, CareerView)
-    └── components/Modals/  # Modals: MarkdownModal, DocumentViewerModal, ImageViewerModal, CodeViewerModal, MoveItemModal
+    ├── components/AI/      # AI study assistant components (AIPanel, SelectionPopover, ImageRegionSelector, PdfViewer)
+    ├── components/Podcast/ # Podcast Studio components (PodcastStudioView, player, interactive karaoke transcript)
+    ├── components/Handout/ # Study Handout components (HandoutStudioView, multi-slide synthesizer, reader/editor)
+    └── components/Modals/  # Modals: MarkdownModal, DocumentViewerModal, ImageViewerModal, CodeViewerModal, MoveItemModal, AISettingsModal
 ```
 
 ---
@@ -83,6 +95,41 @@ EduDrive/
 - **Urgent (Red)**: $\le 10$ days remaining or overdue.
 - **Warning (Yellow)**: $11 - 30$ days remaining.
 - **Normal (Green)**: $> 30$ days remaining.
+
+### 4.3 AI Study Assistant (`ai/gemini.go`, `app_ai.go`)
+- **Zero CGO HTTP Streaming**: Uses standard library `net/http` for SSE chunk reading (`ai:chunk`, `ai:done`, `ai:error`).
+- **Context Routing by MIME**:
+  - Text and Markdown: Read directly from disk or passed from active editor state.
+  - Word (.docx): Automatically converted via `converter.ConvertDocument`.
+  - PDF & Images (PNG, JPG, WEBP): Transmitted as base64 `inline_data` to Gemini vision models.
+- **Key Storage & Privacy**: API keys reside exclusively in the local SQLite `settings` table (`ai_api_key`) and are masked when sent to the frontend.
+
+### 4.4 Podcast Studio (`tts/edgetts.go`, `app_podcast.go`, `PodcastStudioView.tsx`)
+- **NotebookLM-Style Script Generation**: Prompts Gemini with extracted text from selected sources and user questions to produce a structured JSON dialogue array between two hosts:
+  - Marco: Curious, enthusiastic, connects ideas with real-world analogies.
+  - Elena: Analytical, rigorous, focuses on technical nuances and exam prep.
+- **Pure-Go Edge-TTS Neural Synthesis**:
+  - Connects to Microsoft Edge Read Aloud WebSocket (`speech.platform.bing.com`) with `gorilla/websocket`.
+  - Computes time-based `Sec-MS-GEC` token via Windows file ticks and SHA256.
+  - Voices: `it-IT-DiegoNeural` (Marco) and `it-IT-ElsaNeural` (Elena).
+  - Audio Format: `audio-24khz-48kbitrate-mono-mp3` (6,000 bytes/sec CBR).
+- **Karaoke Synchronization & Export**:
+  - Turn duration calculated from synthesized bytes: $t = \text{bytes} / 6000.0$.
+  - Continuous timestamp offsets allow synchronous UI highlighting and jumping.
+  - Exportable as `.mp3` audio and `.md` timestamped script.
+
+### 4.5 Studio Dispense & Sintesi Multi-Documento (`app_handout.go`, `HandoutStudioView.tsx`)
+- **Elaborazione Multimodale Multi-Fonte**:
+  - Legge e aggrega molteplici documenti: PDF (slide inviate nativamente come `inline_data` a Gemini), Word (.docx convertiti), Markdown, file di testo e immagini.
+  - Ricostruisce il filo logico superando la frammentarieta degli elenchi puntati tipici delle presentazioni universitarie.
+- **Quattro Modalita Didattiche**:
+  - `reasoned_handout`: unifica le slide in una dispensa continua, organica e con transizioni logiche tra argomenti.
+  - `didactic_simplification`: applica il Metodo Feynman, traducendo concetti astratti in spiegazioni semplici con analogie ed evitando il gergo ermetico.
+  - `technical_deep_dive`: colma i passaggi matematici e logici omessi nelle slide, esplicitando dimostrazioni complete in KaTeX e fornendo codice o casi d'uso.
+  - `exam_prep`: estrae mappe concettuali, le domande d'esame piu frequenti con risposte modello e i trabocchetti del professore.
+- **Integrazione e Persistenza**:
+  - Tabella SQLite `study_handouts` con titoli, argomenti, opzioni, fonti utilizzate e contenuto Markdown.
+  - Possibilita di salvare o sincronizzare la dispensa direttamente come file `.md` fisico nel Drive dell'utente.
 
 ---
 

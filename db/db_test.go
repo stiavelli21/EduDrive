@@ -451,5 +451,88 @@ func TestMoveItem(t *testing.T) {
 	}
 }
 
+func TestStudyHandoutOperations(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "edudrive_handout_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "test.db")
+	database, err := InitDB(dbPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer database.Close()
+
+	handout := &models.StudyHandout{
+		ID:              "handout-1",
+		Title:           "Sintesi Ragionata Reti di Calcolatori",
+		Topic:           "Architettura TCP/IP e Livello Trasporto",
+		Mode:            "reasoned_handout",
+		DetailLevel:     "exhaustive",
+		SourceItemIDs:   []string{"file-a", "file-b"},
+		SourceItemNames: []string{"Slide_Lezione_1.pdf", "Appunti_TCP.md"},
+		ContentMarkdown: "# Reti di Calcolatori\n\n## 1. Introduzione\nQuesto capitolo unifica i concetti...",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	// 1. Insert
+	if err := database.InsertStudyHandout(handout); err != nil {
+		t.Fatalf("InsertStudyHandout failed: %v", err)
+	}
+
+	// 2. Retrieve all
+	list, err := database.GetStudyHandouts()
+	if err != nil {
+		t.Fatalf("GetStudyHandouts failed: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("Expected 1 handout, got %d", len(list))
+	}
+	if list[0].Title != handout.Title || len(list[0].SourceItemNames) != 2 {
+		t.Fatalf("Handout data mismatch: %+v", list[0])
+	}
+
+	// 3. Retrieve by ID
+	fetched, err := database.GetStudyHandoutByID("handout-1")
+	if err != nil || fetched == nil {
+		t.Fatalf("GetStudyHandoutByID failed: %v", err)
+	}
+	if fetched.Topic != handout.Topic || fetched.Mode != "reasoned_handout" {
+		t.Fatalf("Fetched handout mismatch: %+v", fetched)
+	}
+
+	// 4. Update
+	fetched.Title = "Titolo Aggiornato"
+	fetched.ContentMarkdown = "# Nuovo contenuto"
+	driveID := "drive-item-99"
+	fetched.DriveItemID = &driveID
+	fetched.UpdatedAt = time.Now()
+	if err := database.UpdateStudyHandout(fetched); err != nil {
+		t.Fatalf("UpdateStudyHandout failed: %v", err)
+	}
+
+	updated, err := database.GetStudyHandoutByID("handout-1")
+	if err != nil || updated == nil {
+		t.Fatalf("GetStudyHandoutByID after update failed: %v", err)
+	}
+	if updated.Title != "Titolo Aggiornato" || updated.DriveItemID == nil || *updated.DriveItemID != "drive-item-99" {
+		t.Fatalf("Updated handout mismatch: %+v", updated)
+	}
+
+	// 5. Delete
+	if err := database.DeleteStudyHandout("handout-1"); err != nil {
+		t.Fatalf("DeleteStudyHandout failed: %v", err)
+	}
+	remaining, err := database.GetStudyHandouts()
+	if err != nil {
+		t.Fatalf("GetStudyHandouts after delete failed: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("Expected 0 handouts after delete, got %d", len(remaining))
+	}
+}
 
 
